@@ -1,0 +1,34 @@
+.footer {
+	background-color: var(--color-primary-dark);
+	color: var(--color-primary400);
+	padding-block: 1rem;
+	font-size: small;
+
+	width: 100%;
+}
+
+.footer__container {
+	display: flex;
+}
+
+.footer__item {
+	width: 50%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.footer__title {
+	margin-bottom: 1rem;
+}
+
+.footer__list {
+	display: flex;
+	gap: 2rem;
+	list-style: none;
+}
+
+.footer__list-col {
+	display: flex;
+	flex-direction: column;
+}

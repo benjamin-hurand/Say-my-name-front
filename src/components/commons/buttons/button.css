@@ -1,0 +1,35 @@
+.button {
+	font-size: 1rem;
+	font-weight: bold;
+	padding-inline: 1rem;
+	padding-block: 0.5rem;
+
+	border-width: 2px;
+	border-style: solid;
+	border-radius: 0.5rem;
+
+	transition: 0.25s;
+}
+
+.button:hover {
+	border-color: var(--color-primary);
+	box-shadow:
+		0 0 4px var(--color-primary),
+		0 0 8px var(--color-primary);
+}
+
+.button__filled {
+	color: var(--color-primary-light);
+	border-color: var(--color-primary);
+	background-color: var(--color-primary);
+}
+
+.button__outlined {
+	color: var(--color-primary400);
+	border-color: var(--color-primary400);
+}
+
+.button__outlined:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary);
+}

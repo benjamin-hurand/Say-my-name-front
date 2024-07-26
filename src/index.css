@@ -1,0 +1,43 @@
+*,
+::before,
+::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+:root {
+	--color-primary: hsl(295, 85%, 45%);
+	--color-primary-dark: hsl(293, 100%, 5%);
+	--color-primary-light: hsl(295, 100%, 95%);
+	--color-primary-faded: hsl(295, 85%, 45%, 20%);
+	--color-primary200: hsl(295, 30%, 85%);
+	--color-primary400: hsl(295, 50%, 70%);
+	--color-primary600: hsl(295, 85%, 45%);
+	--color-primary800: hsl(295, 95%, 30%);
+	--color-primary950: hsl(295, 100%, 10%);
+}
+
+body {
+	font-family: "Satoshi", sans-serif;
+	font-weight: 400;
+	background-color: #242424; /* Dark grey background */
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+	display: block;
+	max-width: 100%;
+	user-select: none;
+}
+
+button {
+	display: inline-block;
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: inherit;
+}

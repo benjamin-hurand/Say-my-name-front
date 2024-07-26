@@ -1,0 +1,61 @@
+/* neonStyles.css */
+body {
+    background-color: #242424 !important; /* Dark background color for neon effect */
+  }
+  
+  .neon-text {
+    color: #ffffff; /* White color for text */
+    text-shadow: 0 0 1px #000000, 0 0 2px #000000, 0 0 3px #000000, 0 0 4px #ffffff; /* Neon white text shadow */
+  }
+  
+  .neon-button {
+    background-color: #e0e0e0 !important; /* White background for button */
+    color: #000000 !important; /* Black text color */
+    box-shadow: 0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff !important; /* Neon white shadow */
+    border: 1px solid #ffffff !important; /* White border */
+  }
+  
+  .neon-textfield .MuiInputBase-input {
+    background-color: #242424 !important; /* Dark background for input */
+    color: #ffffff !important; /* White text color */
+    box-shadow: none; /* Remove inner shadow */
+  }
+  
+  .neon-textfield .MuiOutlinedInput-notchedOutline {
+    border-color: #ffffff !important; /* White border for outline */
+  }
+  
+  .neon-textfield .MuiInputLabel-root {
+    color: #ffffff !important; /* White color for label */
+  }
+  
+  .neon-textfield .MuiInputLabel-root.Mui-focused {
+    color: #ffffff !important; /* White color for label on focus */
+  }
+  
+  .neon-alert {
+    background-color: #362424 !important; /* Red background for error */
+    color: rgb(255, 187, 0) !important;           /* White text color */
+    box-shadow: 0 0 1px #a50000, 0 0 2px #a50000, 0 0 3px #a50000, 0 0 4px #a50000 !important; /* Neon red glow */
+    border: 1px solid #a50000 !important; /* Border color matching the glow */  
+  }
+  
+  .google-login-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  .google-login-container div {
+    width: 100% !important; /* Ensure the inner container also takes full width */
+  }
+  
+  .google-login-container button {
+    width: 100% !important; /* Ensure the button takes full width */
+    padding: 10px !important; /* Add some padding to match the size of other buttons */
+    font-size: 16px !important; /* Match the font size */
+    border: 1px solid #ffffff !important; /* Add border to match other buttons */
+    box-shadow: 0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff !important; /* Neon white shadow */
+  }
+  

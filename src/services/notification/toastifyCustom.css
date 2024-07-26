@@ -1,0 +1,39 @@
+/* toastifyCustom.css */
+    .custom-toast-success {
+        background-color: #007400 !important; /* Green background for success */
+        color: #00ff15 !important;           /* White text color */
+        box-shadow: 0 0 10px #007400, 0 0 20px #33cc33, 0 0 30px #007400, 0 0 40px #007400 !important; /* Neon green glow */
+        border: 1px solid #007400 !important; /* Border color matching the glow */
+    }
+  
+    .custom-toast-progress-success {
+        background: #00ff15 !important; /* Custom progress bar color */
+    }
+
+    .custom-toast-error {
+        background-color: #a50000 !important; /* Red background for error */
+        color: rgb(255, 187, 0) !important;           /* White text color */
+        box-shadow: 0 0 10px #a50000, 0 0 20px #a50000, 0 0 30px #a50000, 0 0 40px #a50000 !important; /* Neon red glow */
+        border: 1px solid #a50000 !important; /* Border color matching the glow */
+    }
+  
+    .custom-toast-progress-error {
+        background: rgb(255, 187, 0) !important; /* Custom progress bar color */
+    }
+  
+    .custom-toast-warning {
+        background-color: #8b7000 !important; /* Yellow background for warning */
+        color: #fffb00 !important;           /* Black text color */
+        box-shadow: 0 0 10px #8b7000, 0 0 20px #8b7000, 0 0 30px #8b7000, 0 0 40px #8b7000 !important; /* Neon yellow glow */
+        border: 1px solid #8b7000 !important; /* Border color matching the glow */
+    }
+  
+    .custom-toast-progress-warning {
+        background: #fffb00 !important; /* Custom progress bar color */
+    }
+    
+    .custom-toast-body {
+        font-family: 'Titillium Web', sans-serif; /* Apply custom font */
+        font-size: 1.2rem; /* Adjust font size as needed */
+    }
+  
