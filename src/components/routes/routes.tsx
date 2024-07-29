@@ -13,9 +13,6 @@ const router = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <Navigate to="/home" replace />
-            },{
-                path: "home",
                 element: <ProtectedRoute element={<Home />} />
             },{
                 path: "profile",

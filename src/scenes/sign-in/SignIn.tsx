@@ -9,26 +9,27 @@ import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { login, loginWithGoogle } from '../../services/security/Auth.service'; 
 import axios from 'axios';
-import { Alert } from '@mui/material';
+import { Alert, IconButton, useTheme } from '@mui/material';
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
 import { notifySuccess } from '../../services/notification/toast.service';
-import './Signin.style.css'; // Import the custom CSS file
-
-const defaultTheme = createTheme();
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { useState } from 'react';
 
 export default function SignIn() {
+  const theme = useTheme();
   const [errorMessage, setErrorMessage] = React.useState('');
   const navigate = useNavigate();
-  const googleLoginRef = React.useRef<HTMLDivElement>(null);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const handleInputChange = () => {
     if (errorMessage) {
       setErrorMessage('');
     }
   };
+
+  const handleTogglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const handleSuccess = async (googleResponse: CredentialResponse) => {
     console.log('Login Success:', googleResponse);
@@ -46,7 +47,7 @@ export default function SignIn() {
       localStorage.setItem('email', apiResponse.email); 
       localStorage.setItem('username', apiResponse.username); 
       notifySuccess('Successfully connected.');
-      navigate('/home');
+      navigate('/');
     } catch (error) {
       let message = 'An error occurred. Please try again.';
       if (axios.isAxiosError(error) && error.response) {
@@ -89,7 +90,7 @@ export default function SignIn() {
       localStorage.setItem('token', response.jwt.bearer);
       localStorage.setItem('roles', response.roles);
       notifySuccess('Successfully connected.');
-      navigate('/persons');
+      navigate('/');
     } catch (error) {
       let message = 'An error occurred. Please try again.';
       if (axios.isAxiosError(error) && error.response) {
@@ -107,102 +108,119 @@ export default function SignIn() {
     }
   };
 
-  const handleGoogleLoginClick = () => {
-
-  };
-
   return (
-    <ThemeProvider theme={defaultTheme}>
-      <Container component="main" maxWidth="xs">
-        <CssBaseline />
-        <Box
+    <Container component="main" maxWidth="xs">
+      <CssBaseline />
+      <Box
+        sx={{
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+         <Avatar
           sx={{
-            marginTop: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            m: 1,
+            bgcolor: theme.palette.mode === 'dark' ? '#242424' : '#ffffff',
+            boxShadow: '0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff, 0 0 5px #ffffff',
           }}
         >
-          <Avatar sx={{ m: 1, bgcolor: '#242424', boxShadow: '0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff, 0 0 5px #ffffff' }}>
             <LockOutlinedIcon />
-          </Avatar>
-          <Typography component="h1" variant="h5" className="neon-text">
-            Log in
+        </Avatar>
+        <Typography component="h1" variant="h5" sx={{ textShadow: '0 0 1px #000000, 0 0 2px #000000, 0 0 3px #000000, 0 0 4px #ffffff' }}>
+          Log in
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+          <TextField
+            onChange={handleInputChange}
+            margin="normal"
+            required
+            fullWidth
+            id="identifier"
+            label="Email or Username"
+            name="identifier"
+            autoComplete="email"
+            autoFocus
+            sx={{ bgcolor: theme.palette.mode === 'dark' ? '#242424' : '#ffffff',
+               color: theme.palette.mode === 'dark' ? '#ffffff' : '#242424',
+               '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.mode === 'dark' ? '#ffffff' : '#242424' } }}
+          />
+          <TextField
+            onChange={handleInputChange}
+            margin="dense"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            id="password"
+            autoComplete="current-password"
+            sx={{ bgcolor: theme.palette.mode === 'dark' ? '#242424' : '#ffffff' , color: theme.palette.mode === 'dark' ? '#ffffff' : '#242424', '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.mode === 'dark' ? '#ffffff' : '#242424' } }}
+            InputProps={{
+              endAdornment: (
+                <IconButton
+                  onClick={handleTogglePasswordVisibility}
+                  sx={{ color: '#ffffff90', boxShadow: 'none' }}
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              ),
+            }}
+          />
+            {errorMessage && (
+              <div id="errorMessage">
+                <Alert severity="error" sx={{ bgcolor: '#362424', color: 'rgb(255, 187, 0)', boxShadow: '0 0 1px #a50000, 0 0 2px #a50000, 0 0 3px #a50000, 0 0 4px #a50000', border: '1px solid #a50000' }}>
+                  <Typography color="error">
+                    {errorMessage}
+                  </Typography>
+                </Alert>
+              </div>
+            )}
+          <Button
+            type="submit"
+            fullWidth
+            variant="outlined"
+            sx={{ my: 2, bgcolor: theme.palette.mode === 'dark' ? '#e0e0e0' : '#000000', color: theme.palette.mode === 'dark' ? '#000000' : '#ffffff', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff' }}
+          >
+            Sign In
+          </Button>
+          <Typography variant="body1" sx={{ mb: 2, color: 'white', textAlign: 'center' }}>
+            or
           </Typography>
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <TextField
-              onChange={handleInputChange}
-              margin="normal"
-              required
-              fullWidth
-              id="identifier"
-              label="Email or Username"
-              name="identifier"
-              autoComplete="email"
-              autoFocus
-              className="neon-textfield"
-            />
-            <TextField
-              onChange={handleInputChange}
-              margin="dense"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              className="neon-textfield"
-            />
-             {errorMessage && (
-                <div id="errorMessage">
-                  <Alert severity="error" className="neon-alert">
-                    <Typography color="error">
-                      {errorMessage}
-                    </Typography>
-                  </Alert>
-                </div>
-              )}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3 }}
-              className="neon-button"
-            >
-              Sign In
-            </Button>
-            <Button
-              type="button"
-              fullWidth
-              variant="outlined"
-              sx={{ mt: 2 , mb: 2 }}
-              className="neon-button"
-              onClick={handleGoogleLoginClick}
-            >
-              Sign In With Google
-            </Button>
-            <Grid container>
-              <Grid item xs>
-              </Grid>
-              <Grid item>
-              <a
-                onClick={() => navigate("/signup")}
-                style={{ color: '#ffffff', textDecoration: 'underline', cursor: 'pointer', marginTop: '100px'}}
-              >
-                Don't have an account? Sign Up
-              </a>
-              </Grid>
-            </Grid>
-          </Box>
-        </Box>
-        <div ref={googleLoginRef} style={{ display: 'true' }}>
           <GoogleLogin
             onSuccess={handleSuccess}
             onError={handleError}
+            type="standard"
+            theme="outline"
+            size="large"
+            text="signin_with"
+            shape="rectangular"
+            logo_alignment="center"
+            width="10000"
+            locale="en"
+            useOneTap={true}
+            cancel_on_tap_outside={true}
+            auto_select={true}
+            ux_mode="popup"
+            context="signin"
+            itp_support={true}
+            use_fedcm_for_prompt={true}
           />
-        </div>
-      </Container>
-    </ThemeProvider>
+          <Grid container sx={{ mt: 2 }}>
+            <Grid item xs>
+            </Grid>
+            <Grid item>
+              <a
+                onClick={() => navigate("/signup")}
+                style={{ color: '#ffffff', textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                Don't have an account? Sign Up
+              </a>
+            </Grid>
+          </Grid>
+        </Box>
+      </Box>
+    </Container>
   );
 }

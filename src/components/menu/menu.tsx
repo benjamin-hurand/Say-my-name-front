@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { Button, IconButton, Stack, Box } from '@mui/material';
-import { Settings, Language, GitHub, LinkedIn, Logout } from '@mui/icons-material';
+import { Settings, Language, Logout , Brightness4, Brightness7} from '@mui/icons-material';
 import SvgLogo from './components/svg/logoSvg';
-import { neonColors, oppositeColors } from '../../models/commons/NeonColors';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { neonColors } from '../../models/commons/NeonColors';
 import { useNavigate } from 'react-router-dom';
 import { notifySuccess } from '../../services/notification/toast.service';
+import { googleLogout } from '@react-oauth/google';
+import { useThemeContext } from '../../ThemeContext';
 
 const Menu = () => {
+    // const theme = useTheme();
+    const { toggleTheme, theme: currentTheme } = useThemeContext();
     const [color, setColor] = useState<string>(neonColors[0]); // Start with a default neon color
     const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
@@ -24,10 +29,11 @@ const Menu = () => {
     const handleLogout = () => {
         localStorage.clear();
         notifySuccess('Successfully disconnected.');
+        googleLogout();
         navigate('/signin', { replace: true });
     }
 
-    const iconStyle = {
+    const iconButtonStyle = {
         color: color,
         boxShadow: `0 0 8px ${color}`,  // Apply neon glow only
         transition: 'box-shadow 0.2s ease-in-out', // Transition only for neon glow
@@ -39,7 +45,6 @@ const Menu = () => {
     };
 
     const buttonStyle = {
-        fontFamily: 'Titillium Web, sans-serif', // Apply the Titillium Web font
         fontSize: '1.2rem', // Make the font size larger
         color: color,
         borderColor: color,
@@ -53,14 +58,14 @@ const Menu = () => {
     const hoveredButtonStyle = {
         ...buttonStyle, // Inherit the regular button style
         backgroundColor: color,
-        color: oppositeColors[color], // Set text color to the opposite color
+        color: "#242424", // oppositeColors[color], // Set text color to the opposite color
         boxShadow: `0 0 30px ${color}`, // Increased shadow on hover
         transition: 'background-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out, color 0.5s ease-in-out', // Smooth transition for background-color, box-shadow, and text color
     };
 
     return (
         <div style={{ width: '100%', overflow: 'hidden' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: -6, mb: -9 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center'}}>
                 <SvgLogo color={color} style={svgStyle} />
             </Box>
             <Stack
@@ -103,20 +108,17 @@ const Menu = () => {
                 </Button>
 
                 <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '300px', padding: '10px' }}>
-                    <IconButton style={iconStyle} aria-label="github" onMouseEnter={handleMouseEnter}>
-                        <GitHub />
+                    <IconButton style={iconButtonStyle} className='menu' aria-label="settings" onMouseEnter={handleMouseEnter}>
+                        <Settings className='menu' style={{ color }} />
                     </IconButton>
-                    <IconButton style={iconStyle} aria-label="linkedin" onMouseEnter={handleMouseEnter}>
-                        <LinkedIn />
+                    <IconButton style={iconButtonStyle} className='menu' aria-label="toggle dark/light mode" onClick={toggleTheme} onMouseEnter={handleMouseEnter}>
+                        {currentTheme === 'dark' ? <Brightness7 className='menu' style={{ color }} /> : <Brightness4 className='menu' style={{ color }} />}
                     </IconButton>
-                    <IconButton style={iconStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
-                        <Logout />
+                    <IconButton style={iconButtonStyle} className='menu' aria-label="change language" onMouseEnter={handleMouseEnter}>
+                        <Language className='menu' style={{ color }} />
                     </IconButton>
-                    <IconButton style={iconStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
-                        <Settings />
-                    </IconButton>
-                    <IconButton style={iconStyle} aria-label="change language" onMouseEnter={handleMouseEnter}>
-                        <Language />
+                    <IconButton style={iconButtonStyle} className='menu' aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
+                        <Logout className='menu' style={{ color }} />
                     </IconButton>
                 </Stack>
             </Stack>

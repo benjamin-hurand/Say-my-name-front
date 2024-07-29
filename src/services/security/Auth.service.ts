@@ -84,6 +84,15 @@ export const loginWithGoogle = async (LoginGoogleDto: CredentialResponse): Promi
     }
 };
 
+export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+    try {
+        const response = await API.get<boolean>(`/usernames/isavailable/${username}`);
+        return response.data;
+    } catch (error) {
+        console.error('Failed to verify username availability');
+        throw error;
+    }
+}
 
 export const generate = async (lang: string): Promise<string> => {
     try {
