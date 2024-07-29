@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 
-const neonColors = ['#39FF14', '#FF073A', '#0FF0FC', '#FC0FC0', '#FFF700']; // Example neon colors
+const neonColors = ['#ffffff', '#FF073A', '#0FF0FC', '#FC0FC0', '#FFF700']; // Example neon colors
 
 const commonStyles = {
     '@import': "url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@200;300;400;600;700;900&display=swap')",
@@ -138,7 +138,7 @@ const neonDarkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
-            main: '#39FF14', // Default neon color
+            main: '#ffffff', // Default neon color
         },
         background: {
             default: '#121212',
@@ -170,21 +170,25 @@ const neonDarkTheme = createTheme({
         MuiButton: {
             styleOverrides: {
                 root: {
-                    boxShadow: `0 0 8px #39FF14`,
-                    textShadow: `0 0 8px #39FF14`,
+                    boxShadow: `0 0 8px #ffffff`,
+                    textShadow: `0 0 8px #ffffff`,
                     transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
                 },
                 contained: {
-                    backgroundColor: '#39FF14',
+                    backgroundColor: '#ffffff',
                     color: '#242424',
                     '&:hover': {
-                        boxShadow: `0 0 30px #39FF14`,
+                        boxShadow: `0 0 30px #ffffff`,
+                        
                     },
                 },
                 outlined: {
-                    borderColor: '#39FF14',
+                    borderColor: '#ffffff',
                     '&:hover': {
-                        boxShadow: `0 0 30px #39FF14`,
+                        backgroundColor: '#e0e0e0', 
+                        color: '#242424', 
+                        boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', 
+                        border: '1px solid #ffffff'
                     },
                 },
             },
@@ -192,7 +196,7 @@ const neonDarkTheme = createTheme({
         MuiIconButton: {
             styleOverrides: {
                 root: {
-                    boxShadow: `0 0 8px #39FF14`,
+                    boxShadow: `0 0 8px #ffffff`,
                     transition: 'box-shadow 0.2s ease-in-out',
                 },
                 menu: {
@@ -219,7 +223,7 @@ const neonLightTheme = createTheme({
     palette: {
         mode: 'light',
         primary: {
-            main: '#39FF14', // Default neon color
+            main: '#ffffff', // Default neon color
         },
         background: {
             default: '#FFFFFF',
@@ -255,21 +259,21 @@ const neonLightTheme = createTheme({
         MuiButton: {
             styleOverrides: {
                 root: {
-                    boxShadow: `0 0 8px #39FF14`,
-                    textShadow: `0 0 8px #39FF14`,
+                    boxShadow: `0 0 8px #ffffff`,
+                    textShadow: `0 0 8px #ffffff`,
                     transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
                 },
                 contained: {
-                    backgroundColor: '#39FF14',
+                    backgroundColor: '#ffffff',
                     color: '#f5f5f5',
                     '&:hover': {
-                        boxShadow: `0 0 30px #39FF14`,
+                        boxShadow: `0 0 30px #ffffff`,
                     },
                 },
                 outlined: {
-                    borderColor: '#39FF14',
+                    borderColor: '#ffffff',
                     '&:hover': {
-                        boxShadow: `0 0 30px #39FF14`,
+                        boxShadow: `0 0 30px #ffffff`,
                     },
                 },
             },
@@ -277,7 +281,7 @@ const neonLightTheme = createTheme({
         MuiIconButton: {
             styleOverrides: {
                 root: {
-                    boxShadow: `0 0 8px #39FF14`,
+                    boxShadow: `0 0 8px #ffffff`,
                     transition: 'box-shadow 0.2s ease-in-out',
                 },
             },

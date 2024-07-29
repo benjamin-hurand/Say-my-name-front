@@ -181,7 +181,7 @@ export default function SignIn() {
             type="submit"
             fullWidth
             variant="outlined"
-            sx={{ my: 2, bgcolor: theme.palette.mode === 'dark' ? '#e0e0e0' : '#000000', color: theme.palette.mode === 'dark' ? '#000000' : '#ffffff', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff' }}
+            sx={{ my: 2 }}
           >
             Sign In
           </Button>
