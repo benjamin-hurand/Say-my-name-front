@@ -178,9 +178,15 @@ const neonDarkTheme = createTheme({
                     backgroundColor: '#ffffff',
                     color: '#242424',
                     '&:hover': {
-                        boxShadow: `0 0 30px #ffffff`,
-                        
+                        boxShadow: `0 0 5px #ffffff`,
+                        backgroundColor: '#efefef',
                     },
+                    '&.menu': {
+                        '&:hover': {
+                            boxShadow: `0 0 30px #ffffff`,
+                        },
+                    }
+                    
                 },
                 outlined: {
                     borderColor: '#ffffff',
@@ -188,7 +194,11 @@ const neonDarkTheme = createTheme({
                         backgroundColor: '#e0e0e0', 
                         color: '#242424', 
                         boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', 
-                        border: '1px solid #ffffff'
+                        border: '1px solid #ffffff',
+                        '&.menu': {
+                                // styles spécifiques pour les boutons contained avec la classe menu
+                                backgroundColor: "#242424", // Exemple: changement de couleur de fond
+                            }
                     },
                 },
             },
@@ -196,10 +206,10 @@ const neonDarkTheme = createTheme({
         MuiIconButton: {
             styleOverrides: {
                 root: {
-                    boxShadow: `0 0 8px #ffffff`,
-                    transition: 'box-shadow 0.2s ease-in-out',
                 },
                 menu: {
+                    boxShadow: `0 0 8px #ffffff`,
+                    transition: 'box-shadow 0.2s ease-in-out',
                     color: undefined, 
                 }
             },
@@ -281,9 +291,11 @@ const neonLightTheme = createTheme({
         MuiIconButton: {
             styleOverrides: {
                 root: {
+                },
+                menu: {
                     boxShadow: `0 0 8px #ffffff`,
                     transition: 'box-shadow 0.2s ease-in-out',
-                },
+                }
             },
         },
         MuiSvgIcon: {

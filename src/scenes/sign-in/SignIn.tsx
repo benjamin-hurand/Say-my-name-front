@@ -180,7 +180,7 @@ export default function SignIn() {
           <Button
             type="submit"
             fullWidth
-            variant="outlined"
+            variant="contained"
             sx={{ my: 2 }}
           >
             Sign In
@@ -199,7 +199,7 @@ export default function SignIn() {
             logo_alignment="center"
             width="10000"
             locale="en"
-            useOneTap={true}
+            useOneTap={false}
             cancel_on_tap_outside={true}
             auto_select={true}
             ux_mode="popup"

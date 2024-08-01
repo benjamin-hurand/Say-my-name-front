@@ -79,6 +79,7 @@ const Menu = () => {
                     style={hoveredButton === 'TRAINING' ? hoveredButtonStyle : buttonStyle}
                     onMouseEnter={() => setHoveredButton('TRAINING')}
                     onMouseLeave={() => setHoveredButton(null)}
+                    className="menu"
                 >
                     TRAINING
                 </Button>
@@ -87,6 +88,7 @@ const Menu = () => {
                     style={hoveredButton === 'RANKED' ? hoveredButtonStyle : buttonStyle}
                     onMouseEnter={() => setHoveredButton('RANKED')}
                     onMouseLeave={() => setHoveredButton(null)}
+                    className="menu"
                 >
                     RANKED
                 </Button>
@@ -95,6 +97,7 @@ const Menu = () => {
                     style={hoveredButton === 'PROFILE' ? hoveredButtonStyle : buttonStyle}
                     onMouseEnter={() => setHoveredButton('PROFILE')}
                     onMouseLeave={() => setHoveredButton(null)}
+                    className="menu"
                 >
                     PROFILE
                 </Button>
@@ -103,6 +106,7 @@ const Menu = () => {
                     style={hoveredButton === 'SETTINGS' ? hoveredButtonStyle : buttonStyle}
                     onMouseEnter={() => setHoveredButton('SETTINGS')}
                     onMouseLeave={() => setHoveredButton(null)}
+                    className="menu"
                 >
                     SETTINGS
                 </Button>

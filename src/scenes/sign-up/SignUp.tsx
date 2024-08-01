@@ -20,6 +20,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Visibility, VisibilityOff, AutoAwesome } from '@mui/icons-material';
 import { notifySuccess } from '../../services/notification/toast.service';
+import { Divider } from '@mui/material';
 
 export default function SignUp(): JSX.Element {
   const [username, setUsername] = useState<string>('');
@@ -196,7 +197,7 @@ export default function SignUp(): JSX.Element {
       <CssBaseline />
       <Box
         sx={{
-          marginTop: 8,
+          marginTop: 4,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -222,7 +223,7 @@ export default function SignUp(): JSX.Element {
             label="Username"
             name="username"
             autoComplete="username"
-            sx={{ mb: 3, bgcolor: '#242424', color: '#ffffff', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ffffff' } }}
+            sx={{ bgcolor: '#242424', color: '#ffffff', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ffffff' } }}
             InputProps={{
               endAdornment: (
                 <>
@@ -246,14 +247,14 @@ export default function SignUp(): JSX.Element {
           />
           {usernameFocused && (
             <Box sx={{ color: 'white', fontSize: '12px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-              <span style={{ color: username.length >= 3 && username.length <= 24 ? 'green' : 'red' }}>
-                <CheckCircleIcon style={{ color: username.length >= 3 && username.length <= 24 ? 'green' : 'red' }} /> 3-24 characters
+              <span style={{ display: 'flex', alignItems: 'center', color: username.length >= 3 && username.length <= 24 ? 'green' : 'red' }}>
+                <CheckCircleIcon style={{ display: 'flex', alignItems: 'center', color: username.length >= 3 && username.length <= 24 ? 'green' : 'red' }} /> 3-24 characters
               </span>
-              <span style={{ color: /^[a-zA-Z0-9-]*$/.test(username) ? 'green' : 'red' }}>
-                <CheckCircleIcon style={{ color: /^[a-zA-Z0-9-]*$/.test(username) ? 'green' : 'red' }} /> Letters, numbers, and hyphens
+              <span style={{ display: 'flex', alignItems: 'center', color: /^[a-zA-Z0-9-]*$/.test(username) ? 'green' : 'red' }}>
+                <CheckCircleIcon style={{ display: 'flex', alignItems: 'center', color: /^[a-zA-Z0-9-]*$/.test(username) ? 'green' : 'red' }} /> Letters, numbers, and hyphens
               </span>
-              <span style={{ color: !username.endsWith('-') ? 'green' : 'red' }}>
-                <CheckCircleIcon style={{ color: !username.endsWith('-') ? 'green' : 'red' }} /> Cannot end with a hyphen
+              <span style={{ display: 'flex', alignItems: 'center', color: !username.endsWith('-') ? 'green' : 'red' }}>
+                <CheckCircleIcon style={{ display: 'flex', alignItems: 'center', color: !username.endsWith('-') ? 'green' : 'red' }} /> Cannot end with a hyphen
               </span>
             </Box>
           )}
@@ -267,12 +268,13 @@ export default function SignUp(): JSX.Element {
 
           {showButtons && (
             <>
+              <Divider sx={{ my: 2, width: '100%', bgcolor: 'gray' }} /> {/* Personnalisez le style selon vos besoins */}
               {!showEmailPasswordFields && (
                 <Button
                   type="button"
                   fullWidth
                   variant="outlined"
-                  sx={{ mt: 3, mb: 2, bgcolor: '#2f2f2f', color: '#e0e0e0', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff', transition: 'background-color 0.3s ease, color 0.3s ease, border 0.3s ease, box-shadow 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#242424', boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', border: '1px solid #ffffff' } }}
+                  sx={{ bgcolor: '#2f2f2f', color: '#e0e0e0', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff', transition: 'background-color 0.3s ease, color 0.3s ease, border 0.3s ease, box-shadow 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#242424', boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', border: '1px solid #ffffff' } }}
                   onClick={() => setShowEmailPasswordFields(true)}
                 >
                   Continue with email & password
@@ -307,7 +309,7 @@ export default function SignUp(): JSX.Element {
                   />
                   {emailFocused && (
                     <Box sx={{ color: 'white', fontSize: '12px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                      <span style={{ color: isValidEmail(email) ? 'green' : 'red' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', color: isValidEmail(email) ? 'green' : 'red' }}>
                         <CheckCircleIcon style={{ color: isValidEmail(email) ? 'green' : 'red' }} /> Valid email format
                       </span>
                     </Box>
@@ -351,19 +353,19 @@ export default function SignUp(): JSX.Element {
                   />
                   {passwordFocused && (
                     <Box sx={{ color: 'white', fontSize: '12px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                      <span style={{ color: password.length >= 8 ? 'green' : 'red' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', color: password.length >= 8 ? 'green' : 'red' }}>
                         <CheckCircleIcon style={{ color: password.length >= 8 ? 'green' : 'red' }} /> 8 characters
                       </span>
-                      <span style={{ color: /[A-Z]/.test(password) ? 'green' : 'red' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', color: /[A-Z]/.test(password) ? 'green' : 'red' }}>
                         <CheckCircleIcon style={{ color: /[A-Z]/.test(password) ? 'green' : 'red' }} /> 1 uppercase
                       </span>
-                      <span style={{ color: /[a-z]/.test(password) ? 'green' : 'red' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', color: /[a-z]/.test(password) ? 'green' : 'red' }}>
                         <CheckCircleIcon style={{ color: /[a-z]/.test(password) ? 'green' : 'red' }} /> 1 lowercase
                       </span>
-                      <span style={{ color: /\d/.test(password) ? 'green' : 'red' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', color: /\d/.test(password) ? 'green' : 'red' }}>
                         <CheckCircleIcon style={{ color: /\d/.test(password) ? 'green' : 'red' }} /> 1 number
                       </span>
-                      <span style={{ color: /[@$!%*?&]/.test(password) ? 'green' : 'red' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', color: /[@$!%*?&]/.test(password) ? 'green' : 'red' }}>
                         <CheckCircleIcon style={{ color: /[@$!%*?&]/.test(password) ? 'green' : 'red' }} /> 1 special character
                       </span>
                     </Box>
@@ -379,13 +381,13 @@ export default function SignUp(): JSX.Element {
                     type="submit"
                     fullWidth
                     variant="contained"
-                    sx={{ mt: 3, mb: 2, bgcolor: '#e0e0e0', color: '#000000', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff' }}
+                    sx={{ mt: 2, bgcolor: '#e0e0e0', color: '#000000', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff' }}
                   >
                     Create an account
                   </Button>
                 </>
               )}
-              <Typography variant="body1" sx={{ my: 2, textAlign: 'center', color: 'white' }}>
+              <Typography variant="body1" sx={{ my: 1, textAlign: 'center', color: 'white' }}>
                 or
               </Typography>
               <GoogleLogin
@@ -399,7 +401,7 @@ export default function SignUp(): JSX.Element {
                 logo_alignment="center"
                 width="10000"
                 locale="en"
-                useOneTap={true}
+                useOneTap={false}
                 cancel_on_tap_outside={true}
                 auto_select={false}
                 ux_mode="popup"
