@@ -20,7 +20,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Visibility, VisibilityOff, AutoAwesome } from '@mui/icons-material';
 import { notifySuccess } from '../../services/notification/toast.service';
-import { Divider } from '@mui/material';
+import { Divider, useTheme } from '@mui/material';
 
 export default function SignUp(): JSX.Element {
   const [username, setUsername] = useState<string>('');
@@ -39,6 +39,7 @@ export default function SignUp(): JSX.Element {
   const [showEmailPasswordFields, setShowEmailPasswordFields] = useState<boolean>(false);
   const [showButtons, setShowButtons] = useState<boolean>(false);
   const navigate = useNavigate();
+  const theme = useTheme();
 
   function isValidUsername(username: string): boolean {
     const validUsernameRegex = /^[a-zA-Z0-9-]{3,24}$/;
@@ -203,10 +204,10 @@ export default function SignUp(): JSX.Element {
           alignItems: 'center',
         }}
       >
-        <Avatar sx={{ m: 1, bgcolor: '#242424', boxShadow: '0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff, 0 0 5px #ffffff' }}>
+        <Avatar sx={{ m: 1}}>
           <LockOutlinedIcon />
         </Avatar>
-        <Typography component="h1" variant="h5" sx={{ color: 'white', textShadow: '0 0 1px #000000, 0 0 2px #000000, 0 0 3px #000000, 0 0 4px #ffffff' }}>
+        <Typography component="h1" variant="h5" className='title'>
           Create an account
         </Typography>
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
@@ -223,7 +224,6 @@ export default function SignUp(): JSX.Element {
             label="Username"
             name="username"
             autoComplete="username"
-            sx={{ bgcolor: '#242424', color: '#ffffff', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ffffff' } }}
             InputProps={{
               endAdornment: (
                 <>
@@ -274,7 +274,6 @@ export default function SignUp(): JSX.Element {
                   type="button"
                   fullWidth
                   variant="outlined"
-                  sx={{ bgcolor: '#2f2f2f', color: '#e0e0e0', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff', transition: 'background-color 0.3s ease, color 0.3s ease, border 0.3s ease, box-shadow 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#242424', boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', border: '1px solid #ffffff' } }}
                   onClick={() => setShowEmailPasswordFields(true)}
                 >
                   Continue with email & password
@@ -296,7 +295,6 @@ export default function SignUp(): JSX.Element {
                     label="Email"
                     name="email"
                     autoComplete="email"
-                    sx={{ bgcolor: '#242424', color: '#ffffff', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ffffff' } }}
                     InputProps={{
                       endAdornment: (
                         <>
@@ -335,7 +333,6 @@ export default function SignUp(): JSX.Element {
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     autoComplete="current-password"
-                    sx={{ bgcolor: '#242424', color: '#ffffff', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ffffff' } }}
                     InputProps={{
                       endAdornment: (
                         <>
@@ -381,20 +378,20 @@ export default function SignUp(): JSX.Element {
                     type="submit"
                     fullWidth
                     variant="contained"
-                    sx={{ mt: 2, bgcolor: '#e0e0e0', color: '#000000', boxShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff', border: '1px solid #ffffff' }}
+                    sx={{ mt: 2 }}
                   >
                     Create an account
                   </Button>
                 </>
               )}
-              <Typography variant="body1" sx={{ my: 1, textAlign: 'center', color: 'white' }}>
+              <Typography variant="body1" sx={{ my: 1, textAlign: 'center' }}>
                 or
               </Typography>
               <GoogleLogin
                 onSuccess={handleSuccess}
                 onError={handleError}
                 type="standard"
-                theme="outline"
+                theme={theme.palette.mode === "dark" ? "outline" : "filled_black"}
                 size="large"
                 text="continue_with"
                 shape="rectangular"
@@ -415,7 +412,7 @@ export default function SignUp(): JSX.Element {
             <Grid item>
               <a
                 onClick={() => navigate("/signin")}
-                style={{ color: '#ffffff', textDecoration: 'underline', cursor: 'pointer' }}
+                style={{ textDecoration: 'underline', cursor: 'pointer' }}
               >
                 Already have an account? Sign In
               </a>

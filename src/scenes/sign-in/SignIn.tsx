@@ -120,43 +120,36 @@ export default function SignIn() {
         }}
       >
          <Avatar
+         className="auth"
           sx={{
             m: 1,
-            bgcolor: theme.palette.mode === 'dark' ? '#242424' : '#ffffff',
-            boxShadow: '0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff, 0 0 5px #ffffff',
-          }}
+            }}
         >
             <LockOutlinedIcon />
         </Avatar>
-        <Typography component="h1" variant="h5" sx={{ textShadow: '0 0 1px #000000, 0 0 2px #000000, 0 0 3px #000000, 0 0 4px #ffffff' }}>
+        <Typography component="h1" variant="h5" className="title">
           Log in
         </Typography>
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
           <TextField
             onChange={handleInputChange}
             margin="normal"
-            required
             fullWidth
             id="identifier"
             label="Email or Username"
             name="identifier"
             autoComplete="email"
             autoFocus
-            sx={{ bgcolor: theme.palette.mode === 'dark' ? '#242424' : '#ffffff',
-               color: theme.palette.mode === 'dark' ? '#ffffff' : '#242424',
-               '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.mode === 'dark' ? '#ffffff' : '#242424' } }}
           />
           <TextField
             onChange={handleInputChange}
             margin="dense"
-            required
             fullWidth
             name="password"
             label="Password"
             type={showPassword ? 'text' : 'password'}
             id="password"
             autoComplete="current-password"
-            sx={{ bgcolor: theme.palette.mode === 'dark' ? '#242424' : '#ffffff' , color: theme.palette.mode === 'dark' ? '#ffffff' : '#242424', '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.mode === 'dark' ? '#ffffff' : '#242424' } }}
             InputProps={{
               endAdornment: (
                 <IconButton
@@ -185,14 +178,14 @@ export default function SignIn() {
           >
             Sign In
           </Button>
-          <Typography variant="body1" sx={{ mb: 2, color: 'white', textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
             or
           </Typography>
           <GoogleLogin
             onSuccess={handleSuccess}
             onError={handleError}
             type="standard"
-            theme="outline"
+            theme={theme.palette.mode === "dark" ? "outline" : "filled_black"}
             size="large"
             text="signin_with"
             shape="rectangular"
@@ -213,7 +206,7 @@ export default function SignIn() {
             <Grid item>
               <a
                 onClick={() => navigate("/signup")}
-                style={{ color: '#ffffff', textDecoration: 'underline', cursor: 'pointer' }}
+                style={{ textDecoration: 'underline', cursor: 'pointer' }}
               >
                 Don't have an account? Sign Up
               </a>
