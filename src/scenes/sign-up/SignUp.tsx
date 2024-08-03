@@ -21,6 +21,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { Visibility, VisibilityOff, AutoAwesome } from '@mui/icons-material';
 import { notifySuccess } from '../../services/notification/toast.service';
 import { Divider, useTheme } from '@mui/material';
+import { FooterAuth } from '../../components/layout/components/footer/Footer_auth';
 
 export default function SignUp(): JSX.Element {
   const [username, setUsername] = useState<string>('');
@@ -198,7 +199,7 @@ export default function SignUp(): JSX.Element {
       <CssBaseline />
       <Box
         sx={{
-          marginTop: 4,
+          marginTop: 3,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -274,6 +275,7 @@ export default function SignUp(): JSX.Element {
                   type="button"
                   fullWidth
                   variant="outlined"
+                  className="signup-outlined-button"
                   onClick={() => setShowEmailPasswordFields(true)}
                 >
                   Continue with email & password
@@ -420,6 +422,7 @@ export default function SignUp(): JSX.Element {
           </Grid>
         </Box>
       </Box>
+      <FooterAuth />
     </Container>
   );
 }

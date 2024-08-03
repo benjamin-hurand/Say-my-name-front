@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { NavigateFunction, useNavigate, useSearchParams } from 'react-router-dom';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -16,12 +16,13 @@ import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
 import { notifySuccess } from '../../services/notification/toast.service';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useState } from 'react';
+import { FooterAuth } from '../../components/layout/components/footer/Footer_auth';
 
 export default function SignIn() {
   const theme = useTheme();
   const [errorMessage, setErrorMessage] = React.useState('');
-  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState<boolean>(false);
+	const navigate: NavigateFunction = useNavigate();
 
   const handleInputChange = () => {
     if (errorMessage) {
@@ -113,7 +114,7 @@ export default function SignIn() {
       <CssBaseline />
       <Box
         sx={{
-          marginTop: 8,
+          marginTop: 3,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -214,6 +215,7 @@ export default function SignIn() {
           </Grid>
         </Box>
       </Box>
+      <FooterAuth />
     </Container>
   );
 }

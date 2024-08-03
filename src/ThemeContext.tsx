@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { neonDarkTheme, neonLightTheme } from './theme';
+import { darkTheme, lightTheme } from './theme';
+import { useMediaQuery } from '@mui/material';
 
 interface ThemeContextProps {
     toggleTheme: () => void;
@@ -23,13 +24,16 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-    const [theme, setTheme] = useState<'dark' | 'light'>('light');
+    // Détecte la préférence de thème du système
+    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+
+    const [theme, setTheme] = useState<'dark' | 'light'>(prefersDarkMode ? 'dark' : 'light');
 
     const toggleTheme = () => {
         setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
     };
 
-    const currentTheme = theme === 'dark' ? neonDarkTheme : neonLightTheme;
+    const currentTheme = theme === 'dark' ? darkTheme : lightTheme;
 
     return (
         <ThemeContext.Provider value={{ toggleTheme, theme }}>

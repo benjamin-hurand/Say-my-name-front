@@ -1,32 +1,90 @@
-import "./styles/footer.css"
+import React, { useState } from 'react';
+import { IconButton, Stack, Menu, MenuItem } from "@mui/material";
+import { Settings, Brightness7, Brightness4, Language, Logout } from "@mui/icons-material";
+import { useColor } from "../../../../contexts/ColorContext";
+import { useThemeContext } from "../../../../ThemeContext";
+import { notifySuccess } from "../../../../services/notification/toast.service";
+import { googleLogout } from "@react-oauth/google";
+import { NavigateFunction, useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 
 export const Footer = () => {
+	const { color, randomizeColor } = useColor();
+	const { toggleTheme, theme: currentTheme } = useThemeContext();
+	const { i18n } = useTranslation();
+	const navigate: NavigateFunction = useNavigate();
+
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const handleMouseEnter = () => randomizeColor();
+
+	const handleLanguageMenu = (event: React.MouseEvent<HTMLElement>) => {
+		setAnchorEl(event.currentTarget);
+	};
+
+	const handleLanguageChange = (newLang: string) => {
+		i18n.changeLanguage(newLang).then(() => {
+			console.log("New language set to:", newLang);
+			setAnchorEl(null);
+		});
+	};
+
+	const handleLogout = () => {
+		localStorage.clear();
+		notifySuccess('Successfully disconnected.');
+		googleLogout();
+		navigate('/signin', { replace: true });
+	};
+
+	const iconButtonStyle = {
+		color: color,
+		boxShadow: `0 0 8px ${color}`,
+		transition: 'box-shadow 0.2s ease-in-out',
+	};
+
 	return (
 		<div className="footer">
-			<div className="footer__container container">
-				<div className="footer__contributors footer__item">
-					<h2 className="footer__title">Contributeurs</h2>
-					<ul className="footer__list">
-						<div className="footer__list-col">
-							<li className="footer__list-item">Benjamin Hurand</li>
-							<li className="footer__list-item">Franck Alonso</li>
-							<li className="footer__list-item">Sébastien Dos Santos</li>
-						</div>
-						<div className="footer__list-col">
-							<li className="footer__list-item">Antoine Khow</li>
-							<li className="footer__list-item">Oskar Cognet</li>
-						</div>
-					</ul>
-				</div>
-				<div className="footer__resources footer__item">
-					<h2 className="footer__title">Ressources</h2>
-					<ul className="footer__list-col">
-						<li className="footer__list-item">Back: <a href="https://git.excilys.com/OskarCognet/equipe3-newrofactory-back" target="_blank" rel="noopener noreferrer">https://git.excilys.com/OskarCognet/equipe3-newrofactory-back</a></li>
-						<li className="footer__list-item">Front: <a href="https://git.excilys.com/OskarCognet/equipe3-newrofactory-front" target="_blank" rel="noopener noreferrer">https://git.excilys.com/OskarCognet/equipe3-newrofactory-front</a></li>
-						<li className="footer__list-item">MUI: <a href="https://mui.com/material-ui/react-table/" target="_blank" rel="noopener noreferrer">https://mui.com/material-ui/react-table/</a></li>
-					</ul>
-				</div>
+			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: '10px' }}>
+				<Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '300px', padding: '10px' }}>
+					<IconButton style={iconButtonStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
+						<Settings style={{ color }} />
+					</IconButton>
+					<IconButton style={iconButtonStyle} aria-label="toggle dark/light mode" onClick={toggleTheme} onMouseEnter={handleMouseEnter}>
+						{currentTheme === 'dark' ? <Brightness7 style={{ color }} /> : <Brightness4 style={{ color }} />}
+					</IconButton>
+					<IconButton
+						style={iconButtonStyle}
+						aria-label="change language"
+						onMouseEnter={handleMouseEnter}
+						onClick={handleLanguageMenu}
+					>
+						<Language style={{ color }} />
+					</IconButton>
+					<Menu
+						id="language-menu"
+						anchorEl={anchorEl}
+						open={Boolean(anchorEl)}
+						onClose={() => setAnchorEl(null)}
+						anchorOrigin={{
+							vertical: 'center', // Align the top of the menu with the bottom of the button
+							horizontal: 'center', // Align the right of the menu with the right of the button
+						}}
+						transformOrigin={{
+							vertical: 'center', // Menu grows downward
+							horizontal: 'center', // Menu grows rightward
+						}}
+						>
+
+						<MenuItem onClick={() => handleLanguageChange('en')}>English</MenuItem>
+						<MenuItem onClick={() => handleLanguageChange('fr')}>Français</MenuItem>
+						<MenuItem onClick={() => handleLanguageChange('es')}>Español</MenuItem>
+						{/* Add more languages as needed */}
+					</Menu>
+					<IconButton style={iconButtonStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
+						<Logout style={{ color }} />
+					</IconButton>
+				</Stack>
 			</div>
 		</div>
-	)
-}
+	);
+};

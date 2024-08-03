@@ -8,7 +8,9 @@ function App() {
   return (
     <>
       <ToastContainer />
-      <RouterProvider router={router} />
+      <div style={{ padding: '20px' }}>
+        <RouterProvider router={router} />
+      </div>
     </>
   )
 }

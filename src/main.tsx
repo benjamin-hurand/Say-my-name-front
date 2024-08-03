@@ -4,7 +4,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './ThemeContext';
 import CssBaseline from '@mui/material/CssBaseline';
 import App from './App';
-import './index.css';
+import './index.css'; 
+import './i18n';
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 

@@ -48,7 +48,7 @@ declare module '@mui/material/Avatar' {
 }
 
 // Dark Theme
-const neonDarkTheme = createTheme({
+const darkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
@@ -104,15 +104,14 @@ const neonDarkTheme = createTheme({
                 },
                 outlined: {
                     borderColor: '#ffffff',
-                    '&:hover': {
+                    '&.signup-outlined-button:hover': {
                         backgroundColor: '#e0e0e0', 
                         color: '#242424', 
                         boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', 
-                        border: '1px solid #ffffff',
-                        '&.menu': {
-                                // styles spécifiques pour les boutons contained avec la classe menu
-                                backgroundColor: "#242424", // Exemple: changement de couleur de fond
-                            }
+                        border: '1px solid #ffffff'
+                    },
+                    '&.menu:hover': {
+                        backgroundColor: "#242424", // Exemple: changement de couleur de fond
                     },
                 },
             },
@@ -174,7 +173,7 @@ const neonDarkTheme = createTheme({
 });
 
 // Light Theme
-const neonLightTheme = createTheme({
+const lightTheme = createTheme({
     palette: {
         mode: 'light',
         primary: {
@@ -306,4 +305,4 @@ const neonLightTheme = createTheme({
 });
 
 
-export { neonColors, neonDarkTheme, neonLightTheme };
+export { neonColors, darkTheme, lightTheme };

@@ -1,11 +1,13 @@
 import {createBrowserRouter, Navigate} from "react-router-dom";
 // import { Layout } from "../pages/components/Layout";
 import ProtectedRoute from "./ProtectedRoute";
-import Home from "../../scenes/home/home";
 import { Profile } from "../../scenes/profile/profile";
 import { PersonsTable } from "../persons/personsTable";
 import SignIn from "../../scenes/sign-in/SignIn";
 import SignUp from "../../scenes/sign-up/SignUp";
+import { Quiz } from "../../scenes/quiz/quiz";
+import Menu from "../../scenes/menu/menu";
+import { Layout } from "../layout/Layout";
 
 const router = createBrowserRouter([
     {
@@ -13,13 +15,16 @@ const router = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <ProtectedRoute element={<Home />} />
+                element: <Layout children={<ProtectedRoute element={<Menu />} />} />
             },{
                 path: "profile",
-                element: <ProtectedRoute element={<Profile />} />
+                element: <Layout children={<ProtectedRoute element={<Profile />} />} />
+            },{
+                path: "quiz",
+                element: <Layout children={<ProtectedRoute element={<Quiz />} />} />
             },{
                 path: "persons",
-                element: <ProtectedRoute element={<PersonsTable />} />
+                element: <Layout children={<ProtectedRoute element={<PersonsTable />} />} />
             },{
                 path: "**",
                 element: <Navigate to="/" replace />
