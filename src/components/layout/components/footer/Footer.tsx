@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { IconButton, Stack, Menu, MenuItem } from "@mui/material";
 import { Settings, Brightness7, Brightness4, Language, Logout } from "@mui/icons-material";
-import { useColor } from "../../../../contexts/ColorContext";
-import { useThemeContext } from "../../../../ThemeContext";
+import { useThemeColorContext } from "../../../../contexts/ThemeColorContext";
 import { notifySuccess } from "../../../../services/notification/toast.service";
 import { googleLogout } from "@react-oauth/google";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 
 export const Footer = () => {
-	const { color, randomizeColor } = useColor();
-	const { toggleTheme, theme: currentTheme } = useThemeContext();
+	const { color, randomizeColor, toggleTheme, theme: currentTheme } = useThemeColorContext();
 	const { i18n } = useTranslation();
 	const navigate: NavigateFunction = useNavigate();
 
@@ -40,20 +38,22 @@ export const Footer = () => {
 		color: color,
 		boxShadow: `0 0 8px ${color}`,
 		transition: 'box-shadow 0.2s ease-in-out',
+		backdropFilter: 'blur(6px)',
+		backgroundColor: currentTheme === 'dark' ? '#24242450' : '#ffffff50',
 	};
 
 	return (
 		<div className="footer">
 			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: '10px' }}>
 				<Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '300px', padding: '10px' }}>
-					<IconButton style={iconButtonStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
+					<IconButton className="menu" style={iconButtonStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
 						<Settings style={{ color }} />
 					</IconButton>
-					<IconButton style={iconButtonStyle} aria-label="toggle dark/light mode" onClick={toggleTheme} onMouseEnter={handleMouseEnter}>
+					<IconButton className="menu" style={iconButtonStyle} aria-label="toggle dark/light mode" onClick={toggleTheme} onMouseEnter={handleMouseEnter}>
 						{currentTheme === 'dark' ? <Brightness7 style={{ color }} /> : <Brightness4 style={{ color }} />}
 					</IconButton>
 					<IconButton
-						style={iconButtonStyle}
+						className="menu" style={iconButtonStyle}
 						aria-label="change language"
 						onMouseEnter={handleMouseEnter}
 						onClick={handleLanguageMenu}
@@ -80,7 +80,7 @@ export const Footer = () => {
 						<MenuItem onClick={() => handleLanguageChange('es')}>Español</MenuItem>
 						{/* Add more languages as needed */}
 					</Menu>
-					<IconButton style={iconButtonStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
+					<IconButton className="menu" style={iconButtonStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
 						<Logout style={{ color }} />
 					</IconButton>
 				</Stack>

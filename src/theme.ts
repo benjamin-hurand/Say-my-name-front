@@ -1,7 +1,5 @@
 import { createTheme } from '@mui/material/styles';
 
-const neonColors = ['#ffffff', '#FF073A', '#0FF0FC', '#FC0FC0', '#FFF700']; // Example neon colors
-
 const commonStyles = {
     '@import': "url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@200;300;400;600;700;900&display=swap')",
     '*': {
@@ -48,7 +46,7 @@ declare module '@mui/material/Avatar' {
 }
 
 // Dark Theme
-const darkTheme = createTheme({
+const darkTheme = (color: string) => createTheme({
     palette: {
         mode: 'dark',
         primary: {
@@ -84,6 +82,7 @@ const darkTheme = createTheme({
         MuiButton: {
             styleOverrides: {
                 root: {
+                    backdropFilter: 'blur(6px)', // Blurry effect
                     boxShadow: `0 0 8px #ffffff`,
                     textShadow: `0 0 8px #ffffff`,
                     transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
@@ -96,6 +95,7 @@ const darkTheme = createTheme({
                         backgroundColor: '#efefef',
                     },
                     '&.menu': {
+                        backgroundColor: color,
                         '&:hover': {
                             boxShadow: `0 0 30px #ffffff`,
                         },
@@ -104,15 +104,30 @@ const darkTheme = createTheme({
                 },
                 outlined: {
                     borderColor: '#ffffff',
+                    backgroundColor: '#24242410',
                     '&.signup-outlined-button:hover': {
                         backgroundColor: '#e0e0e0', 
                         color: '#242424', 
                         boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff', 
                         border: '1px solid #ffffff'
                     },
-                    '&.menu:hover': {
-                        backgroundColor: "#242424", // Exemple: changement de couleur de fond
-                    },
+                    '&.menu': {
+                        fontSize: '1.2rem', // Make the font size larger
+                        color: color,
+                        borderColor: color,
+                        maxWidth: '300px',
+                        width: '100%',
+                        boxShadow: `0 0 8px ${color}`,
+                        textShadow: `0 0 8px ${color}`,
+                        transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
+    
+                        '&:hover': {
+                            backgroundColor: color,
+                            color: "#242424",
+                            boxShadow: `0 0 30px ${color}`, // Increased shadow on hover
+                            transition: 'background-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out, color 0.5s ease-in-out', // Smooth transition for background-color, box-shadow, and text color
+                        },
+                    }
                 },
             },
         },
@@ -124,6 +139,8 @@ const darkTheme = createTheme({
                     boxShadow: `0 0 8px #ffffff`,
                     transition: 'box-shadow 0.2s ease-in-out',
                     color: undefined, 
+                    backdropFilter: 'blur(6px)',
+                    backgroundColor: '#24242450',
                 }
             },
         },
@@ -151,7 +168,8 @@ const darkTheme = createTheme({
         MuiAvatar: {
             styleOverrides: {
                 root: {
-                    backgroundColor: '#242424' ,
+                    backgroundColor: '#24242450' ,
+                    backdropFilter: 'blur(6px)',
                     boxShadow: '0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #ffffff, 0 0 5px #ffffff',
                 },
                 auth: {
@@ -161,10 +179,11 @@ const darkTheme = createTheme({
         MuiTextField: {
             styleOverrides: {
                 root: {
-                    backgroundcolor: '#242424',
+                    backgroundColor: '#24242450', // Semi-transparent background for blur effect
                     color: '#ffffff',
-                    '& .MuiOutlinedInput-notchedOutline': { 
-                        borderColor: '#ffffff' 
+                    backdropFilter: 'blur(6px)', // Blurry effect
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#ffffff'
                     }
                 }
             }
@@ -173,7 +192,7 @@ const darkTheme = createTheme({
 });
 
 // Light Theme
-const lightTheme = createTheme({
+const lightTheme = (color: string) => createTheme({
     palette: {
         mode: 'light',
         primary: {
@@ -206,13 +225,14 @@ const lightTheme = createTheme({
                 ...commonStyles,
                 body: {
                     ...commonStyles.body,
-                    backgroundColor: '#f5f5dc', // Light background color for neon effect
+                    backgroundColor: '#f5f5dc',
                 },
             },
         },
         MuiButton: {
             styleOverrides: {
                 root: {
+                    backdropFilter: 'blur(6px)', // Blurry effect
                     boxShadow: `0 0 8px #242424`,
                     textShadow: `0 0 8px #242424`,
                     transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
@@ -231,16 +251,31 @@ const lightTheme = createTheme({
                 },
                 outlined: {
                     borderColor: '#242424',
-                    '&:hover': {
-                        backgroundColor: '#343434',
-                        color: '#ffffff',
-                        boxShadow: '0 0 4px #242424, 0 0 5px #242424, 0 0 6px #242424, 0 0 6px #242424',
-                        border: '1px solid #242424',
-                        '&.menu': {
-                            // styles spécifiques pour les boutons contained avec la classe menu
-                            backgroundColor: "#ffffff", // Exemple: changement de couleur de fond
-                        }
+                    backgroundColor: '#ffffff10',
+                    '&.signup-outlined-button:hover': {
+                        backgroundColor: '#242424', 
+                        color: '#e0e0e0', 
+                        boxShadow: '0 0 4px #000000, 0 0 5px #000000, 0 0 6px #000000, 0 0 6px #000000', 
+                        border: '1px solid #000000'
                     },
+                    '&.menu': {
+                            fontSize: '1.2rem', // Make the font size larger
+                            color: color,
+                            borderColor: color,
+                            maxWidth: '300px',
+                            width: '100%',
+                            boxShadow: `0 0 8px ${color}`,
+                            textShadow: `0 0 8px ${color}`,
+                            transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
+                            '&:hover': {
+                                backgroundColor: color,
+                                color: "#f5f5dc",
+                                boxShadow: `0 0 30px ${color}`, // Increased shadow on hover
+                                transition: 'background-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out, color 0.5s ease-in-out', // Smooth transition for background-color, box-shadow, and text color
+                                border: undefined
+                            },
+                        },
+
                 },
             },
         },
@@ -283,18 +318,22 @@ const lightTheme = createTheme({
         MuiAvatar: {
             styleOverrides: {
                 root: {
-                    backgroundColor: '#f5f5dc' ,
+                    backgroundColor: '#f5f5dc50' ,
+                    backdropFilter: 'blur(6px)',
                     boxShadow: '0 0 2px #000000, 0 0 3px #000000, 0 0 4px #000000, 0 0 5px #000000',
                 },
                 auth: {
+                    backgroundColor: '#f5f5dc50' ,
+                    backdropFilter: 'blur(6px)',
                 }
             }
         },
         MuiTextField: {
             styleOverrides: {
                 root: {
-                    backgroundcolor: '#ffffff',
+                    backgroundcolor: '#f5f5dc50',
                     color: '#242424',
+                    backdropFilter: 'blur(6px)',
                     '& .MuiOutlinedInput-notchedOutline': { 
                         borderColor: '#242424' 
                     }
@@ -305,4 +344,4 @@ const lightTheme = createTheme({
 });
 
 
-export { neonColors, darkTheme, lightTheme };
+export { darkTheme, lightTheme };

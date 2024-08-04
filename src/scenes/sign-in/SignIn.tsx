@@ -11,24 +11,32 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { login, loginWithGoogle } from '../../services/security/Auth.service'; 
 import axios from 'axios';
-import { Alert, IconButton, useTheme } from '@mui/material';
+import { Alert, IconButton } from '@mui/material';
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
 import { notifySuccess } from '../../services/notification/toast.service';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useState } from 'react';
 import { FooterAuth } from '../../components/layout/components/footer/Footer_auth';
+import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 
 export default function SignIn() {
-  const theme = useTheme();
+  const { theme, changeColor } = useThemeColorContext();
   const [errorMessage, setErrorMessage] = React.useState('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 	const navigate: NavigateFunction = useNavigate();
-
   const handleInputChange = () => {
     if (errorMessage) {
       setErrorMessage('');
     }
   };
+
+  React.useEffect(() => {
+    if (theme === 'dark') {
+      changeColor('#ffffff');
+    } else {
+      changeColor('#000000');
+    }
+  }, [theme, changeColor]);
 
   const handleTogglePasswordVisibility = () => setShowPassword(!showPassword);
 
@@ -110,7 +118,7 @@ export default function SignIn() {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
+    <Container component="main" maxWidth="xs" style={{ border: "3px", borderColor: '#ffffff' }}>
       <CssBaseline />
       <Box
         sx={{
@@ -186,7 +194,7 @@ export default function SignIn() {
             onSuccess={handleSuccess}
             onError={handleError}
             type="standard"
-            theme={theme.palette.mode === "dark" ? "outline" : "filled_black"}
+            theme={theme === "dark" ? "outline" : "filled_black"}
             size="large"
             text="signin_with"
             shape="rectangular"

@@ -1,11 +1,11 @@
 import { IconButton, Menu, MenuItem, Stack } from "@mui/material";
 import { Brightness7, Brightness4, Language } from "@mui/icons-material";
-import { useThemeContext } from "../../../../ThemeContext";
+import { useThemeColorContext } from "../../../../contexts/ThemeColorContext";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export const FooterAuth = () => {
-	const { toggleTheme, theme: currentTheme } = useThemeContext();
+	const { toggleTheme, theme: currentTheme } = useThemeColorContext();
 	const { i18n } = useTranslation();
 
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -26,13 +26,13 @@ export const FooterAuth = () => {
 		<div className="footer">
 			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '10px' }}> {/* Adjust the height as necessary */}
             <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '300px', padding: '10px' }}>
-                <IconButton sx={{ boxShadow: `0 0 8px`, transition: 'box-shadow 0.2s ease-in-out',}} aria-label="toggle dark/light mode" onClick={toggleTheme} >
+                <IconButton sx={{ boxShadow: `0 0 8px`, transition: 'box-shadow 0.2s ease-in-out', backdropFilter: 'blur(6px)', backgroundColor: currentTheme === 'dark' ? '#24242410' : '#f5f5dc10'}} aria-label="toggle dark/light mode" onClick={toggleTheme} >
                     {currentTheme === 'dark' ? <Brightness7 /> : <Brightness4 />}
                 </IconButton>
                 <IconButton
 						aria-label="change language"
 						onClick={handleLanguageMenu}
-                        sx={{ boxShadow: `0 0 8px`, transition: 'box-shadow 0.2s ease-in-out',}}
+                        sx={{ boxShadow: `0 0 8px`, transition: 'box-shadow 0.2s ease-in-out', backdropFilter: 'blur(6px)', backgroundColor: currentTheme === 'dark' ? '#24242410' : '#f5f5dc10'}}
 					>
 						<Language />
 					</IconButton>

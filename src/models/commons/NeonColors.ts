@@ -21,25 +21,22 @@ export const neonColors: string[] = [
     '#ff00cc', // Bright magenta
 ];
 
-export const oppositeColors: { [key: string]: string } = {
-    '#ccff00': '#3300ff', // Neon green -> Opposite
-    '#ff33cc': '#00cc33', // Neon pink -> Opposite
-    '#33ccff': '#cc3300', // Neon blue -> Opposite
-    '#00ff99': '#ff0066', // Neon light green -> Opposite
-    '#ff5050': '#00b3b3', // Neon red -> Opposite
-    '#ff6600': '#0099ff', // Neon orange -> Opposite
-    '#cc00ff': '#00ffcc', // Neon purple -> Opposite
-    '#00ccff': '#ff3300', // Neon sky blue -> Opposite
-    '#ffff33': '#0000cc', // Neon yellow -> Opposite
-    '#ff0066': '#00ff99', // Neon magenta -> Opposite
-    '#00ffcc': '#ff0033', // Neon aqua -> Opposite
-    '#ff3300': '#00ccff', // Neon coral -> Opposite
-    '#00ff66': '#ff00cc', // Neon lime green -> Opposite
-    '#6600ff': '#99ff00', // Neon violet -> Opposite
-    '#ff00ff': '#00ff00', // Bright pink -> Opposite
-    '#00ff00': '#ff00ff', // Bright green -> Opposite
-    '#ff0000': '#00ffff', // Bright red -> Opposite
-    '#00ffff': '#ff0000', // Bright cyan -> Opposite
-    '#ffff00': '#0000ff', // Bright yellow -> Opposite
-    '#ff00cc': '#00ff33', // Bright magenta -> Opposite
-};
+export const lightThemeColors: string[] = [
+    '#006600', // Green foncé
+    '#cc0066', // Pink foncé
+    '#006699', // Blue foncé
+    '#990000', // Red foncé
+    '#cc3300', // Orange foncé
+    '#660066', // Purple foncé
+    '#003366', // Sky blue foncé
+    '#666600', // Yellow foncé
+    '#990033', // Magenta foncé
+    '#993300', // Coral foncé
+    '#009900', // Lime green foncé
+    '#330099', // Violet foncé
+    '#990099', // Bright pink foncé
+    '#009900', // Bright green foncé
+    '#990000', // Bright red foncé
+    '#666600', // Bright yellow foncé
+    '#cc0099', // Bright magenta foncé
+];

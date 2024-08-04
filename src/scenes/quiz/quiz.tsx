@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Box, TextField, Typography, IconButton, Skeleton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { neonColors } from '../../models/commons/NeonColors';
+import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 
 interface QuizProps {}
 
 export const Quiz: React.FC<QuizProps> = () => {
     const navigate = useNavigate();
     const [answer, setAnswer] = useState<string>('');
-    const [quizColor, setQuizColor] = useState<string>(neonColors[0]); // Default neon color
+    const { color } = useThemeColorContext();
     const [imageLoaded, setImageLoaded] = useState<boolean>(false);
 
     const handleAnswerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,44 +25,47 @@ export const Quiz: React.FC<QuizProps> = () => {
         navigate('/', { replace: true }); // Adjust the route as necessary
     };
 
-    const quizStyle = {
-        color: quizColor,
-        boxShadow: `0 0 8px ${quizColor}`,
-        transition: 'box-shadow 0.3s ease-in-out',
+    const iconButtonStyle: React.CSSProperties = {
+        color: color,
+        boxShadow: `0 0 8px ${color}`,
+        transition: 'box-shadow 0.2s ease-in-out',
+        position: 'absolute',  // Ensure this is a valid CSS position value
+        top: '16px',  // Adding 'px' to clarify units
+        left: '16px'  // Adding 'px' to clarify units
     };
+    
 
     return (
         <>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', position: 'relative' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <IconButton
                     onClick={goBackToMenu}
-                    sx={{ position: 'absolute', top: 16, left: 16, color: quizColor, boxShadow: `0 0 8px ${quizColor}` }}
+                    style={iconButtonStyle}
                     aria-label="Back to menu"
                 >
-                    <ArrowBackIcon />
+                    <ArrowBackIcon className="menu" style={{ color }}/>
                 </IconButton>
-                <Typography variant="h4" style={{ color: quizColor, marginBottom: '20px', textShadow: `0 0 8px ${quizColor}` }}>
+                <Typography variant="h4" style={{ color: color, marginBottom: '20px', textShadow: `0 0 8px ${color}` }}>
                     Hello Quiz
                 </Typography>
                 {imageLoaded ? (
                     <img
                         src="/path/to/quiz/image.jpg"
                         alt="Quiz"
-                        style={{ maxWidth: '90%', boxShadow: `0 0 20px ${quizColor}` }}
+                        style={{ maxWidth: '90%', boxShadow: `0 0 20px ${color}` }}
                         onLoad={() => setImageLoaded(true)}
                     />
                 ) : (
-                    <Skeleton variant="rectangular" width="90%" height={400} animation="wave" />
+                    <Skeleton variant="rectangular" width="40%" height={300} animation="wave" />
                 )}
                 <TextField
                     variant="outlined"
                     placeholder="Type your answer here..."
                     value={answer}
                     onChange={handleAnswerChange}
-                    style={quizStyle}
-                    sx={{ margin: '20px 0' }}
+                    sx={{ margin: '20px 0' , width: '40%'}}
                 />
-                <Button variant="contained" style={quizStyle} onClick={validateAnswer}>
+                <Button variant="contained" sx={{ width: '40%', backgroundColor: color, boxShadow: color}} onClick={validateAnswer}>
                     Submit Answer
                 </Button>
             </Box>

@@ -20,8 +20,9 @@ import ErrorIcon from '@mui/icons-material/Error';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Visibility, VisibilityOff, AutoAwesome } from '@mui/icons-material';
 import { notifySuccess } from '../../services/notification/toast.service';
-import { Divider, useTheme } from '@mui/material';
+import { Divider } from '@mui/material';
 import { FooterAuth } from '../../components/layout/components/footer/Footer_auth';
+import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 
 export default function SignUp(): JSX.Element {
   const [username, setUsername] = useState<string>('');
@@ -40,7 +41,15 @@ export default function SignUp(): JSX.Element {
   const [showEmailPasswordFields, setShowEmailPasswordFields] = useState<boolean>(false);
   const [showButtons, setShowButtons] = useState<boolean>(false);
   const navigate = useNavigate();
-  const theme = useTheme();
+  const { theme, changeColor } = useThemeColorContext();
+
+  React.useEffect(() => {
+    if (theme === 'dark') {
+      changeColor('#ffffff');
+    } else {
+      changeColor('#000000');
+    }
+  }, [theme, changeColor]);
 
   function isValidUsername(username: string): boolean {
     const validUsernameRegex = /^[a-zA-Z0-9-]{3,24}$/;
@@ -393,7 +402,7 @@ export default function SignUp(): JSX.Element {
                 onSuccess={handleSuccess}
                 onError={handleError}
                 type="standard"
-                theme={theme.palette.mode === "dark" ? "outline" : "filled_black"}
+                theme={theme === "dark" ? "outline" : "filled_black"}
                 size="large"
                 text="continue_with"
                 shape="rectangular"
