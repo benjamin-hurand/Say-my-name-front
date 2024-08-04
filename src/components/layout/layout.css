@@ -1,11 +1,20 @@
 .layout {
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%; /* Use 100% of its container height */
+    width: 100%; /* Use 100% of its container width */
+    max-width: 500px;
+    overflow: hidden; /* Optional: prevent any scrolling within layout */
+    margin: 0 auto;
 }
 
 .layout__content {
     flex: 1; /* Expands to use available space */
     display: flex;
+    justify-content: center;
     flex-direction: column;
-	
+    height: 100%; /* Use 100% of its container height */
+    width: 100%; /* Use 100% of its container width */
 }

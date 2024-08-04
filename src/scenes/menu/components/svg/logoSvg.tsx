@@ -6,6 +6,8 @@ interface SvgLogoProps {
   style: {
     filter: string;
     transition: string;
+    width: string;
+    height: string;
   }
 }
 
@@ -13,8 +15,6 @@ interface SvgLogoProps {
 const SvgLogo: React.FC<SvgLogoProps> = ({ color, onMouseEnter, style }) => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg"
-         width="280"
-         height="280"
          viewBox="214.32 233.38 625.7 465.4"
          fill={color}
          onMouseEnter={onMouseEnter}

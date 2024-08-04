@@ -95,9 +95,18 @@ const darkTheme = (color: string) => createTheme({
                         backgroundColor: '#efefef',
                     },
                     '&.menu': {
+                        fontSize: '1.2rem', // Make the font size larger
+                        color: '#242424',
                         backgroundColor: color,
+                        width: '100%',
+                        height:'auto',
+                        maxHeight: '100%',
+                        boxShadow: `0 0 8px ${color}`,
+                        textShadow: `0 0 8px ${color}`,
+                        transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
+    
                         '&:hover': {
-                            boxShadow: `0 0 30px #ffffff`,
+                            boxShadow: `0 0 20px ${color}`,
                         },
                     }
                     
@@ -115,8 +124,9 @@ const darkTheme = (color: string) => createTheme({
                         fontSize: '1.2rem', // Make the font size larger
                         color: color,
                         borderColor: color,
-                        maxWidth: '300px',
                         width: '100%',
+                        height:'auto',
+                        maxHeight: '100%',
                         boxShadow: `0 0 8px ${color}`,
                         textShadow: `0 0 8px ${color}`,
                         transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
@@ -180,10 +190,18 @@ const darkTheme = (color: string) => createTheme({
             styleOverrides: {
                 root: {
                     backgroundColor: '#24242450', // Semi-transparent background for blur effect
-                    color: '#ffffff',
+                    color: color, // Dynamic color for text
                     backdropFilter: 'blur(6px)', // Blurry effect
-                    '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#ffffff'
+                    '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                            borderColor: color, // Dynamic color for border
+                        },
+                        '&:hover fieldset': {
+                            borderColor: color, // Dynamic color for hover state
+                        },
+                        '&.Mui-focused fieldset': {
+                            borderColor: color, // Dynamic color for focus state
+                        }
                     }
                 }
             }
@@ -262,8 +280,9 @@ const lightTheme = (color: string) => createTheme({
                             fontSize: '1.2rem', // Make the font size larger
                             color: color,
                             borderColor: color,
-                            maxWidth: '300px',
                             width: '100%',
+                            height: 'auto',
+                            maxHeight: '100%',
                             boxShadow: `0 0 8px ${color}`,
                             textShadow: `0 0 8px ${color}`,
                             transition: 'color 0.2s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, text-shadow 0.3s ease-in-out',
@@ -332,10 +351,18 @@ const lightTheme = (color: string) => createTheme({
             styleOverrides: {
                 root: {
                     backgroundcolor: '#f5f5dc50',
-                    color: '#242424',
-                    backdropFilter: 'blur(6px)',
-                    '& .MuiOutlinedInput-notchedOutline': { 
-                        borderColor: '#242424' 
+                    color: color, // Dynamic color for text
+                    backdropFilter: 'blur(6px)', // Blurry effect
+                    '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                            borderColor: color, // Dynamic color for border
+                        },
+                        '&:hover fieldset': {
+                            borderColor: color, // Dynamic color for hover state
+                        },
+                        '&.Mui-focused fieldset': {
+                            borderColor: color, // Dynamic color for focus state
+                        }
                     }
                 }
             }

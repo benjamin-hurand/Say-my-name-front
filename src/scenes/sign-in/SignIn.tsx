@@ -20,7 +20,7 @@ import { FooterAuth } from '../../components/layout/components/footer/Footer_aut
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 
 export default function SignIn() {
-  const { theme, changeColor } = useThemeColorContext();
+  const { theme, changeColor, randomizeColor } = useThemeColorContext();
   const [errorMessage, setErrorMessage] = React.useState('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 	const navigate: NavigateFunction = useNavigate();
@@ -56,7 +56,8 @@ export default function SignIn() {
       localStorage.setItem('email', apiResponse.email); 
       localStorage.setItem('username', apiResponse.username); 
       notifySuccess('Successfully connected.');
-      navigate('/');
+      randomizeColor();
+      randomizeColor();navigate('/');
     } catch (error) {
       let message = 'An error occurred. Please try again.';
       if (axios.isAxiosError(error) && error.response) {
@@ -99,6 +100,7 @@ export default function SignIn() {
       localStorage.setItem('token', response.jwt.bearer);
       localStorage.setItem('roles', response.roles);
       notifySuccess('Successfully connected.');
+      randomizeColor();
       navigate('/');
     } catch (error) {
       let message = 'An error occurred. Please try again.';
