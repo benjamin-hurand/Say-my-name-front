@@ -1,5 +1,5 @@
 export interface PersonBasic {
-    id: Number;
+    id: number;
     firstName: string;
     lastName: string;
 }

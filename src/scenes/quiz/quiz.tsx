@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Box, TextField, Typography, IconButton, Skeleton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
+import { getPhoto } from '../../services/business/quiz/quiz.service';
 
 interface QuizProps {}
 
@@ -10,7 +11,22 @@ export const Quiz: React.FC<QuizProps> = () => {
     const navigate = useNavigate();
     const [answer, setAnswer] = useState<string>('');
     const { color } = useThemeColorContext();
-    const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+    const [photo, setPhoto] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchPhoto = async () => {
+            try {
+                const fetchedPhoto = await getPhoto();
+                setPhoto(fetchedPhoto.url);
+                console.log("photo fetched: "+ JSON.stringify(fetchPhoto));
+                console.log('photo url: ' + fetchedPhoto.url);
+            } catch (error) {
+                console.error('Error fetching photo:', error);
+            }
+        };
+
+        fetchPhoto();
+    }, []);
 
     const handleAnswerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setAnswer(event.target.value);
@@ -34,25 +50,25 @@ export const Quiz: React.FC<QuizProps> = () => {
                         sx={{
                             color: color,
                             boxShadow: `0 0 8px ${color}`,
-                            transition: 'box-shadow 0.2s ease-in-out'
+                            transition: 'box-shadow 0.2s ease-in-out',
+                            backdropFilter: 'blur(6px)',
                         }}
                         aria-label="Back to menu"
                     >
-                        <ArrowBackIcon />
+                        <ArrowBackIcon style={{ color }} />
                     </IconButton>
                     <Typography variant="h4" style={{ color: color, textShadow: `0 0 8px ${color}` }}>
                         Hello Quiz
                     </Typography>
                 </Box>
-                {imageLoaded ? (
+                {photo ? (
                     <img
-                        src="/path/to/quiz/image.jpg"
+                        src={photo}
                         alt="Quiz"
                         style={{ width: '100%', boxShadow: `0 0 20px ${color}` }}
-                        onLoad={() => setImageLoaded(true)}
                     />
                 ) : (
-                    <Skeleton variant="rectangular" width="100%" height={300} animation="wave" style={{backdropFilter: 'blur(3px)'}} />
+                    <Skeleton variant="rectangular" width="100%" height={300} animation="wave" style={{backdropFilter: 'blur(3px)', backgroundColor: color+'10'}} />
                 )}
                 <TextField
                     variant="outlined"
