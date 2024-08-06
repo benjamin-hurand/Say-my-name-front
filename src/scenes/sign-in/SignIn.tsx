@@ -110,6 +110,8 @@ export default function SignIn() {
           message = 'Authentication failed: Incorrect email or password.';
         } else if (statusCode === 500) {
           message = 'Server error. Please try again later.';
+        } else if (statusCode === 418) { // Handle the 418 I_AM_A_TEAPOT status code
+          message = 'Email not verified. Please check your inbox for a verification link.';
         }
       } else {
         message = 'Please check your network and try again.';

@@ -43,8 +43,8 @@ export const Footer = () => {
 	};
 
 	return (
-		<div className="footer" style={{height: '17vh'}}>
-			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: '10px' }}>
+		<div className="footer" style={{height: '12vh'}}>
+			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
 				<Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '300px', padding: '10px' }}>
 					<IconButton className="menu" style={iconButtonStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
 						<Settings style={{ color }} />

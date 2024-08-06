@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Box, TextField, Typography, IconButton, Skeleton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { getPhoto } from '../../services/business/quiz/quiz.service';
+import { getPersonBasicOfPhoto, getPhoto } from '../../services/business/quiz/quiz.service';
+import { Photo } from '../../models/commons/Photo';
+import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
+import { PersonBasic } from '../../models/commons/PersonBasic';
 
 interface QuizProps {}
 
@@ -11,15 +14,15 @@ export const Quiz: React.FC<QuizProps> = () => {
     const navigate = useNavigate();
     const [answer, setAnswer] = useState<string>('');
     const { color } = useThemeColorContext();
-    const [photo, setPhoto] = useState<string | null>(null);
+    const [photo, setPhoto] = useState<Photo | null>(null);
+    const [person, setPerson] = useState<PersonBasic | null>(null);
 
     useEffect(() => {
         const fetchPhoto = async () => {
             try {
-                const fetchedPhoto = await getPhoto();
-                setPhoto(fetchedPhoto.url);
-                console.log("photo fetched: "+ JSON.stringify(fetchPhoto));
-                console.log('photo url: ' + fetchedPhoto.url);
+                const fetchedPhoto: Photo = await getPhoto();
+                setPhoto(fetchedPhoto);
+                console.log("photo fetched: "+ JSON.stringify(photo));
             } catch (error) {
                 console.error('Error fetching photo:', error);
             }
@@ -34,8 +37,32 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     const validateAnswer = () => {
         console.log('Answer validated:', answer);
+        if(photo) {
+            fetchPerson(photo.id);
+            if(answer === person?.firstName) {
+                notifySuccess("Bien joué")
+            } else {
+                notifyWarning("Erreur: la reponse etait " + person?.firstName + " et vous avez répondu " + answer);
+            }
+        } else {
+            notifyError("wtf");
+        }
         // Add additional validation logic here
     };
+
+    const fetchPerson = async (photoId: number) => {
+        try {
+            const fetchedPerson: PersonBasic = await getPersonBasicOfPhoto(photoId);
+            setPerson(fetchedPerson);
+            console.log("fetchedPerson: " + JSON.stringify(person));
+        } catch (error) {
+            console.error('Error fetching person:', error);
+        }
+    }
+
+    const openOption = () => {
+        console.log('Let\'s open option !');
+    }
 
     const goBackToMenu = () => {
         navigate('/', { replace: true }); // Adjust the route as necessary
@@ -63,9 +90,9 @@ export const Quiz: React.FC<QuizProps> = () => {
                 </Box>
                 {photo ? (
                     <img
-                        src={photo}
+                        src={`photos/${photo.url}`}
                         alt="Quiz"
-                        style={{ width: '100%', boxShadow: `0 0 20px ${color}` }}
+                        style={{ width: 'auto', height: '56vh', boxShadow: `0 0 20px ${color}` }}
                     />
                 ) : (
                     <Skeleton variant="rectangular" width="100%" height={300} animation="wave" style={{backdropFilter: 'blur(3px)', backgroundColor: color+'10'}} />
@@ -76,10 +103,10 @@ export const Quiz: React.FC<QuizProps> = () => {
                     value={answer}
                     className='menu'
                     onChange={handleAnswerChange}
-                    sx={{ margin: '20px 0', width: '100%' }} // Adjust width as needed
+                    sx={{ margin: '20px 0', width: '100%'}} // Adjust width as needed
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%'}}>
-                    <Button variant="outlined" className='menu' onClick={validateAnswer} sx={{ marginRight: '1vw' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', height: '7vh'}}>
+                    <Button variant="outlined" className='menu' onClick={openOption} sx={{ marginRight: '1vw' }}>
                         Options
                     </Button>
                     <Button variant="contained" className='menu' onClick={validateAnswer}>
