@@ -57,7 +57,7 @@ export default function SignIn() {
       localStorage.setItem('username', apiResponse.username); 
       notifySuccess('Successfully connected.');
       randomizeColor();
-      randomizeColor();navigate('/');
+      navigate('/');
     } catch (error) {
       let message = 'An error occurred. Please try again.';
       if (axios.isAxiosError(error) && error.response) {

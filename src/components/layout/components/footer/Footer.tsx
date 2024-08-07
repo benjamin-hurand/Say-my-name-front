@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { IconButton, Stack, Menu, MenuItem } from "@mui/material";
-import { Settings, Brightness7, Brightness4, Language, Logout } from "@mui/icons-material";
+import { Settings, Brightness7, Brightness4, Language, Logout, Home } from "@mui/icons-material";
 import { useThemeColorContext } from "../../../../contexts/ThemeColorContext";
 import { notifySuccess } from "../../../../services/notification/toast.service";
 import { googleLogout } from "@react-oauth/google";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 
-export const Footer = () => {
+export const Footer = ({ isMenu }: { isMenu: boolean }) => {
 	const { color, randomizeColor, toggleTheme, theme: currentTheme } = useThemeColorContext();
 	const { i18n } = useTranslation();
 	const navigate: NavigateFunction = useNavigate();
@@ -26,6 +26,10 @@ export const Footer = () => {
 			setAnchorEl(null);
 		});
 	};
+
+	const handleHomeClick = () => {
+        navigate('/', { replace: true });
+    };
 
 	const handleLogout = () => {
 		localStorage.clear();
@@ -80,9 +84,15 @@ export const Footer = () => {
 						<MenuItem onClick={() => handleLanguageChange('es')}>Español</MenuItem>
 						{/* Add more languages as needed */}
 					</Menu>
-					<IconButton className="menu" style={iconButtonStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
-						<Logout style={{ color }} />
-					</IconButton>
+					{isMenu ? (
+                        <IconButton className="menu" style={iconButtonStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
+                            <Logout style={{ color }} />
+                        </IconButton>
+                    ) : (
+                        <IconButton className="menu" style={iconButtonStyle} aria-label="home" onClick={handleHomeClick} onMouseEnter={handleMouseEnter}>
+                            <Home style={{ color }} />
+                        </IconButton>
+                    )}
 				</Stack>
 			</div>
 		</div>

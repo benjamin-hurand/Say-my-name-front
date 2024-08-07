@@ -41,7 +41,7 @@ export default function SignUp(): JSX.Element {
   const [showEmailPasswordFields, setShowEmailPasswordFields] = useState<boolean>(false);
   const [showButtons, setShowButtons] = useState<boolean>(false);
   const navigate = useNavigate();
-  const { theme, changeColor } = useThemeColorContext();
+  const { theme, changeColor, randomizeColor } = useThemeColorContext();
 
   React.useEffect(() => {
     if (theme === 'dark') {
@@ -147,6 +147,7 @@ export default function SignUp(): JSX.Element {
       localStorage.setItem('token', googleResponse.credential);
       localStorage.setItem('roles', "ROLE_USER"); // to be fetched from apis
       notifySuccess("Successfully connected.");
+      randomizeColor();
       navigate('/');
     } catch (error) {
       let message = 'An error occurred. Please try again.';
@@ -444,3 +445,4 @@ function debounce<T extends unknown[]>(func: (...args: T) => void, wait: number)
     timeout = setTimeout(() => func(...args), wait);
   };
 }
+

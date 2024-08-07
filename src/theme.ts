@@ -136,6 +136,11 @@ const darkTheme = (color: string) => createTheme({
                             color: "#242424",
                             boxShadow: `0 0 30px ${color}`, // Increased shadow on hover
                             transition: 'background-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out, color 0.5s ease-in-out', // Smooth transition for background-color, box-shadow, and text color
+                            '&.nobg': {
+                                backgroundColor: '#242424',
+                                color: color,
+                                boxShadow: `0 0 15px ${color}`,
+                            },
                         },
                     }
                 },

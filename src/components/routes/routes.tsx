@@ -15,7 +15,7 @@ const router = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <Layout children={<ProtectedRoute element={<Menu />} />} />
+                element: <Layout children={<ProtectedRoute element={<Menu />} />} isMenu={true}/>
             },{
                 path: "profile",
                 element: <Layout children={<ProtectedRoute element={<Profile />} />} />
