@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Box, TextField, Typography, IconButton, Skeleton, FormGroup, Divider, Chip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { getAttributes, getGamingThemes, getPersonBasicOfPhoto, getPhoto } from '../../services/business/quiz/quiz.service';
+import { getAttributes, getFilters, getGamingThemes, getPersonBasicOfPhoto, getPhoto } from '../../services/business/quiz/quiz.service';
 import { Photo } from '../../models/commons/Photo';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
 import { PersonBasic } from '../../models/commons/PersonBasic';
@@ -59,8 +59,9 @@ export const Quiz: React.FC<QuizProps> = () => {
     const [modesList, setModesList] = useState<GamingTheme[]>([]);
 
     const [attributes, setAttributes] = useState<Attribute[]>([]);
+    const [filters, setFilters] = useState<Attribute[]>([]);
     const [openFilterModal, setOpenFilterModal] = useState(false);
-    const [filters, setFilters] = useState<Filter[]>([]);
+    const [selectedFilters, setSelectedFilters] = useState<Filter[]>([]);
     
     const [sortingMethods, setSortingMethods] = useState<SortingMethod[]>([]);
     const [openSortModal, setOpenSortModal] = useState(false);
@@ -82,6 +83,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             fetchPhoto();
         }
         fetchAttributes();
+        fetchFilters();
         fetchModes();
     }, [showOptions]);
     
@@ -122,6 +124,15 @@ export const Quiz: React.FC<QuizProps> = () => {
             setAttributes(fetchedAttributes);
         } catch (error) {
             console.error('Error fetching attributes:', error);
+        }
+    };
+
+    const fetchFilters = async () => {
+        try {
+            const fetchedFilters = await getFilters();
+            setFilters(fetchedFilters);
+        } catch (error) {
+            console.error('Error fetching filters:', error);
         }
     };
 
@@ -246,23 +257,23 @@ export const Quiz: React.FC<QuizProps> = () => {
         // Use the range parameter in the function body
         console.log('Selected attribute:', attribute);
         console.log('Selected range:', range);
-        setFilters([...filters, { attribute, range }]);
+        setSelectedFilters([...selectedFilters, { attribute, range }]);
         setOpenFilterModal(false);
     };    
 
     const renderFilters = () => {
-        if (filters.length === 0) {
+        if (selectedFilters.length === 0) {
             return <Chip label="No filters" disabled />;
         }
-        return filters.map((filter, index) => (
+        return selectedFilters.map((filter, index) => (
             <Chip key={index} label={filter.attribute.name} onDelete={() => handleDeleteFilter(index)} />
         ));
     };
     
 
     const handleDeleteFilter = (index: number) => {
-        const newFilters = filters.filter((_, i) => i !== index);
-        setFilters(newFilters);
+        const newFilters = selectedFilters.filter((_, i) => i !== index);
+        setSelectedFilters(newFilters);
     };
 
     const handleAddSortingMethod = (attribute: Attribute, order: 'ASC' | 'DESC') => {
@@ -320,7 +331,7 @@ export const Quiz: React.FC<QuizProps> = () => {
                     </Box>
                     <AddFilterModal
                         open={openFilterModal}
-                        attributes={attributes}
+                        attributes={filters}
                         onSave={handleAddFilter}
                         onClose={() => setOpenFilterModal(false)}
                     />
