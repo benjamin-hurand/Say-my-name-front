@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip, Box } from '@mui/material';
 import { Attribute } from '../../../models/commons/Attribute';
+import { GameSortBy } from '../../../models/commons/Game/GameOptions/GameSortBy.model';
 
-// The AttributeCard component represents each attribute as a pill card.
 const AttributeCard = ({ attribute, isSelected, onSelect }: { attribute: Attribute; isSelected: boolean; onSelect: (attribute: Attribute) => void }) => (
     <Chip
         label={attribute.name}
@@ -12,7 +12,6 @@ const AttributeCard = ({ attribute, isSelected, onSelect }: { attribute: Attribu
     />
 );
 
-// The OrderCard component represents each order (ASC or DESC) as a pill card.
 const OrderCard = ({ order, isSelected, onSelect }: { order: 'ASC' | 'DESC'; isSelected: boolean; onSelect: (order: 'ASC' | 'DESC') => void }) => (
     <Chip
         label={order}
@@ -25,7 +24,7 @@ const OrderCard = ({ order, isSelected, onSelect }: { order: 'ASC' | 'DESC'; isS
 interface AddSortModalProps {
     open: boolean;
     attributes: Attribute[];
-    onSave: (attribute: Attribute, order: 'ASC' | 'DESC') => void;
+    onSave: (sortBy: GameSortBy) => void; // Updated to accept a GameSortBy object
     onClose: () => void;
 }
 
@@ -33,25 +32,26 @@ export const AddSortModal: React.FC<AddSortModalProps> = ({ open, attributes, on
     const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
     const [selectedOrder, setSelectedOrder] = useState<'ASC' | 'DESC'>('ASC');
 
-    // Handle saving the selected attribute and order.
     const handleSave = () => {
         if (selectedAttribute) {
-            onSave(selectedAttribute, selectedOrder);
+            const sortBy: GameSortBy = {
+                id: selectedAttribute.id, // Assuming the attribute id is used for the sort id
+                attribute: selectedAttribute,
+                order: selectedOrder
+            };
+            onSave(sortBy);
         }
-        onClose(); // Close the modal after saving
+        onClose();
     };
 
-    // Handle attribute selection.
     const handleSelectAttribute = (attribute: Attribute) => {
         setSelectedAttribute(attribute);
     };
 
-    // Handle order selection.
     const handleSelectOrder = (order: 'ASC' | 'DESC') => {
         setSelectedOrder(order);
     };
 
-    // Render the attribute cards.
     const renderAttributes = () => {
         return attributes.map((attribute) => (
             <AttributeCard
@@ -63,36 +63,31 @@ export const AddSortModal: React.FC<AddSortModalProps> = ({ open, attributes, on
         ));
     };
 
-    // Render the order cards.
     const renderOrders = () => {
         return ['ASC', 'DESC'].map((order) => (
             <OrderCard
                 key={order}
-                order={order as 'ASC' | 'DESC'} // Use a type assertion here
+                order={order as 'ASC' | 'DESC'}
                 isSelected={selectedOrder === order}
                 onSelect={handleSelectOrder}
             />
         ));
     };
 
-
     return (
         <Dialog open={open} onClose={onClose}>
             <DialogTitle>Add a Sorting Method</DialogTitle>
             <DialogContent>
-                {/* Render the attribute selection cards */}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                     {renderAttributes()}
                 </Box>
-
-                {/* Render the order selection cards */}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {renderOrders()}
                 </Box>
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSave} disabled={!selectedAttribute}>Save</Button>
+                <Button variant="outlined" onClick={onClose}>Cancel</Button>
+                <Button variant="contained" onClick={handleSave} disabled={!selectedAttribute}>Save</Button>
             </DialogActions>
         </Dialog>
     );

@@ -1,6 +1,7 @@
 import React, { ChangeEvent, useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Chip, Box, Slider } from '@mui/material';
 import { Attribute } from '../../../models/commons/Attribute';
+import { GameFilter } from '../../../models/commons/Game/GameOptions/GameFilter.model';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -19,7 +20,7 @@ const AttributeCard = ({ attribute, isSelected, onSelect }: { attribute: Attribu
 interface AddFilterModalProps {
     open: boolean;
     attributes: Attribute[];
-    onSave: (attribute: Attribute, range: { min: string; max: string }) => void;
+    onSave: (filter: GameFilter) => void;  // Updated to accept a GameFilter object
     onClose: () => void;
 }
 
@@ -29,9 +30,13 @@ export const AddFilterModal: React.FC<AddFilterModalProps> = ({ open, attributes
 
     const handleSave = () => {
         if (selectedAttribute) {
-            const min = selectedAttribute.name === 'promotion' ? range[0] + 2005 : mapNumberToLetter(range[0]);
-            const max = selectedAttribute.name === 'promotion' ? range[1] + 2005 : mapNumberToLetter(range[1]);
-            onSave(selectedAttribute, { min: min.toString(), max: max.toString() });
+            const gameFilter: GameFilter = {
+                id: selectedAttribute.id,  // Assuming id from the selected attribute can be used
+                attribute: selectedAttribute,
+                minValue: selectedAttribute.name === 'promotion' ? (range[0] + 2005).toString() : mapNumberToLetter(range[0]),
+                maxValue: selectedAttribute.name === 'promotion' ? (range[1] + 2005).toString() : mapNumberToLetter(range[1]),
+            };
+            onSave(gameFilter);
         }
         onClose();
     };
@@ -105,9 +110,7 @@ export const AddFilterModal: React.FC<AddFilterModalProps> = ({ open, attributes
                                 min={0}
                                 max={selectedAttribute.name === 'promotion' ? 19 : 25}
                                 step={1}
-                                marks={selectedAttribute.name === 'promotion'
-                                    ? getMarksForPromotion()
-                                    : alphabet.map((letter, index) => ({ value: index, label: letter }))}
+                                marks={selectedAttribute.name === 'promotion' ? getMarksForPromotion() : alphabet.map((letter, index) => ({ value: index, label: letter }))}
                                 valueLabelFormat={(value) =>
                                     selectedAttribute.name === 'promotion' ? (2005 + value).toString() : mapNumberToLetter(value)
                                 }
@@ -135,8 +138,8 @@ export const AddFilterModal: React.FC<AddFilterModalProps> = ({ open, attributes
                 )}
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSave} disabled={!selectedAttribute}>Save</Button>
+                <Button variant="outlined" onClick={onClose}>Cancel</Button>
+                <Button variant="contained" onClick={handleSave} disabled={!selectedAttribute}>Save</Button>
             </DialogActions>
         </Dialog>
     );

@@ -1,33 +1,26 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Box, TextField, Typography, IconButton, Skeleton, FormGroup, Divider, Chip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { getAttributes, getFilters, getGamingThemes, getPersonBasicOfPhoto, getPhoto } from '../../services/business/quiz/quiz.service';
+import { getPersonBasicOfPhoto, getPhotoWithCriteria } from '../../services/business/photos/photo.service';
+import { getGameModes } from '../../services/business/gamemodes/gameMode.service';
+import { getAttributes } from '../../services/business/attributes/attribute.service';
 import { Photo } from '../../models/commons/Photo';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
 import { PersonBasic } from '../../models/commons/PersonBasic';
-import { GamingTheme } from '../../models/commons/GamingTheme/GamingTheme.model';
+import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
 import { AddFilterModal } from './components/AddFilterModal';
 import { Attribute } from '../../models/commons/Attribute';
 import { AddSortModal } from './components/AddSortModal';
+import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
+import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
+import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
+import { GameOptions } from '../../models/commons/Game/GameOptions/GameOptions.model';
 
 interface QuizProps {}
 
-interface Filter {
-    attribute: Attribute,
-    range: { min: string; max: string },
-}
-
-
-interface SortingMethod {
-    priority: number,
-    attribute: string,
-    order: 'ASC' | 'DESC'
-}
-
-const ModeCard = ({ mode, isSelected, onSelect }: { mode: GamingTheme; isSelected: boolean; onSelect: (mode: GamingTheme) => void }) => (
+const ModeCard = ({ mode, isSelected, onSelect }: { mode: GameMode; isSelected: boolean; onSelect: (mode: GameMode) => void }) => (
     <Chip
         label={mode.title}
         onClick={() => onSelect(mode)}
@@ -45,8 +38,6 @@ const OptionCard = ({ option, isSelected, onSelect }: { option: string; isSelect
     />
 );
 
-
-
 export const Quiz: React.FC<QuizProps> = () => {
     const navigate = useNavigate();
     const [answer, setAnswer] = useState<string>('');
@@ -55,84 +46,94 @@ export const Quiz: React.FC<QuizProps> = () => {
     const [showOptions, setShowOptions] = useState<boolean>(false); // Toggle state for options form
 
     // Option states
-    const [selectedMode, setSelectedMode] = useState<GamingTheme | null>(null);
-    const [modesList, setModesList] = useState<GamingTheme[]>([]);
+    const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+    const [modesList, setModesList] = useState<GameMode[]>([]);
 
     const [attributes, setAttributes] = useState<Attribute[]>([]);
     const [filters, setFilters] = useState<Attribute[]>([]);
     const [openFilterModal, setOpenFilterModal] = useState(false);
-    const [selectedFilters, setSelectedFilters] = useState<Filter[]>([]);
-    
-    const [sortingMethods, setSortingMethods] = useState<SortingMethod[]>([]);
+    const [selectedFilters, setSelectedFilters] = useState<GameFilter[]>([]);
+
+    const [sorts, setSorts] = useState<Attribute[]>([]);
+    const [sortingMethods, setSortingMethods] = useState<GameSortBy[]>([]);
     const [openSortModal, setOpenSortModal] = useState(false);
-    
-    const [selectedRepetition, setSelectedRepetition] = useState<string>('Never');
-    
-    const helpsList = ['Typos friendly', 'Initial given'];
-    const [selectedHelps, setSelectedHelps] = useState<string>('None');
-    
-    const repetitionList = ['Never', 'Often', 'Sometimes', 'Custom'];
+
+    const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
     const [repeatSettings, setRepeatSettings] = useState<{ frequency: number; quantity: number }>({
-        frequency: 0,
-        quantity: 0,
+        frequency: repetitionPatterns.never.frequency,
+        quantity: repetitionPatterns.never.quantity,
     });
 
+    const helpsList = ['Typos friendly', 'Initial given'];
+    const [selectedHelps, setSelectedHelps] = useState<string>('None');
 
     useEffect(() => {
-        if (!showOptions) {
-            fetchPhoto();
+        if (!showOptions && selectedMode) {
+            fetchPhotoWithOptions();
+        } else {
+            fetchAttributes();
+            fetchModes();
         }
-        fetchAttributes();
-        fetchFilters();
-        fetchModes();
-    }, [showOptions]);
-    
-    const fetchPhoto = async () => {
+    }, [showOptions, selectedMode]);
+
+    const fetchPhotoWithOptions = async () => {
         try {
-            const fetchedPhoto: Photo = await getPhoto();
+            const gameOptions: GameOptions = {
+                id: Date.now(),
+                gameMode: selectedMode!,
+                filters: selectedFilters  || [],
+                sortBy: sortingMethods  || [],
+                repetitionPattern: selectedRepetitionPattern,
+                typosFriendly: selectedHelps.includes('Typos friendly'),
+                initialGiven: selectedHelps.includes('Initial given')
+            };
+            const fetchedPhoto: Photo = await getPhotoWithCriteria(gameOptions);
             setPhoto(fetchedPhoto);
-            console.log("photo fetched: " + JSON.stringify(fetchedPhoto));
+            setAnswer('');
         } catch (error) {
-            console.error('Error fetching photo:', error);
+            console.error('Error fetching photo with criteria:', error);
+            notifyError("Error fetching photo: " + error);
         }
     };
 
     const fetchPerson = async (photoId: number): Promise<PersonBasic> => {
         try {
             const fetchedPerson: PersonBasic = await getPersonBasicOfPhoto(photoId);
-            console.log("fetchedPerson: " + JSON.stringify(fetchedPerson));
             return fetchedPerson;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error fetching person:', error);
             throw error;
         }
     };
 
     const fetchModes = async () => {
+        if (modesList.length > 0) {
+            return;
+        }
         try {
-            const fetchedModes = await getGamingThemes();
+            const fetchedModes = await getGameModes();
             setModesList(fetchedModes);
-            console.log("Modes fetched: " + JSON.stringify(fetchedModes));
+            if (fetchedModes.length > 0) {
+                setSelectedMode(fetchedModes[0]); // Set the first mode as the default selected mode
+            }
         } catch (error) {
-            console.error('Error fetching gaming themes:', error);
+            console.error('Error fetching game themes:', error);
         }
     };
 
     const fetchAttributes = async () => {
+        if (attributes.length > 0) {
+            return;
+        }
         try {
-            const fetchedAttributes = await getAttributes();
+            const fetchedAttributes: Attribute[] = await getAttributes();
             setAttributes(fetchedAttributes);
+
+            // Filter and sort attributes client-side
+            setFilters(fetchedAttributes.filter(attr => attr.filter === true));
+            setSorts(fetchedAttributes.filter(attr => attr.sort === true));
         } catch (error) {
             console.error('Error fetching attributes:', error);
-        }
-    };
-
-    const fetchFilters = async () => {
-        try {
-            const fetchedFilters = await getFilters();
-            setFilters(fetchedFilters);
-        } catch (error) {
-            console.error('Error fetching filters:', error);
         }
     };
 
@@ -146,7 +147,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             .replace(/e+$/gi, '') // Remove trailing silent 'e'
             .replace(/[^a-z]/gi, '') // Remove non-alphabetic characters
             .toLowerCase(); // Convert to lowercase
-    
+
         text = text.replace(/au/gi, 'o') // Transform "au" to "o"
             .replace(/ck/gi, 'k') // Transform "ck" to "k"
             .replace(/qu/gi, 'k') // Transform "qu" to "k"
@@ -154,10 +155,10 @@ export const Quiz: React.FC<QuizProps> = () => {
             .replace(/c/gi, 'k') // Transform "c" to "k"
             .trim() // Remove spaces at the beginning and end
             .replace(/\s+/g, ' '); // Replace multiple spaces with a single space
-    
+
         text = text.replace(/(ein|ain|in)/gi, 'in') // Transform "ein", "ain" and "in" to "in"
             .replace(/gue/gi, 'g'); // Transform "gue" to "g"
-    
+
         return text;
     };
 
@@ -167,21 +168,22 @@ export const Quiz: React.FC<QuizProps> = () => {
                 key={mode.id}
                 mode={mode}
                 isSelected={selectedMode?.id === mode.id}
-                onSelect={() => (handleSelectMode(mode))}
+                onSelect={() => handleSelectMode(mode)}
             />
         ));
     };
 
     const renderRepetitionOptions = () => {
-        return repetitionList.map((option) => (
+        return Object.keys(repetitionPatterns).map((option) => (
             <OptionCard
                 key={option}
-                option={option}
-                isSelected={selectedRepetition === option}
-                onSelect={handleSelectRepetition}
+                option={option.charAt(0).toUpperCase() + option.slice(1)}
+                isSelected={selectedRepetitionPattern.patternName === option.toLowerCase()}
+                onSelect={() => handleSelectRepetition(option)}
             />
         ));
     };
+    
 
     const renderHelpsOptions = () => {
         return helpsList.map((option) => (
@@ -194,13 +196,24 @@ export const Quiz: React.FC<QuizProps> = () => {
         ));
     };
 
-    const handleSelectMode = (mode: GamingTheme) => {
+    const handleSelectMode = (mode: GameMode) => {
         setSelectedMode(mode);
     };
 
     const handleSelectRepetition = (option: string) => {
-        setSelectedRepetition(option);
+        const pattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
+        
+        if (option === 'Custom') {
+            setSelectedRepetitionPattern({
+                patternName: 'custom',
+                frequency: repeatSettings.frequency,
+                quantity: repeatSettings.quantity
+            });
+        } else {
+            setSelectedRepetitionPattern(pattern);
+        }
     };
+    
 
     const handleSelectHelps = (option: string) => {
         setSelectedHelps(option);
@@ -211,24 +224,23 @@ export const Quiz: React.FC<QuizProps> = () => {
     };
 
     const validateAnswer = useCallback(async () => {
-        console.log('Answer validated:', answer);
         if (photo) {
             try {
                 const person = await fetchPerson(photo.id);
                 const normalizedAnswer = normalizeText(answer);
-                const normalizedPersonName = normalizeText(person.firstName);
-                if (normalizedAnswer === normalizedPersonName) {
+                const normalizedCorrectAnswer = normalizeText(person.firstName);
+                if (normalizedAnswer === normalizedCorrectAnswer) {
                     notifySuccess("Bien joué");
-                    fetchPhoto();
+                    fetchPhotoWithOptions();
                     setAnswer('');
                 } else {
                     notifyWarning("Erreur: la reponse etait " + person.firstName + " et vous avez répondu " + answer);
                 }
-            } catch (error: any) {
-                notifyError("Error fetching person: " + error.message);
+            } catch (error) {
+                notifyError("Error fetching person: " + error);
             }
         } else {
-            notifyError("wtf");
+            notifyError("No photo available");
         }
     }, [answer, photo]);
 
@@ -253,20 +265,21 @@ export const Quiz: React.FC<QuizProps> = () => {
         navigate('/', { replace: true }); // Adjust the route as necessary
     };
 
-    const handleAddFilter = (attribute: Attribute, range: { min: string; max: string }) => {
-        // Use the range parameter in the function body
-        console.log('Selected attribute:', attribute);
-        console.log('Selected range:', range);
-        setSelectedFilters([...selectedFilters, { attribute, range }]);
+    const handleAddFilter = (filter: GameFilter) => {
+        setSelectedFilters(prevFilters => [...prevFilters, filter]);
         setOpenFilterModal(false);
-    };    
+    };
 
     const renderFilters = () => {
         if (selectedFilters.length === 0) {
             return <Chip label="No filters" disabled />;
         }
         return selectedFilters.map((filter, index) => (
-            <Chip key={index} label={filter.attribute.name} onDelete={() => handleDeleteFilter(index)} />
+            <Chip
+                key={index}
+                label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
+                onDelete={() => handleDeleteFilter(index)}
+            />
         ));
     };
     
@@ -276,17 +289,17 @@ export const Quiz: React.FC<QuizProps> = () => {
         setSelectedFilters(newFilters);
     };
 
-    const handleAddSortingMethod = (attribute: Attribute, order: 'ASC' | 'DESC') => {
-        setSortingMethods([...sortingMethods, { priority: sortingMethods.length + 1, attribute: attribute.name, order }]);
-        setOpenSortModal(false); // Close the modal after adding
-    };    
+    const handleAddSortingMethod = (sortBy: GameSortBy) => {
+        setSortingMethods([...sortingMethods, sortBy]);
+        setOpenSortModal(false);
+    };
 
     const renderSortingMethods = () => {
         if (sortingMethods.length === 0) {
             return <Chip label="No sorting methods" disabled />;
         }
         return sortingMethods.map((method, index) => (
-            <Chip key={index} label={`${method.attribute} (${method.order})`} onDelete={() => handleDeleteSortingMethod(index)} />
+            <Chip key={index} label={`${method.attribute.name} (${method.order})`} onDelete={() => handleDeleteSortingMethod(index)} />
         ));
     };
 
@@ -346,7 +359,7 @@ export const Quiz: React.FC<QuizProps> = () => {
                     </Box>
                     <AddSortModal
                         open={openSortModal}
-                        attributes={attributes}
+                        attributes={sorts}
                         onSave={handleAddSortingMethod}
                         onClose={() => setOpenSortModal(false)}
                     />
@@ -355,24 +368,39 @@ export const Quiz: React.FC<QuizProps> = () => {
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
                         {renderRepetitionOptions()}
                     </Box>
-                    {selectedRepetition === 'Custom' && ( // Render frequency and quantity inputs only for custom option
+                    {selectedRepetitionPattern.patternName === 'custom' && (
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <TextField
                                 type="number"
                                 label="Frequency"
                                 sx={{ m: 1 }}
                                 value={repeatSettings.frequency}
-                                onChange={(e) => setRepeatSettings({ ...repeatSettings, frequency: parseInt(e.target.value) })}
+                                onChange={(e) => {
+                                    const newFrequency = parseInt(e.target.value);
+                                    setRepeatSettings({ ...repeatSettings, frequency: newFrequency });
+                                    setSelectedRepetitionPattern({
+                                        ...selectedRepetitionPattern,
+                                        frequency: newFrequency
+                                    });
+                                }}
                             />
                             <TextField
                                 type="number"
                                 label="Quantity"
                                 sx={{ m: 1 }}
                                 value={repeatSettings.quantity}
-                                onChange={(e) => setRepeatSettings({ ...repeatSettings, quantity: parseInt(e.target.value) })}
+                                onChange={(e) => {
+                                    const newQuantity = parseInt(e.target.value);
+                                    setRepeatSettings({ ...repeatSettings, quantity: newQuantity });
+                                    setSelectedRepetitionPattern({
+                                        ...selectedRepetitionPattern,
+                                        quantity: newQuantity
+                                    });
+                                }}
                             />
                         </Box>
                     )}
+
                     <Divider><Typography variant="h6">Helps</Typography></Divider>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
                         {renderHelpsOptions()}
