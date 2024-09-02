@@ -5,17 +5,6 @@ import API from "../../api/apiUtils";
 
 const endpoint = "/photos";
 
-export async function getPhoto(): Promise<Photo> {
-    try {
-        const response = await API.get<Photo>(`${endpoint}/random`);
-        console.log("voicii:" + JSON.stringify(response.data));
-        return response.data;
-    } catch (error) {
-        console.error('Failed to fetch random photo:', error);
-        throw error; // You may want to handle this differently depending on your app's design
-    }
-}
-
 export async function getPhotoWithCriteria(gameOptions: GameOptions): Promise<Photo> {
     try {
         console.log("GameOptions : " + JSON.stringify(gameOptions));

@@ -226,9 +226,9 @@ export const Quiz: React.FC<QuizProps> = () => {
     const validateAnswer = useCallback(async () => {
         if (photo) {
             try {
-                const person = await fetchPerson(photo.id);
-                const normalizedAnswer = normalizeText(answer);
-                const normalizedCorrectAnswer = normalizeText(person.firstName);
+                const person: PersonBasic = await fetchPerson(photo.id);
+                const normalizedAnswer: string = normalizeText(answer);
+                const normalizedCorrectAnswer: string = normalizeText(person.firstName);
                 if (normalizedAnswer === normalizedCorrectAnswer) {
                     notifySuccess("Bien joué");
                     fetchPhotoWithOptions();
