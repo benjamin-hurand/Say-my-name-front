@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Box, TextField, Typography, IconButton, Skeleton, FormGroup, Divider, Chip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { getPersonBasicOfPhoto, getPhotoWithCriteria } from '../../services/business/photos/photo.service';
+import { getPersonAttributesOfPhoto, getPhotoWithCriteria } from '../../services/business/photos/photo.service';
 import { getGameModes } from '../../services/business/gamemodes/gameMode.service';
 import { getAttributes } from '../../services/business/attributes/attribute.service';
 import { Photo } from '../../models/commons/Photo';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
-import { PersonBasic } from '../../models/commons/PersonBasic';
 import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
 import { AddFilterModal } from './components/AddFilterModal';
 import { Attribute } from '../../models/commons/Attribute';
@@ -17,6 +16,7 @@ import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.mod
 import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
 import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameOptions } from '../../models/commons/Game/GameOptions/GameOptions.model';
+import { PersonAttribute } from '../../models/commons/PersonAttribute';
 
 interface QuizProps {}
 
@@ -67,6 +67,8 @@ export const Quiz: React.FC<QuizProps> = () => {
     const helpsList = ['Typos friendly', 'Initial given'];
     const [selectedHelps, setSelectedHelps] = useState<string>('None');
 
+    const [personIdsHistoric, setPersonIdsHistoric] = useState<number[]>([]);
+
     useEffect(() => {
         if (!showOptions && selectedMode) {
             fetchPhotoWithOptions();
@@ -75,6 +77,12 @@ export const Quiz: React.FC<QuizProps> = () => {
             fetchModes();
         }
     }, [showOptions, selectedMode]);
+
+    useEffect(() => {
+        if (sortingMethods.length > 0) {
+            setPersonIdsHistoric([]); // Reset personIdsHistoric when sorting methods change
+        }
+    }, [sortingMethods]);
 
     const fetchPhotoWithOptions = async () => {
         try {
@@ -87,7 +95,7 @@ export const Quiz: React.FC<QuizProps> = () => {
                 typosFriendly: selectedHelps.includes('Typos friendly'),
                 initialGiven: selectedHelps.includes('Initial given')
             };
-            const fetchedPhoto: Photo = await getPhotoWithCriteria(gameOptions);
+            const fetchedPhoto: Photo = await getPhotoWithCriteria(gameOptions, personIdsHistoric);
             setPhoto(fetchedPhoto);
             setAnswer('');
         } catch (error) {
@@ -96,10 +104,10 @@ export const Quiz: React.FC<QuizProps> = () => {
         }
     };
 
-    const fetchPerson = async (photoId: number): Promise<PersonBasic> => {
+    const fetchPersonAttributes = async (photoId: number): Promise<PersonAttribute[]> => {
         try {
-            const fetchedPerson: PersonBasic = await getPersonBasicOfPhoto(photoId);
-            return fetchedPerson;
+            const fetchedPersonAttributes: PersonAttribute[] = await getPersonAttributesOfPhoto(photoId);
+            return fetchedPersonAttributes;
         } catch (error) {
             console.error('Error fetching person:', error);
             throw error;
@@ -137,30 +145,35 @@ export const Quiz: React.FC<QuizProps> = () => {
         }
     };
 
-    const normalizeText = (text: string): string => {
+    const normalizeText = (text: string, typosFriendly: boolean): string => {
+        // Always remove accents and convert to lowercase
         text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
-            .replace(/y/gi, 'i') // Replace 'y' with 'i'
-            .replace(/h/gi, '') // Remove silent 'h'
-            .replace(/pt/gi, 't') // Simplify "pt" to "t"
-            .replace(/sz/gi, 's') // Simplify "sz" to "s"
-            .replace(/([bcdfghjklmnpqrstvwxyz])\1/gi, '$1') // Simplify double consonants
-            .replace(/e+$/gi, '') // Remove trailing silent 'e'
-            .replace(/[^a-z]/gi, '') // Remove non-alphabetic characters
             .toLowerCase(); // Convert to lowercase
-
-        text = text.replace(/au/gi, 'o') // Transform "au" to "o"
-            .replace(/ck/gi, 'k') // Transform "ck" to "k"
-            .replace(/qu/gi, 'k') // Transform "qu" to "k"
-            .replace(/que/gi, 'k') // Transform "que" to "k"
-            .replace(/c/gi, 'k') // Transform "c" to "k"
-            .trim() // Remove spaces at the beginning and end
-            .replace(/\s+/g, ' '); // Replace multiple spaces with a single space
-
-        text = text.replace(/(ein|ain|in)/gi, 'in') // Transform "ein", "ain" and "in" to "in"
-            .replace(/gue/gi, 'g'); // Transform "gue" to "g"
-
+    
+        // Apply full normalization only if typosFriendly is true
+        if (typosFriendly) {
+            text = text.replace(/y/gi, 'i') // Replace 'y' with 'i'
+                .replace(/h/gi, '') // Remove silent 'h'
+                .replace(/pt/gi, 't') // Simplify "pt" to "t"
+                .replace(/sz/gi, 's') // Simplify "sz" to "s"
+                .replace(/([bcdfghjklmnpqrstvwxyz])\1/gi, '$1') // Simplify double consonants
+                .replace(/e+$/gi, '') // Remove trailing silent 'e'
+                .replace(/[^a-z]/gi, '') // Remove non-alphabetic characters
+                .replace(/au/gi, 'o') // Transform "au" to "o"
+                .replace(/ck/gi, 'k') // Transform "ck" to "k"
+                .replace(/qu/gi, 'k') // Transform "qu" to "k"
+                .replace(/que/gi, 'k') // Transform "que" to "k"
+                .replace(/c/gi, 'k') // Transform "c" to "k"
+                .trim() // Remove spaces at the beginning and end
+                .replace(/\s+/g, ' '); // Replace multiple spaces with a single space
+    
+            text = text.replace(/(ein|ain|in)/gi, 'in') // Transform "ein", "ain", and "in" to "in"
+                .replace(/gue/gi, 'g'); // Transform "gue" to "g"
+        }
+    
         return text;
     };
+    
 
     const renderModes = () => {
         return modesList.map((mode) => (
@@ -224,25 +237,73 @@ export const Quiz: React.FC<QuizProps> = () => {
     };
 
     const validateAnswer = useCallback(async () => {
-        if (photo) {
-            try {
-                const person: PersonBasic = await fetchPerson(photo.id);
-                const normalizedAnswer: string = normalizeText(answer);
-                const normalizedCorrectAnswer: string = normalizeText(person.firstName);
-                if (normalizedAnswer === normalizedCorrectAnswer) {
-                    notifySuccess("Bien joué");
-                    fetchPhotoWithOptions();
-                    setAnswer('');
-                } else {
-                    notifyWarning("Erreur: la reponse etait " + person.firstName + " et vous avez répondu " + answer);
-                }
-            } catch (error) {
-                notifyError("Error fetching person: " + error);
+        if (photo && selectedMode) {
+          try {
+            const personAttributes: PersonAttribute[] = await fetchPersonAttributes(photo.id);
+      
+            const typosFriendly = selectedHelps.includes('Typos friendly');
+      
+            console.log("Fetched person attributes: ", personAttributes);
+      
+            // Split the user's answer into parts, then normalize each part
+            const normalizedAnswerParts: string[] = answer.split(' ').map(part => normalizeText(part, typosFriendly)).sort();
+      
+            console.log("User's answer: ", answer);
+            console.log("Normalized user's answer parts: ", normalizedAnswerParts);
+      
+            // Get the correct answers (non-normalized) to display in the notification
+            const correctAnswers: string[] = personAttributes
+              .filter((pa) =>
+                selectedMode.attributes.some((ga) => ga.attribute.id === pa.attribute.id)
+              )
+              .map((pa) => pa.value);
+      
+            console.log("Correct answers (non-normalized): ", correctAnswers);
+      
+            // Split each correct answer into parts, then normalize each part
+            const normalizedCorrectAnswerParts = correctAnswers
+              .map((answer) => answer.split(' ').map(part => normalizeText(part, typosFriendly)))
+              .flat()
+              .sort();
+      
+            console.log("Normalized correct answer parts: ", normalizedCorrectAnswerParts);
+      
+            console.log("Operator: " + selectedMode.operator);
+      
+            let match = false;
+      
+            if (selectedMode.operator === 'AND') {
+              // AND: All parts must match
+              match = JSON.stringify(normalizedAnswerParts) === JSON.stringify(normalizedCorrectAnswerParts);
+            } else if (selectedMode.operator === 'OR') {
+              // OR: At least one part must match
+              match = normalizedAnswerParts.some(part => normalizedCorrectAnswerParts.includes(part));
             }
+      
+            console.log("Match result: ", match);
+      
+            if (match) {
+              notifySuccess('Bien joué');
+              setPersonIdsHistoric((prevIds) => [...prevIds, photo.id]); // Add person ID to personIdsHistoric              
+              fetchPhotoWithOptions();
+              setAnswer('');
+            } else {
+              // Show non-normalized values in the notification
+              notifyWarning(
+                `Erreur: la réponse était ${correctAnswers.join(' ')} et vous avez répondu ${answer}`
+              );
+            }
+          } catch (error) {
+            console.error('Error fetching person:', error);
+            notifyError('Error fetching person: ' + error);
+          }
         } else {
-            notifyError("No photo available");
+          console.error('No photo available or game mode selected');
+          notifyError('No photo available or game mode selected');
         }
-    }, [answer, photo]);
+      }, [answer, photo, selectedMode, selectedHelps]);
+      
+      
 
     const toggleOptions = () => {
         setShowOptions(!showOptions);

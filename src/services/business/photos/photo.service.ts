@@ -1,29 +1,32 @@
 import { GameOptions } from "../../../models/commons/Game/GameOptions/GameOptions.model";
-import { PersonBasic } from "../../../models/commons/PersonBasic";
 import { Photo } from "../../../models/commons/Photo";
 import API from "../../api/apiUtils";
+import { PersonAttribute } from "../../../models/commons/PersonAttribute";
 
 const endpoint = "/photos";
 
-export async function getPhotoWithCriteria(gameOptions: GameOptions): Promise<Photo> {
+export async function getPhotoWithCriteria(gameOptions: GameOptions, personIdsHistoric: number[]): Promise<Photo> {
     try {
         console.log("GameOptions : " + JSON.stringify(gameOptions));
-        const response = await API.post<Photo>(`${endpoint}/random/with-criteria`, gameOptions);
+        const response = await API.post<Photo>(`${endpoint}/random/with-criteria`, {
+            gameOptionsDto: gameOptions, 
+            personIdsHistoric: personIdsHistoric
+        });
         console.log("Received photo with criteria:", JSON.stringify(response.data));
         return response.data;
     } catch (error) {
         console.error('Failed to fetch random photo with criteria:', error);
-        throw error; // Handle the error appropriately in your app
+        throw error;
     }
 }
 
-export async function getPersonBasicOfPhoto(photoId: number): Promise<PersonBasic> {
+export async function getPersonAttributesOfPhoto(photoId: number): Promise<PersonAttribute[]> {
     try {
-        const response = await API.get<PersonBasic>(`${endpoint}/${photoId}/person`);
+        const response = await API.get<PersonAttribute[]>(`${endpoint}/${photoId}/person/attributes`);
         console.log("voicii:" + JSON.stringify(response.data));
         return response.data;
     } catch (error) {
-        console.error('Failed to get person of photo:', error);
-        throw error; // You may want to handle this differently depending on your app's design
+        console.error('Failed to get person attributes of photo:', error);
+        throw error;
     }
 }

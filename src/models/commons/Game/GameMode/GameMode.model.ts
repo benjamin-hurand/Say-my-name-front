@@ -5,5 +5,5 @@ export interface GameMode {
     title: string,
     description: string,
     attributes: GameModeAttribute[], 
-    operator: string
+    operator: 'AND' | 'OR'
 }
