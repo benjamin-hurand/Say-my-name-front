@@ -1,15 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Box, TextField, Typography, IconButton, Skeleton, FormGroup, Divider, Chip } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Chip } from '@mui/material';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 import { getGameModes } from '../../services/business/gamemodes/gameMode.service';
 import { getAttributes } from '../../services/business/attributes/attribute.service';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
 import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
-import { AddFilterModal } from './components/AddFilterModal';
 import { Attribute } from '../../models/commons/Attribute';
-import { AddSortModal } from './components/AddSortModal';
 import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
 import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
 import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
@@ -24,6 +21,7 @@ import QuizDisplay from './QuizDisplay';
 import QuizOptions from './QuizOptions';
 import { ReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDto';
 import { toReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDtoMapper';
+import { QuizHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
 
 interface QuizProps {}
 
@@ -37,6 +35,7 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     // FULL QUIZ
     const [fetchedQuizList, setFetchedQuizList] = useState<QuizEntry[]>([]);
+    const [quizHistory, setQuizHistory] = useState<QuizHistoryEntry[]>([]);
 
     // QUIZ 1 QUESTION
     const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -62,8 +61,6 @@ export const Quiz: React.FC<QuizProps> = () => {
     const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
     const [modesList, setModesList] = useState<GameMode[]>([]);
 
-    // FILTERS AND SORTING METHODS
-    const [attributes, setAttributes] = useState<Attribute[]>([]);
     // FILTERS
     const [filters, setFilters] = useState<Attribute[]>([]);
     const [openFilterModal, setOpenFilterModal] = useState(false);
@@ -175,24 +172,30 @@ export const Quiz: React.FC<QuizProps> = () => {
               match = normalizedAnswerParts.some(part => normalizedCorrectAnswerParts.includes(part));
             }
             
+            let answerIsCorrect: boolean = false;
             if (match) {
                 notifySuccess('Bien joué');
-                // Retirer le premier élément de la liste :
-                setFetchedQuizList(prevList => {
-                    const newList = prevList.slice(1);
-                    if (newList.length === 0) {
-                        // Si la liste est vide, on peut recharger la liste ou afficher un message
-                        fetchQuizList();
-                    }
-                    return newList;
-                });
-                setAnswer('');
+                answerIsCorrect = true;
             } else {
-              // Show non-normalized values in the notification
-              notifyWarning(
-                `Erreur: la réponse était ${correctAnswers.join(' ')} et vous avez répondu ${answer}`
-              );
+                notifyWarning(
+                    `Erreur: la réponse était ${correctAnswers.join(' ')} et vous avez répondu ${answer}`
+                );
             }
+ 
+            setQuizHistory(prevHistory => [
+                ...prevHistory,
+                { photoUrl: photoUrl!, personId: personId!, initials: initials!, correct: answerIsCorrect }
+            ]);
+
+            setFetchedQuizList(prevList => {
+                const newList = prevList.slice(1);
+                if (newList.length === 0) {
+                    // Si la liste est vide, on peut recharger la liste ou afficher un message
+                    fetchQuizList();
+                }
+                return newList;
+            });
+
           } catch (error) {
             console.error('Error fetching person:', error);
             notifyError('Error fetching person: ' + error);
@@ -263,9 +266,6 @@ export const Quiz: React.FC<QuizProps> = () => {
     const fetchAttributes = async () => {
         try {
             const fetchedAttributes: Attribute[] = await getAttributes();
-            setAttributes(fetchedAttributes);
-
-            // Filter and sort attributes client-side
             setFilters(fetchedAttributes.filter(attr => attr.filter === true));
             setSorts(fetchedAttributes.filter(attr => attr.sort === true));
         } catch (error) {
