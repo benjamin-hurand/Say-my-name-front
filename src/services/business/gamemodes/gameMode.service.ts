@@ -6,7 +6,7 @@ const endpoint = "/gamemodes";
 export async function getGameModes(): Promise<GameMode[]> {
     try {
         const response = await API.get<GameMode[]>(`${endpoint}`);
-        console.log("voicii themes:" + JSON.stringify(response.data));
+        // console.log("voicii themes:" + JSON.stringify(response.data));
         return response.data;
     } catch (error) {
         console.error('Failed to get game themes:', error);

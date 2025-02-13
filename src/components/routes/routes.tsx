@@ -5,38 +5,61 @@ import { Profile } from "../../scenes/profile/profile";
 import { PersonsTable } from "../persons/personsTable";
 import SignIn from "../../scenes/sign-in/SignIn";
 import SignUp from "../../scenes/sign-up/SignUp";
-import { Quiz } from "../../scenes/quiz/quiz";
 import Menu from "../../scenes/menu/menu";
 import { Layout } from "../layout/Layout";
+import Quiz from "../../scenes/quiz/quiz";
 
 const router = createBrowserRouter([
     {
-        path: "/",
-        children: [
-            {
-                index: true,
-                element: <Layout children={<ProtectedRoute element={<Menu />} />} isMenu={true}/>
-            },{
-                path: "profile",
-                element: <Layout children={<ProtectedRoute element={<Profile />} />} />
-            },{
-                path: "quiz",
-                element: <Layout children={<ProtectedRoute element={<Quiz />} />} />
-            },{
-                path: "persons",
-                element: <Layout children={<ProtectedRoute element={<PersonsTable />} />} />
-            },{
-                path: "**",
-                element: <Navigate to="/" replace />
-            },{
-                path: "signin",
-                element: <SignIn />
-            },{
-                path: "signup",
-                element: <SignUp />
-            }  
-        ]
+      path: "/",
+      children: [
+        {
+          index: true,
+          element: (
+            <Layout isMenu={true}>
+              <ProtectedRoute element={<Menu />} />
+            </Layout>
+          )
+        },
+        {
+          path: "profile",
+          element: (
+            <Layout>
+              <ProtectedRoute element={<Profile />} />
+            </Layout>
+          )
+        },
+        {
+          path: "quiz",
+          element: (
+            <Layout>
+              <ProtectedRoute element={<Quiz />} />
+            </Layout>
+          )
+        },
+        {
+          path: "persons",
+          element: (
+            <Layout>
+              <ProtectedRoute element={<PersonsTable />} />
+            </Layout>
+          )
+        },
+        {
+          path: "signin",
+          element: <SignIn />
+        },
+        {
+          path: "signup",
+          element: <SignUp />
+        },
+        {
+          path: "*",
+          element: <Navigate to="/" replace />
+        }
+      ]
     }
-]);
+  ]);
+  
 
 export { router };

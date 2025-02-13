@@ -4,4 +4,5 @@ export interface Attribute {
     unique: boolean;
     filter: boolean;
     sort: boolean;
+    initializable: boolean;
 }

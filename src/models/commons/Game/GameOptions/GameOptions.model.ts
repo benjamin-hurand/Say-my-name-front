@@ -5,10 +5,10 @@ import { GameSortBy } from "./GameSortBy.model";
 
 export interface GameOptions {
     id: number,
-    gameMode: GameMode,
+    gameMode: GameMode | null,
     filters: GameFilter[],
     sortBy: GameSortBy[],
     repetitionPattern: GameRepetitionPattern,
-    typosFriendly: boolean,
-    initialGiven: boolean
+    initialGiven: boolean,
+    typosFriendly: boolean
 }
