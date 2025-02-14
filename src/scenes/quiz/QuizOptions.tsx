@@ -13,25 +13,37 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { AddFilterModal } from './components/AddFilterModal';
 import { AddSortModal } from './components/AddSortModal';
+import { GameRepetitionPattern } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
+import { Attribute } from '../../models/commons/Attribute';
+import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
+import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
 
 interface QuizOptionsProps {
   color: string;
-  toggleOptions: () => void;
+  toggleOptions: (saveChanges?: boolean) => void;
   renderModes: () => React.ReactNode;
   renderFilters: () => React.ReactNode;
   openFilterModal: boolean;
   setOpenFilterModal: (open: boolean) => void;
-  filters: any[]; // Replace 'any' with your proper type (e.g., Attribute[])
-  handleAddFilter: (filter: any) => void; // Replace 'any' with your proper type (e.g., GameFilter)
+  filters: Attribute[];
+  handleAddFilter: (filter: GameFilter) => void;
   renderSortingMethods: () => React.ReactNode;
   openSortModal: boolean;
   setOpenSortModal: (open: boolean) => void;
-  sorts: any[]; // Replace 'any' with your proper type
-  handleAddSortingMethod: (sortBy: any) => void; // Replace 'any' with your proper type (e.g., GameSortBy)
+  sorts: Attribute[];
+  handleAddSortingMethod: (sortBy: GameSortBy) => void;
   renderRepetitionOptions: () => React.ReactNode;
-  selectedRepetitionPattern: any; // Replace with your proper type (e.g., GameRepetitionPattern)
-  repeatSettings: { frequency: number; quantity: number };
-  setRepeatSettings: (settings: { frequency: number; quantity: number }) => void;
+  selectedRepetitionPattern: GameRepetitionPattern;
+  repeatSettings: {
+    initialRepetitionCount: number;
+    initialEasinessFactor: number;
+    initialInterval: number | "Infinity";
+  };
+  setRepeatSettings: (settings: {
+    initialRepetitionCount: number;
+    initialEasinessFactor: number;
+    initialInterval: number | "Infinity";
+  }) => void;
   renderHelpsOptions: () => React.ReactNode;
 }
 
@@ -76,7 +88,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         }}
       >
         <IconButton
-          onClick={toggleOptions}
+          onClick={() => toggleOptions(false)}
           sx={{
             color: color,
             boxShadow: `0 0 8px ${color}`,
@@ -156,26 +168,38 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <TextField
               type="number"
-              label="Frequency"
+              label="Repetition Count"
               sx={{ m: 1 }}
-              value={repeatSettings.frequency}
+              value={repeatSettings.initialRepetitionCount}
               onChange={(e) => {
-                const newFrequency = parseInt(e.target.value);
-                setRepeatSettings({ ...repeatSettings, frequency: newFrequency });
+                const newCount = parseInt(e.target.value);
+                setRepeatSettings({ ...repeatSettings, initialRepetitionCount: newCount });
               }}
             />
             <TextField
               type="number"
-              label="Quantity"
+              label="Easiness Factor"
               sx={{ m: 1 }}
-              value={repeatSettings.quantity}
+              value={repeatSettings.initialEasinessFactor}
               onChange={(e) => {
-                const newQuantity = parseInt(e.target.value);
-                setRepeatSettings({ ...repeatSettings, quantity: newQuantity });
+                const newFactor = parseFloat(e.target.value);
+                setRepeatSettings({ ...repeatSettings, initialEasinessFactor: newFactor });
+              }}
+            />
+            <TextField
+              type="number"
+              label="Initial Interval"
+              sx={{ m: 1 }}
+              value={repeatSettings.initialInterval === Infinity ? '' : repeatSettings.initialInterval}
+              onChange={(e) => {
+                const newInterval = parseInt(e.target.value);
+                setRepeatSettings({ ...repeatSettings, initialInterval: newInterval });
               }}
             />
           </Box>
         )}
+
+
         <Divider>
           <Typography variant="h6">Helps</Typography>
         </Divider>

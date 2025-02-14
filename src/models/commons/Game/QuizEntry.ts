@@ -1,5 +1,11 @@
+import { SpacedRepetitionData } from "./GameOptions/GameRepetitionPattern.model";
+
 export interface QuizEntry {
-    personId: number;
-    photoUrl: string;
-    initials: string;
-  }
+  photoUrl: string;
+  personId: number;
+  initials: string;
+}
+
+export interface QuizEntryWithRepetition extends QuizEntry {
+  repetitionData: SpacedRepetitionData;
+}
