@@ -1,5 +1,5 @@
 // QuizOptions.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
@@ -9,6 +9,11 @@ import {
   TextField,
   Typography,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { AddFilterModal } from './components/AddFilterModal';
@@ -25,26 +30,27 @@ interface QuizOptionsProps {
   renderFilters: () => React.ReactNode;
   openFilterModal: boolean;
   setOpenFilterModal: (open: boolean) => void;
-  filters: Attribute[];
+  availableFilters: Attribute[];
   handleAddFilter: (filter: GameFilter) => void;
   renderSortingMethods: () => React.ReactNode;
   openSortModal: boolean;
   setOpenSortModal: (open: boolean) => void;
-  sorts: Attribute[];
+  availableSorts: Attribute[];
   handleAddSortingMethod: (sortBy: GameSortBy) => void;
   renderRepetitionOptions: () => React.ReactNode;
-  selectedRepetitionPattern: GameRepetitionPattern;
+  tempSelectedRepetitionPattern: GameRepetitionPattern;
   repeatSettings: {
-    initialRepetitionCount: number;
     initialEasinessFactor: number;
-    initialInterval: number | "Infinity";
+    initialInterval: number;
+    secondInterval: number;
   };
   setRepeatSettings: (settings: {
-    initialRepetitionCount: number;
     initialEasinessFactor: number;
-    initialInterval: number | "Infinity";
+    initialInterval: number;
+    secondInterval: number;
   }) => void;
   renderHelpsOptions: () => React.ReactNode;
+  hasCriticalChanges: boolean;
 }
 
 const QuizOptions: React.FC<QuizOptionsProps> = ({
@@ -54,19 +60,43 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   renderFilters,
   openFilterModal,
   setOpenFilterModal,
-  filters,
+  availableFilters,
   handleAddFilter,
   renderSortingMethods,
   openSortModal,
   setOpenSortModal,
-  sorts,
+  availableSorts,
   handleAddSortingMethod,
   renderRepetitionOptions,
-  selectedRepetitionPattern,
+  tempSelectedRepetitionPattern,
   repeatSettings,
   setRepeatSettings,
   renderHelpsOptions,
+  hasCriticalChanges
 }) => {
+  // Local state for confirmation dialog
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+
+    const handleSaveClick = () => {
+    if (hasCriticalChanges) {
+      console.log('dialog should open');
+      setOpenConfirmDialog(true);
+    } else {
+      toggleOptions(true);
+    }
+  };
+
+  const handleConfirmSave = () => {
+    setOpenConfirmDialog(false);
+    toggleOptions(true);
+  };
+
+  const handleCancelSave = () => {
+    setOpenConfirmDialog(false);
+    // Optionally, you could also revert changes by calling toggleOptions(false)
+    // or simply keep the dialog closed.
+  };
+  
   return (
     <Box
       sx={{
@@ -130,7 +160,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         </Box>
         <AddFilterModal
           open={openFilterModal}
-          attributes={filters}
+          attributes={availableFilters}
           onSave={handleAddFilter}
           onClose={() => setOpenFilterModal(false)}
         />
@@ -154,7 +184,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         </Box>
         <AddSortModal
           open={openSortModal}
-          attributes={sorts}
+          attributes={availableSorts}
           onSave={handleAddSortingMethod}
           onClose={() => setOpenSortModal(false)}
         />
@@ -164,42 +194,6 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {renderRepetitionOptions()}
         </Box>
-        {selectedRepetitionPattern.patternName === 'custom' && (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <TextField
-              type="number"
-              label="Repetition Count"
-              sx={{ m: 1 }}
-              value={repeatSettings.initialRepetitionCount}
-              onChange={(e) => {
-                const newCount = parseInt(e.target.value);
-                setRepeatSettings({ ...repeatSettings, initialRepetitionCount: newCount });
-              }}
-            />
-            <TextField
-              type="number"
-              label="Easiness Factor"
-              sx={{ m: 1 }}
-              value={repeatSettings.initialEasinessFactor}
-              onChange={(e) => {
-                const newFactor = parseFloat(e.target.value);
-                setRepeatSettings({ ...repeatSettings, initialEasinessFactor: newFactor });
-              }}
-            />
-            <TextField
-              type="number"
-              label="Initial Interval"
-              sx={{ m: 1 }}
-              value={repeatSettings.initialInterval === Infinity ? '' : repeatSettings.initialInterval}
-              onChange={(e) => {
-                const newInterval = parseInt(e.target.value);
-                setRepeatSettings({ ...repeatSettings, initialInterval: newInterval });
-              }}
-            />
-          </Box>
-        )}
-
-
         <Divider>
           <Typography variant="h6">Helps</Typography>
         </Divider>
@@ -219,10 +213,32 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         <Button variant="outlined" className="menu nobg" onClick={() => toggleOptions(false)} sx={{ marginRight: '1vw' }}>
           Cancel
         </Button>
-        <Button variant="contained" className="menu" onClick={() => toggleOptions(true)}>
+        <Button variant="contained" className="menu" onClick={handleSaveClick}>
           Save Options
         </Button>
       </Box>
+      <Dialog
+        open={openConfirmDialog}
+        onClose={handleCancelSave}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">Reset Quiz Progress?</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            Changing the mode, filters, or sorting methods will reset your current progress and history.
+            Are you sure you want to apply these new options? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelSave} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmSave} color="primary" autoFocus>
+            Yes, Reset Progress
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

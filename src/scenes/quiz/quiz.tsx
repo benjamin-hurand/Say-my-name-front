@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chip, Tooltip } from '@mui/material';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
@@ -39,7 +39,6 @@ export const Quiz: React.FC<QuizProps> = () => {
     const [backupQuizList, setBackupQuizList] = useState<QuizEntryWithRepetition[]>([]);
     
     // QUIZ 1 QUESTION
-    const [currentRound, setCurrentRound] = useState<number>(1);
     const [photoUrl, setPhotoUrl] = useState<string | null>(null);
     const [personId, setPersonId] = useState<number | null>(null);
     const [initials, setInitials] = useState<string | null>(null);
@@ -48,125 +47,194 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     // OPTIONS
     // OPTIONS MENU
-    const [gameOptions, setGameOptions] = useState<GameOptions>({
-        id: Date.now(),
-        gameMode: null,
-        filters: [],
-        sortBy: [],
-        repetitionPattern: repetitionPatterns.never,
-        initialGiven: false,
-        typosFriendly: false
-    });
-    const [criticalOptionsChangedFlagCounter, setCriticalOptionsChangedFlagCounter] = useState<number>(0);
 
     // MODES
-    const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
     const [modesList, setModesList] = useState<GameMode[]>([]);
+    const [tempSelectedMode, setTempSelectedMode] = useState<GameMode | null>(null);
+    const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
     // FILTERS
     const [filters, setFilters] = useState<Attribute[]>([]);
+    const [tempSelectedFilters, setTempSelectedFilters] = useState<GameFilter[]>([]);
+    const availableFilters: Attribute[] = useMemo(() => {
+        return filters.filter(attr => 
+          !tempSelectedFilters.some(selected => selected.attribute.id === attr.id)
+        );
+      }, [filters, tempSelectedFilters]);
     const [openFilterModal, setOpenFilterModal] = useState(false);
     const [selectedFilters, setSelectedFilters] = useState<GameFilter[]>([]);
     // SORTING METHODS
     const [sorts, setSorts] = useState<Attribute[]>([]);
-    const [sortingMethods, setSortingMethods] = useState<GameSortBy[]>([]);
+    const [tempSelectedSortingMethods, setTempSelectedSortingMethods] = useState<GameSortBy[]>([]);
+    const availableSorts: Attribute[] = useMemo(() => {
+        return sorts.filter(attr => 
+          !tempSelectedSortingMethods.some(selected => selected.attribute.id === attr.id)
+        );
+      }, [sorts, tempSelectedSortingMethods]);
     const [openSortModal, setOpenSortModal] = useState(false);
+    const [selectedSortingMethods, setSelectedSortingMethods] = useState<GameSortBy[]>([]);
+    // CRITICAL CHANGES: MODE, FILTERS OR SORTING METHODS
+    const hasCriticalChanges = useMemo(() => {
+        return (
+          JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
+          JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
+          JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
+        );
+      }, [tempSelectedMode, selectedMode, tempSelectedFilters, selectedFilters, tempSelectedSortingMethods, selectedSortingMethods]);
+      
 
     // REPETITIONS
-    const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
     const [repeatSettings, setRepeatSettings] = useState<{
-        initialRepetitionCount: number;
         initialEasinessFactor: number;
-        initialInterval: number | "Infinity";
+        initialInterval: number;
+        secondInterval: number;
     }>({
-        initialRepetitionCount: repetitionPatterns.never.initialRepetitionCount,
         initialEasinessFactor: repetitionPatterns.never.initialEasinessFactor,
         initialInterval: repetitionPatterns.never.initialInterval,
+        secondInterval: repetitionPatterns.never.secondInterval
     });
-    const [currentRepetitionData, setCurrentRepetitionData] = useState<SpacedRepetitionData | null>(null);
-
-    
+    const [tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
+    const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
+    const [currentRepetitionData, setCurrentRepetitionData] = useState<SpacedRepetitionData>({
+        totalRepetitionCount: 0,
+        correctRepetitionCount: 0,
+        easinessFactor: repetitionPatterns.never.initialEasinessFactor,
+        interval: repetitionPatterns.never.initialInterval
+    });
     // HELPS
-    const helpsList = ['Typos friendly', 'Initial given'];
-    const [selectedHelps, setSelectedHelps] = useState<string>('None');
+    const helpOptions: {
+        key: string;
+        label: string;
+    }[] = [
+        { key: 'typosFriendly', label: 'Typos friendly' },
+        { key: 'initialGiven', label: 'Initial given' }
+      ];
+      const [tempSelectedHelps, setTempSelectedHelps] = useState<{ [key: string]: boolean }>({
+        typosFriendly: false,
+        initialGiven: false,
+      });
+      
+      // And for the committed selection:
+      const [selectedHelps, setSelectedHelps] = useState<{ [key: string]: boolean }>({
+        typosFriendly: false,
+        initialGiven: false,
+      });
 
     // INIT
     useEffect(() => {
         (async () => {
-          await fetchAttributes();
-          await fetchModes();
+            console.log('INIT');
+            await fetchAttributes();
+            await fetchModes();
         })();
     }, []);
 
+    // Repetition Pattern Changed
+    useEffect(() => {
+        if (backupQuizList.length === 0) return;
+        console.log('new selectedRepetitionPattern: ', JSON.stringify(selectedRepetitionPattern));
+        const newBackupQuizList: QuizEntryWithRepetition[] = backupQuizList.map(prevAttrs => ({
+            ...prevAttrs,
+            repetitionData: {
+                totalRepetitionCount: 0,
+                correctRepetitionCount: 0,
+                easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+                interval: selectedRepetitionPattern.initialInterval
+            }
+        }));
+        setBackupQuizList(newBackupQuizList);
+
+        // On va rétablir les repetitions depuis l'historique et backup list
+        let baseList = newBackupQuizList.slice(quizHistory.length);
+        
+        // Si le nouveau pattern comprends un interval de répétition
+        if (selectedRepetitionPattern.initialInterval !== -1) {
+            // For each historical entry where the answer was wrong,
+            quizHistory.forEach(historyEntry => {  
+                // Pour chaque Entree historique, on modifie l'interval avec l'interval initial du pattern
+                const newInterval: number = selectedRepetitionPattern.initialInterval;
+                historyEntry.repetitionData.interval = newInterval;
+                // Et on insert chaque entree historique fausse en tant que répétition dans quizList
+                if (!historyEntry.correct) {
+                    // Compute insertion index: if the interval exceeds the current baseList length, insert at the end.
+                    const insertionIndex: number = newInterval < baseList.length ? selectedRepetitionPattern.initialInterval : baseList.length;
+                    baseList.splice(insertionIndex, 0, {
+                        ...historyEntry
+                    });
+                }
+            });
+        }
+        // Update the fetched quiz list with this new list.
+        setFetchedQuizList(baseList);
+        notifySuccess("The repetition pattern has been updated. The frequency of repetitions might have been modified.");
+    }, [selectedRepetitionPattern]);
+
     // Some Critical options changed (as during initialization)
     useEffect(() => {
-        if (criticalOptionsChangedFlagCounter > 0) {
-            console.log(
-                `Critical options were changed for the ${criticalOptionsChangedFlagCounter}n time: fetching quiz list!`
-              );
-              fetchQuizList();
-        }
-    }, [criticalOptionsChangedFlagCounter]);
+        const handler = setTimeout(() => {
+            console.log('Critical options were changed');
+            setQuizHistory([]);
+            fetchQuizList();
+        }, 300);
+        
+        return () => clearTimeout(handler);
+    }, [selectedMode, selectedFilters, selectedSortingMethods]);
 
     // FetchedQuizList changed: update question (photo, person, answer)
     useEffect(() => {
+        if (fetchedQuizList.length === 0) return;
+        console.log("10 next entries: ", JSON.stringify(fetchedQuizList.slice(0,10)));
         fetchQuiz();
     }, [fetchedQuizList]);
 
     // INIT FULL QUIZ WITH OPTIONS
-    const fetchQuizList = async () => {
+    const fetchQuizList = useCallback(async () => {
         try {
-          const reducedGameOptionsDto: ReducedGameOptionsDto = toReducedGameOptionsDto(gameOptions);
-          console.log('FETCHING QUIZ LIST ' + JSON.stringify(reducedGameOptionsDto));
-          const quizList: QuizEntry[] = await getQuizList(reducedGameOptionsDto);
-          // Enrich each quiz entry with an initial repetitionData
-          const enrichedQuizList: QuizEntryWithRepetition[] = quizList.map(qe => ({
+        const gameOptions: GameOptions = {
+            id: Date.now(),
+            gameMode: selectedMode,
+            filters: selectedFilters,
+            sortBy: selectedSortingMethods,
+            repetitionPattern: selectedRepetitionPattern,
+            initialGiven: selectedHelps.initialGiven, // assumes selectedHelps is now an object with booleans
+            typosFriendly: selectedHelps.typosFriendly,
+        };
+        const reducedGameOptionsDto: ReducedGameOptionsDto = toReducedGameOptionsDto(gameOptions);
+        const quizList: QuizEntry[] = await getQuizList(reducedGameOptionsDto);
+        // Enrich each quiz entry with initial repetitionData from the current repetition pattern:
+        const enrichedQuizList: QuizEntryWithRepetition[] = quizList.map(qe => ({
             ...qe,
             repetitionData: {
-              repetitionCount: 0,
-              easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
-              interval: selectedRepetitionPattern.initialInterval === Infinity
-                        ? 0
-                        : Number(selectedRepetitionPattern.initialInterval),
-              nextDueRound: currentRound + (selectedRepetitionPattern.initialInterval === Infinity
-                        ? 0
-                        : Number(selectedRepetitionPattern.initialInterval))
+                totalRepetitionCount: 0,
+                correctRepetitionCount: 0,
+                easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+                interval: selectedRepetitionPattern.initialInterval,
             }
-          }));
-          // Save a backup copy as well as the working list:
-          setBackupQuizList(enrichedQuizList);
-          setFetchedQuizList(enrichedQuizList);
-          setCurrentRound(1);
-          setCurrentRepetitionData(null);
+        }));
+        // Save a backup copy as well as the working list:
+        setBackupQuizList(enrichedQuizList);
+        setFetchedQuizList(enrichedQuizList);
         } catch (error) {
-          console.error('Error fetching quiz list: ', error);
-          notifyError('Error fetching quiz list: ' + error);
+        console.error('Error fetching quiz list: ', error);
+        notifyError('Error fetching quiz list: ' + error);
         }
-      };
-
+    }, [selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
+    
     // INIT 1 QUESTION
-    const fetchQuiz = async () => {
+    const fetchQuiz = useCallback(async () => {
         try {
-          if (fetchedQuizList.length) {
-            console.log('Fetching photo quiz: ' + fetchedQuizList[0].photoUrl);
+        if (fetchedQuizList.length > 0) {
             setPhotoUrl(fetchedQuizList[0].photoUrl);
             setPersonId(fetchedQuizList[0].personId);
             setInitials(fetchedQuizList[0].initials);
+            setCurrentRepetitionData(fetchedQuizList[0].repetitionData);
             setAnswer('');
-            if (!currentRepetitionData && selectedRepetitionPattern) {
-              // Initialize repetition data for the new item.
-              setCurrentRepetitionData({
-                repetitionCount: 0,
-                easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
-                interval: selectedRepetitionPattern.initialInterval === Infinity ? 0 : Number(selectedRepetitionPattern.initialInterval),
-                nextDueRound: currentRound + (selectedRepetitionPattern.initialInterval === Infinity ? 0 : Number(selectedRepetitionPattern.initialInterval)),
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching quiz: ', error);
-          notifyError('Error fetching quiz: ' + error);
         }
-      };
+        } catch (error) {
+            console.error('Error fetching quiz: ', error);
+            notifyError('Error fetching quiz: ' + error);
+        }
+    }, [fetchedQuizList]);
+  
 
     // HANDLING QUIZ ANSWER
     // HANDLE ANSWER INPUT
@@ -179,7 +247,7 @@ export const Quiz: React.FC<QuizProps> = () => {
         if (photoUrl && personId && selectedMode) {
           try {
             const personAttributes: PersonAttribute[] = await fetchPersonAttributes(personId);
-            const typosFriendly = selectedHelps.includes('Typos friendly');
+            const typosFriendly = selectedHelps.typosFriendly;
             const normalizedAnswerParts: string[] = answer
               .split(' ')
               .map((part) => normalizeText(part, typosFriendly))
@@ -208,68 +276,55 @@ export const Quiz: React.FC<QuizProps> = () => {
             // and quality to 3 when the normalized answers are matching
             // and quality to 0 if not matching at all
             const quality = match ? 5 : 0;
-            const updatedRepetitionData: SpacedRepetitionData = updateRepetitionData(currentRepetitionData, quality, currentRound);
-            // Save the updated repetition data for this item in your history:
-            setQuizHistory(prevHistory => [
-              ...prevHistory,
-              {
-                photoUrl: photoUrl!,
-                personId: personId!,
-                initials: initials!,
-                correct: match,
-                repetitionData: updatedRepetitionData
-              }
-            ]);
-    
-            // If the answer is correct, remove it from the quiz list.
-            // Otherwise, if incorrect, reinsert it so that it will be repeated in a future round.
+            const updatedRepetitionData: SpacedRepetitionData = updateRepetitionData(currentRepetitionData, quality);
+            // SAVE DANS L'HISTORIQUE :
+            // SI c'est la première fois qu'on le rencontre, on l'ajoute
+            // Sinon on modifie son repetitionData seulement
+            if (currentRepetitionData.totalRepetitionCount === 0) {
+                setQuizHistory(prevHistory => [
+                  ...prevHistory,
+                  {
+                    photoUrl: photoUrl!,
+                    personId: personId!,
+                    initials: initials!,
+                    correct: match,
+                    repetitionData: updatedRepetitionData
+                  }
+                ]);
+            } else {
+                setQuizHistory(prevHistory =>
+                    prevHistory.map(entry =>
+                      entry.personId === personId
+                        ? { ...entry, repetitionData: updatedRepetitionData }
+                        : entry
+                    )
+                );
+            }
+            
+            // FAIRE REPETER SI CA N'A PAS MATCHE DU PREMIER COUP et QUE L'INTERVAL N'EST PAS -1 
+            if(((match && updatedRepetitionData.totalRepetitionCount > 1) || !match) && updatedRepetitionData.interval !== -1) {
+                console.log('On fait répéter car:' , match, currentRepetitionData.totalRepetitionCount, updatedRepetitionData.interval);
+                const insertionIndex: number = updatedRepetitionData.interval < (fetchedQuizList.length-1) ? updatedRepetitionData.interval : (fetchedQuizList.length-1);
+                setFetchedQuizList(prevList => {
+                  const currentQuestion: QuizEntryWithRepetition = prevList[0];
+                  const newList: QuizEntryWithRepetition[] = prevList.slice(1);
+                  // Insert the updated current question into newList at the computed insertionIndex.
+                  newList.splice(insertionIndex, 0, {
+                    ...currentQuestion,
+                    repetitionData: updatedRepetitionData
+                  });
+                  return newList;
+                });
+            } else {
+                console.log('On fait PAS repeter car:' , match, currentRepetitionData.totalRepetitionCount, updatedRepetitionData.interval);
+                setFetchedQuizList(prevList => prevList.slice(1));
+            }
+
             if (match) {
                 notifySuccess('Bien joué');
-                // Check if this is the first correct answer:
-                if (currentRepetitionData && currentRepetitionData.repetitionCount === 0) {
-                  // Remove permanently (do not reinsert)
-                  setFetchedQuizList(prevList => prevList.slice(1));
-                } else {
-                  // Otherwise, update the repetition data and reinsert at the calculated index.
-                  const insertionIndex: number = updatedRepetitionData.nextDueRound - currentRound;
-                  setFetchedQuizList(prevList => {
-                    const currentQuestion: QuizEntryWithRepetition = prevList[0];
-                    const newList: QuizEntryWithRepetition[] = prevList.slice(1);
-                    // Insert the updated current question into newList at the computed insertionIndex.
-                    newList.splice(insertionIndex, 0, {
-                      ...currentQuestion,
-                      repetitionData: updatedRepetitionData
-                    });
-                    return newList;
-                  });
-                }
-                setCurrentRound(prev => prev + 1);
-                // Reset current repetition data for the next question.
-                setCurrentRepetitionData(null);
-              } else {
+            } else {
                 notifyWarning(`Erreur: la réponse était ${correctAnswers.join(' ')} et vous avez répondu ${answer}`);
-                // For an incorrect answer, update its repetitionData and reinsert it.
-                if (updatedRepetitionData.nextDueRound > currentRound) {
-                  setFetchedQuizList(prevList => {
-                    const currentQuestion: QuizEntryWithRepetition = prevList[0];
-                    const newList: QuizEntryWithRepetition[] = prevList.slice(1);
-                    const insertionIndex: number = updatedRepetitionData.nextDueRound - currentRound;
-                    newList.splice(insertionIndex, 0, {
-                      ...currentQuestion,
-                      repetitionData: updatedRepetitionData
-                    });
-                    return newList;
-                  });
-                  // Do not increment currentRound: the question will reappear later.
-                } else {
-                  // If due immediately, you could choose to leave it at the front.
-                  setFetchedQuizList(prevList => {
-                    const currentQuestion = prevList[0];
-                    return [{ ...currentQuestion, repetitionData: updatedRepetitionData }, ...prevList.slice(1)];
-                  });
-                }
-              }
-              setAnswer('');
+            }
               
           } catch (error) {
             console.error('Error validating answer:', error);
@@ -279,7 +334,7 @@ export const Quiz: React.FC<QuizProps> = () => {
           console.error('No photo available or game mode selected');
           notifyError('No photo available or game mode selected');
         }
-      }, [answer, photoUrl, personId, selectedMode, selectedHelps, currentRound, currentRepetitionData]);
+      }, [answer, photoUrl, personId, selectedMode, selectedHelps, currentRepetitionData]);
 
     const handleKeyPress = useCallback((event: KeyboardEvent) => {
         if (event.key === 'Enter') {
@@ -317,13 +372,14 @@ export const Quiz: React.FC<QuizProps> = () => {
                 .replace(/h/gi, '') // Remove silent 'h'
                 .replace(/pt/gi, 't') // Simplify "pt" to "t"
                 .replace(/sz/gi, 's') // Simplify "sz" to "s"
-                .replace(/([bcdfghjklmnpqrstvwxyz])\1/gi, '$1') // Simplify double consonants
+                .replace(/([a-z])\1+/gi, '$1') // Simplify 1 or more the same letters into 1 letter 
                 .replace(/e+$/gi, '') // Remove trailing silent 'e'
                 .replace(/[^a-z]/gi, '') // Remove non-alphabetic characters
                 .replace(/au/gi, 'o') // Transform "au" to "o"
                 .replace(/ck/gi, 'k') // Transform "ck" to "k"
                 .replace(/qu/gi, 'k') // Transform "qu" to "k"
                 .replace(/que/gi, 'k') // Transform "que" to "k"
+                .replace(/en/gi, 'an') // Transform "que" to "k"
                 .replace(/c/gi, 'k') // Transform "c" to "k"
                 .trim() // Remove spaces at the beginning and end
                 .replace(/\s+/g, ' '); // Replace multiple spaces with a single space
@@ -338,51 +394,52 @@ export const Quiz: React.FC<QuizProps> = () => {
     // CALCULATE REPETITIONS
     const updateRepetitionData = (
         currentData: SpacedRepetitionData | null,
-        quality: number,
-        currentRound: number
+        quality: number
       ): SpacedRepetitionData => {
         const data = currentData || {
-          repetitionCount: 0,
-          easinessFactor: 2.5,
-          interval: 1,
-          nextDueRound: currentRound + 1,
+            totalRepetitionCount: 0,
+            correctRepetitionCount: 0,
+            easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+            interval: selectedRepetitionPattern.initialInterval
         };
-    
+        const newTotalRepetitionCount: number = data.totalRepetitionCount + 1;
         if (quality < 3) {
-          // Reset for low quality answers
-          return {
-            repetitionCount: 0,
-            easinessFactor: 2.5,
-            interval: 1,
-            nextDueRound: currentRound + 1,
-          };
-        } else {
-          if (data.repetitionCount === 0) {
-            // First correct attempt: mark as learned (no repetition)
+            // Reset for low quality answers
             return {
-              repetitionCount: 1,
-              easinessFactor: data.easinessFactor,
-              interval: Infinity,
-              nextDueRound: Infinity,
+                totalRepetitionCount: newTotalRepetitionCount,
+                correctRepetitionCount: 0, // on remet à zero le compte de bonne réponse
+                easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+                interval: selectedRepetitionPattern.initialInterval,
             };
-          }
-          const newRepetitionCount = data.repetitionCount + 1;
-          let newInterval: number;
-          if (newRepetitionCount === 2) {
-            newInterval = 4;
-          } else {
-            // L'interval de répétition augmente avec la facilité d'apprentissage et donc la qualité des reponses
-            newInterval = Math.round(data.interval * data.easinessFactor);
-          }
-          // Le facteur de facilité augmente avec la qualité des réponses
-          let newEasinessFactor = data.easinessFactor - 0.8 + 0.28 * quality - 0.02 * quality * quality;
-          if (newEasinessFactor < 1.3) newEasinessFactor = 1.3;
-          return {
-            repetitionCount: newRepetitionCount,
-            easinessFactor: newEasinessFactor,
-            interval: newInterval,
-            nextDueRound: currentRound + newInterval,
-          };
+        } else {
+            const newCorrectRepetitionCount: number = data.correctRepetitionCount + 1;
+            if (newTotalRepetitionCount === 1) {
+                // First correct attempt: mark as learned (no repetition = infinite interval (-1))
+                return {
+                    totalRepetitionCount: newTotalRepetitionCount,
+                    correctRepetitionCount: newCorrectRepetitionCount,
+                    easinessFactor: data.easinessFactor,
+                    interval: -1,
+                };
+            }
+            let newInterval: number;
+            if (newCorrectRepetitionCount === 1) {
+                console.log('SECOND INTERVAL : ' + selectedRepetitionPattern.secondInterval);
+                newInterval = selectedRepetitionPattern.secondInterval;
+            } else {
+                // L'interval de répétition augmente avec la facilité d'apprentissage et donc la qualité des reponses
+                newInterval = Math.round(data.interval * data.easinessFactor);
+            }
+            // Le facteur de facilité augmente avec la qualité des réponses
+            let newEasinessFactor = data.easinessFactor - 0.8 + 0.28 * quality - 0.02 * quality * quality;
+            console.log('new ezFactor de ', newEasinessFactor);
+            if (newEasinessFactor < 1.3) newEasinessFactor = 1.3;
+            return {
+                totalRepetitionCount: newTotalRepetitionCount,
+                correctRepetitionCount: newCorrectRepetitionCount,
+                easinessFactor: newEasinessFactor,
+                interval: newInterval,
+            };
         }
       };
 
@@ -400,47 +457,20 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     // OPEN / CLOSE OPTIONS - SAVE / CANCEL OPTIONS CHANGES
     const toggleOptions = (saveChanges = false) => {
-        console.log('ShowOptions toggled from:' + showOptions);
         if(showOptions) { // CLOSING OPTIONS
             if (saveChanges) {
-                console.log('Trying to save options');
-                const gameModeChanged: boolean = gameOptions.gameMode !== selectedMode;
-                const filtersChanged: boolean = JSON.stringify(gameOptions.filters) !== JSON.stringify(selectedFilters);
-                const sortByChanged: boolean = JSON.stringify(gameOptions.sortBy) !== JSON.stringify(sortingMethods);
-                const repetitionPatternChanged: boolean = gameOptions.repetitionPattern !== selectedRepetitionPattern;
-                const initialGivenChanged: boolean = gameOptions.initialGiven !== selectedHelps.includes('Initial given');
-                const typosFriendlyChanged: boolean = gameOptions.typosFriendly !== selectedHelps.includes('Typos friendly');
-                const changesMade: boolean = (gameModeChanged || filtersChanged ||
-                                             sortByChanged || repetitionPatternChanged ||
-                                             initialGivenChanged || typosFriendlyChanged);
-    
-                if (changesMade) {
-                    console.log('Options were changed: let\'s continue');
-                    setGameOptions({
-                        id: Date.now(),
-                        gameMode: selectedMode!,
-                        filters: selectedFilters  || [],
-                        sortBy: sortingMethods  || [],
-                        repetitionPattern: selectedRepetitionPattern,
-                        initialGiven: selectedHelps.includes('Initial given'),
-                        typosFriendly: selectedHelps.includes('Typos friendly')
-                    });
-    
-                    if (gameModeChanged || filtersChanged || sortByChanged) {
-                        console.log('Critical options were changed: let\'s increment criticalOptionsChangedFlagCounter');
-                        setCriticalOptionsChangedFlagCounter(prev => prev + 1);
-                    }
-                    if (gameModeChanged) {
-                        // TODO : RESET PROGRESS (NO PROGRESS YET, NO HISTORIC YET)
-                    }
-                 }
+                setSelectedMode(tempSelectedMode);
+                setSelectedFilters(tempSelectedFilters);
+                setSelectedSortingMethods(tempSelectedSortingMethods);
+                setSelectedRepetitionPattern(tempSelectedRepetitionPattern);
+                setSelectedHelps(tempSelectedHelps);
             } else {
                 // Revert interim states to last committed state if changes were made but user cancelled
-                setSelectedMode(gameOptions.gameMode);
-                setSelectedFilters(gameOptions.filters);
-                setSortingMethods(gameOptions.sortBy);
-                setSelectedRepetitionPattern(gameOptions.repetitionPattern);
-                setSelectedHelps(gameOptions.initialGiven ? 'Initial given' : 'Typos friendly');
+                setTempSelectedMode(selectedMode);
+                setTempSelectedFilters(selectedFilters);
+                setTempSelectedSortingMethods(selectedSortingMethods);
+                setTempSelectedRepetitionPattern(selectedRepetitionPattern);
+                setTempSelectedHelps(selectedHelps);
             }
         }
         
@@ -450,16 +480,11 @@ export const Quiz: React.FC<QuizProps> = () => {
     // OPTIONS: MODES
     const fetchModes = async () => {
         try {
-            const fetchedModes = await getGameModes();
+            const fetchedModes: GameMode[] = await getGameModes();
             setModesList(fetchedModes);
             if (fetchedModes.length > 0) {
                 setSelectedMode(fetchedModes[0]); // Set the first mode as the default selected mode
-                setGameOptions((prevOptions) => ({
-                    ...prevOptions, // Spread previous options to keep all other values
-                    gameMode: fetchedModes[0],
-                }));
-                console.log('FETCHING MODES');
-                setCriticalOptionsChangedFlagCounter(prev => prev + 1);
+                setTempSelectedMode(fetchedModes[0]); // Set the first mode as the default selected mode
                 
             }
         } catch (error) {
@@ -472,32 +497,32 @@ export const Quiz: React.FC<QuizProps> = () => {
             <ModeCard
                 key={mode.id}
                 mode={mode}
-                isSelected={selectedMode?.id === mode.id}
+                isSelected={tempSelectedMode?.id === mode.id}
                 onSelect={() => handleSelectMode(mode)}
             />
         ));
     };
 
     const handleSelectMode = (mode: GameMode) => {
-        setSelectedMode(mode);
+        setTempSelectedMode(mode);
     };
 
     // OPTIONS: FILTERS
     const handleAddFilter = (filter: GameFilter) => {
-        setSelectedFilters(prevFilters => [...prevFilters, filter]);
+        setTempSelectedFilters(prevFilters => [...prevFilters, filter]);
         setOpenFilterModal(false);
     };
 
     const handleDeleteFilter = (index: number) => {
-        const newFilters = selectedFilters.filter((_, i) => i !== index);
-        setSelectedFilters(newFilters);
+        const newFilters = tempSelectedFilters.filter((_, i) => i !== index);
+        setTempSelectedFilters(newFilters);
     };
     
     const renderFilters = () => {
-        if (selectedFilters.length === 0) {
+        if (tempSelectedFilters.length === 0) {
             return <Chip label="No filters" disabled />;
         }
-        return selectedFilters.map((filter, index) => (
+        return tempSelectedFilters.map((filter, index) => (
             <Chip
                 key={index}
                 label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
@@ -508,20 +533,20 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     // OPTIONS: SORTING METHODS
     const handleAddSortingMethod = (sortBy: GameSortBy) => {
-        setSortingMethods([...sortingMethods, sortBy]);
+        setTempSelectedSortingMethods([...tempSelectedSortingMethods, sortBy]);
         setOpenSortModal(false);
     };
     
     const handleDeleteSortingMethod = (index: number) => {
-        const newSortingMethods = sortingMethods.filter((_, i) => i !== index);
-        setSortingMethods(newSortingMethods);
+        const newSortingMethods = tempSelectedSortingMethods.filter((_, i) => i !== index);
+        setTempSelectedSortingMethods(newSortingMethods);
     };
 
     const renderSortingMethods = () => {
-        if (sortingMethods.length === 0) {
+        if (tempSelectedSortingMethods.length === 0) {
             return <Chip label="No sorting methods" disabled />;
         }
-        return sortingMethods.map((method, index) => (
+        return tempSelectedSortingMethods.map((method, index) => (
             <Chip key={index} label={`${method.attribute.name} (${method.order})`} onDelete={() => handleDeleteSortingMethod(index)} />
         ));
     };
@@ -534,13 +559,11 @@ export const Quiz: React.FC<QuizProps> = () => {
                 ? 'Optimal: We will automatically schedule reviews based on your performance.'
                 : option.toLowerCase() === 'immediate'
                 ? 'Immediate: The question will repeat right away if answered incorrectly.'
-                : option.toLowerCase() === 'never'
-                ? 'Never: Do not repeat this question.'
-                : 'Custom: Adjust advanced repetition parameters.'
+                : 'Never: Do not repeat this question.'
             }>
             <OptionCard
                 option={option.charAt(0).toUpperCase() + option.slice(1)}
-                isSelected={selectedRepetitionPattern.patternName === option.toLowerCase()}
+                isSelected={tempSelectedRepetitionPattern.patternName === option.toLowerCase()}
                 onSelect={() => handleSelectRepetition(option)}
             />
             </Tooltip>
@@ -548,35 +571,28 @@ export const Quiz: React.FC<QuizProps> = () => {
     };
 
     const handleSelectRepetition = (option: string) => {
-        const pattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
-        if (option === 'Custom') {
-          setSelectedRepetitionPattern({
-            patternName: 'custom',
-            initialRepetitionCount: repeatSettings.initialRepetitionCount,
-            initialEasinessFactor: repeatSettings.initialEasinessFactor,
-            initialInterval: repeatSettings.initialInterval,
-          });
-        } else {
-          setSelectedRepetitionPattern(pattern);
-        }
+        const pattern: GameRepetitionPattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
+        setTempSelectedRepetitionPattern(pattern);
     };      
       
     
     // OPTIONS: HELPS
     const renderHelpsOptions = () => {
-        return helpsList.map((option) => (
-            <OptionCard
-                key={option}
-                option={option}
-                isSelected={selectedHelps === option}
-                onSelect={handleSelectHelps}
-            />
+        return helpOptions.map((option) => (
+          <OptionCard
+            key={option.key}
+            option={option.label}
+            isSelected={tempSelectedHelps[option.key]}
+            onSelect={() => handleSelectHelps(option.key)}
+          />
         ));
-    };
-
-    const handleSelectHelps = (option: string) => {
-        setSelectedHelps(option);
-    };
+      };
+      
+      const handleSelectHelps = (key: string) => {
+        // Toggle the boolean for the specific help option.
+        setTempSelectedHelps((prev) => ({ ...prev, [key]: !prev[key] }));
+      };
+      
 
     // NAVIGATION IN WEBSITE
     const goBackToMenu = () => {
@@ -593,18 +609,19 @@ export const Quiz: React.FC<QuizProps> = () => {
             renderFilters={renderFilters}
             openFilterModal={openFilterModal}
             setOpenFilterModal={setOpenFilterModal}
-            filters={filters}
+            availableFilters={availableFilters}
             handleAddFilter={handleAddFilter}
             renderSortingMethods={renderSortingMethods}
             openSortModal={openSortModal}
             setOpenSortModal={setOpenSortModal}
-            sorts={sorts}
+            availableSorts={availableSorts}
             handleAddSortingMethod={handleAddSortingMethod}
             renderRepetitionOptions={renderRepetitionOptions}
-            selectedRepetitionPattern={selectedRepetitionPattern}
+            tempSelectedRepetitionPattern={tempSelectedRepetitionPattern}
             repeatSettings={repeatSettings}
             setRepeatSettings={setRepeatSettings}
             renderHelpsOptions={renderHelpsOptions}
+            hasCriticalChanges={hasCriticalChanges}
           />
         );
       }
@@ -614,6 +631,8 @@ export const Quiz: React.FC<QuizProps> = () => {
         <QuizDisplay
             color={color}
             photoUrl={photoUrl}
+            initials={initials}
+            showInitials={selectedHelps.initialGiven}
             answer={answer}
             handleAnswerChange={handleAnswerChange}
             validateAnswer={validateAnswer}

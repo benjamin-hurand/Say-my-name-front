@@ -1,4 +1,5 @@
 // QuizDisplay.tsx
+
 import React from 'react';
 import { Button, Box, TextField, Typography, IconButton, Skeleton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -6,6 +7,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 export interface QuizDisplayProps {
   color: string;
   photoUrl: string | null;
+  initials: string | null;
+  showInitials: boolean;          // <-- new prop to control display
   answer: string;
   handleAnswerChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   validateAnswer: () => void;
@@ -16,6 +19,8 @@ export interface QuizDisplayProps {
 const QuizDisplay: React.FC<QuizDisplayProps> = ({
   color,
   photoUrl,
+  initials,
+  showInitials,
   answer,
   handleAnswerChange,
   validateAnswer,
@@ -25,6 +30,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
   return (
     <div className="quiz" style={{ padding: '20px', width: '100%', height: '100%' }}>
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        {/* Header row */}
         <Box
           sx={{
             display: 'flex',
@@ -50,6 +56,8 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
             Hello Quiz
           </Typography>
         </Box>
+
+        {/* Photo or skeleton */}
         {photoUrl ? (
           <img
             src={`photos/${photoUrl}`}
@@ -70,14 +78,19 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
             style={{ backdropFilter: 'blur(3px)', backgroundColor: color + '10' }}
           />
         )}
+
         <TextField
           variant="outlined"
           placeholder="Type your answer here..."
+          label={showInitials && initials ? `Initials: ${initials}` : ''}
           value={answer}
-          className="menu"
           onChange={handleAnswerChange}
+          InputLabelProps={{ shrink: true }}
           sx={{ margin: '20px 0', width: '100%' }}
         />
+
+
+        {/* Buttons row */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', height: '7vh' }}>
           <Button variant="outlined" className="menu nobg" onClick={toggleOptions} sx={{ marginRight: '1vw' }}>
             Options
