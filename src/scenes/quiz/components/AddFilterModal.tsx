@@ -1,146 +1,363 @@
-import React, { ChangeEvent, useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Chip, Box, Slider } from '@mui/material';
+import React, { ChangeEvent, useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Chip,
+  Box,
+} from '@mui/material';
 import { Attribute } from '../../../models/commons/Attribute';
 import { GameFilter } from '../../../models/commons/Game/GameOptions/GameFilter.model';
+import { StyledSlider } from './StyledSlider';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const mapNumberToLetter = (num: number): string => (alphabet[num] || '');
+const mapLetterToNumber = (letter: string): number => alphabet.indexOf(letter.toUpperCase());
 
-const mapNumberToLetter = (num: number): string => alphabet[num];
-const mapLetterToNumber = (letter: string): number => alphabet.indexOf(letter);
+const msPerDay = 24 * 60 * 60 * 1000;
+// Convert a YYYY-MM-DD string to a day-offset (days since epoch)
+const dateStringToDayOffset = (dateString: string): number =>
+  Math.floor(new Date(dateString).getTime() / msPerDay);
+// Convert a day offset back to an ISO date string (YYYY-MM-DD) for native inputs
+const dayOffsetToISODateString = (dayOffset: number): string => {
+  const date = new Date(dayOffset * msPerDay);
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+// Convert a day offset to a localized date string for display in the slider
+const dayOffsetToLocalizedDateString = (dayOffset: number, locale = navigator.language): string => {
+  const date = new Date(dayOffset * msPerDay);
+  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+};
 
-const AttributeCard = ({ attribute, isSelected, onSelect }: { attribute: Attribute; isSelected: boolean; onSelect: (attribute: Attribute) => void }) => (
-    <Chip
-        label={attribute.name}
-        onClick={() => onSelect(attribute)}
-        color={isSelected ? 'primary' : 'default'}
-        style={{ margin: 4, cursor: 'pointer' }}
-    />
+function createNumericMarks(minVal: number, maxVal: number, steps = 5) {
+  const rangeLength = maxVal - minVal;
+  if (rangeLength <= 0) return [{ value: 0, label: minVal.toString() }];
+  const marks = [];
+  const stepSize = Math.round(rangeLength / steps);
+  for (let i = 0; i < steps; i++) {
+    const val = minVal + i * stepSize;
+    marks.push({ value: val - minVal, label: val.toString() });
+  }
+  marks.push({ value: rangeLength, label: maxVal.toString() });
+  return marks;
+}
+
+function createDateMarks(minDay: number, maxDay: number, steps = 5) {
+  const rangeLength = maxDay - minDay;
+  if (rangeLength <= 0) return [{ value: 0, label: dayOffsetToLocalizedDateString(minDay) }];
+  const marks = [];
+  const stepSize = Math.round(rangeLength / steps);
+  for (let i = 0; i < steps; i++) {
+    const offset = i * stepSize;
+    marks.push({ value: offset, label: dayOffsetToLocalizedDateString(minDay + offset) });
+  }
+  marks.push({ value: rangeLength, label: dayOffsetToLocalizedDateString(maxDay) });
+  return marks;
+}
+
+const AttributeCard = ({
+  attribute,
+  isSelected,
+  onSelect,
+}: {
+  attribute: Attribute;
+  isSelected: boolean;
+  onSelect: (attribute: Attribute) => void;
+}) => (
+  <Chip
+    label={attribute.name}
+    onClick={() => onSelect(attribute)}
+    color={isSelected ? 'primary' : 'default'}
+    sx={{ margin: 1, cursor: 'pointer' }}
+  />
 );
 
 interface AddFilterModalProps {
-    open: boolean;
-    attributes: Attribute[];
-    onSave: (filter: GameFilter) => void;  // Updated to accept a GameFilter object
-    onClose: () => void;
+  open: boolean;
+  attributes: Attribute[];
+  onSave: (filter: GameFilter) => void;
+  onClose: () => void;
+  initialFilter?: GameFilter;
+  handleDeleteFilter: (filterId: number) => void;
 }
 
-export const AddFilterModal: React.FC<AddFilterModalProps> = ({ open, attributes, onSave, onClose }) => {
-    const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
-    const [range, setRange] = useState<[number, number]>([0, 19]); // Default to year range 2005-2024
+const AddFilterModal: React.FC<AddFilterModalProps> = ({
+  open,
+  attributes,
+  onSave,
+  onClose,
+  initialFilter,
+  handleDeleteFilter,
+}) => {
+  const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
+  // The slider's internal range is in "offset" units.
+  const [range, setRange] = useState<[number, number]>([0, 25]);
 
-    const handleSave = () => {
-        if (selectedAttribute) {
-            const gameFilter: GameFilter = {
-                id: selectedAttribute.id,  // Assuming id from the selected attribute can be used
-                attribute: selectedAttribute,
-                minValue: selectedAttribute.name === 'promotion' ? (range[0] + 2005).toString() : mapNumberToLetter(range[0]),
-                maxValue: selectedAttribute.name === 'promotion' ? (range[1] + 2005).toString() : mapNumberToLetter(range[1]),
-            };
-            onSave(gameFilter);
-        }
-        onClose();
-    };
+  // When editing, initialize the modal with the initial filter's attribute and range.
+  useEffect(() => {
+    if (initialFilter) {
+      setSelectedAttribute(initialFilter.attribute);
+      if (initialFilter.attribute.type === 'number') {
+        const attrMin = initialFilter.attribute.minValue ? parseInt(initialFilter.attribute.minValue, 10) : 0;
+        const minVal = initialFilter.minValue ? parseInt(initialFilter.minValue, 10) : attrMin;
+        const maxVal = initialFilter.maxValue ? parseInt(initialFilter.maxValue, 10) : (attrMin + 100);
+        setRange([minVal - attrMin, maxVal - attrMin]);
+      } else if (initialFilter.attribute.type === 'date') {
+        const attrMin = initialFilter.attribute.minValue ? dateStringToDayOffset(initialFilter.attribute.minValue) : 0;
+        const minDay = initialFilter.minValue ? dateStringToDayOffset(initialFilter.minValue) : attrMin;
+        const maxDay = initialFilter.maxValue ? dateStringToDayOffset(initialFilter.maxValue) : (attrMin + 100);
+        setRange([minDay - attrMin, maxDay - attrMin]);
+      }
+    } else {
+      setSelectedAttribute(null);
+      setRange([0, 25]);
+    }
+  }, [initialFilter, open]);
 
-    const handleSliderChange = (event: Event, newValue: number | number[]) => {
-        setRange(newValue as [number, number]);
-    };
+  // Compute attributes to render: if in edit mode and the attribute is not present, prepend it.
+  const attributesToRender = initialFilter
+    ? attributes.find((attr) => attr.id === initialFilter.attribute.id)
+      ? attributes
+      : [initialFilter.attribute, ...attributes]
+    : attributes;
 
-    const handleMinInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const value = selectedAttribute?.name === 'promotion'
-            ? parseInt(event.target.value) - 2005
-            : mapLetterToNumber(event.target.value.toUpperCase());
-        setRange([value, range[1]]);
-    };
+  const handleSelectAttribute = (attribute: Attribute) => {
+    setSelectedAttribute(attribute);
+    if (attribute.type === 'number') {
+      const attrMin = attribute.minValue ? parseInt(attribute.minValue, 10) : 0;
+      const attrMax = attribute.maxValue ? parseInt(attribute.maxValue, 10) : 100;
+      setRange([0, Math.max(0, attrMax - attrMin)]);
+    } else if (attribute.type === 'date') {
+      const attrMin = attribute.minValue ? dateStringToDayOffset(attribute.minValue) : 0;
+      const attrMax = attribute.maxValue ? dateStringToDayOffset(attribute.maxValue) : 0;
+      setRange([0, Math.max(0, attrMax - attrMin)]);
+    } else {
+      setRange([0, 25]);
+    }
+  };
 
-    const handleMaxInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const value = selectedAttribute?.name === 'promotion'
-            ? parseInt(event.target.value) - 2005
-            : mapLetterToNumber(event.target.value.toUpperCase());
-        setRange([range[0], value]);
-    };
+  const getSliderMarks = () => {
+    if (!selectedAttribute) return [];
+    if (selectedAttribute.type === 'number') {
+      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+      const attrMax = selectedAttribute.maxValue ? parseInt(selectedAttribute.maxValue, 10) : 100;
+      return createNumericMarks(attrMin, attrMax);
+    } else if (selectedAttribute.type === 'date') {
+      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+      const attrMax = selectedAttribute.maxValue ? dateStringToDayOffset(selectedAttribute.maxValue) : 0;
+      return createDateMarks(attrMin, attrMax);
+    } else {
+      return alphabet.map((letter, index) => ({ value: index, label: letter }));
+    }
+  };
 
-    const handleSelectAttribute = (attribute: Attribute) => {
-        setSelectedAttribute(attribute);
-        if (attribute.name === 'promotion') {
-            setRange([0, 19]); // Year range from 2005 to 2024
-        } else {
-            setRange([0, 25]); // Default to A-Z range
-        }
-    };
+  const getSliderMax = () => {
+    if (!selectedAttribute) return 25;
+    if (selectedAttribute.type === 'number') {
+      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+      const attrMax = selectedAttribute.maxValue ? parseInt(selectedAttribute.maxValue, 10) : 100;
+      return Math.max(0, attrMax - attrMin);
+    } else if (selectedAttribute.type === 'date') {
+      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+      const attrMax = selectedAttribute.maxValue ? dateStringToDayOffset(selectedAttribute.maxValue) : 0;
+      return Math.max(0, attrMax - attrMin);
+    } else {
+      return 25;
+    }
+  };
 
-    const renderAttributes = () => {
-        return attributes.map((attribute) => (
+  const formatSliderValue = (value: number) => {
+    if (!selectedAttribute) return '';
+    if (selectedAttribute.type === 'number') {
+      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+      return (attrMin + value).toString();
+    } else if (selectedAttribute.type === 'date') {
+      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+      return dayOffsetToLocalizedDateString(attrMin + value);
+    } else {
+      return mapNumberToLetter(value);
+    }
+  };
+
+  const handleSliderChange = (event: Event, newValue: number | number[]) => {
+    setRange(newValue as [number, number]);
+  };
+
+  const handleMinInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!selectedAttribute) return;
+    const input = event.target.value;
+    if (selectedAttribute.type === 'number') {
+      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+      const typedNum = parseInt(input, 10);
+      if (!isNaN(typedNum)) {
+        setRange([typedNum - attrMin, range[1]]);
+      }
+    } else if (selectedAttribute.type === 'date') {
+      // When using type="date", input is in ISO format.
+      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+      const typedDay = dateStringToDayOffset(input);
+      setRange([typedDay - attrMin, range[1]]);
+    } else {
+      const letterIndex = mapLetterToNumber(input);
+      if (letterIndex >= 0 && letterIndex <= 25) {
+        setRange([letterIndex, range[1]]);
+      }
+    }
+  };
+
+  const handleMaxInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!selectedAttribute) return;
+    const input = event.target.value;
+    if (selectedAttribute.type === 'number') {
+      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+      const typedNum = parseInt(input, 10);
+      if (!isNaN(typedNum)) {
+        setRange([range[0], typedNum - attrMin]);
+      }
+    } else if (selectedAttribute.type === 'date') {
+      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+      const typedDay = dateStringToDayOffset(input);
+      setRange([range[0], typedDay - attrMin]);
+    } else {
+      const letterIndex = mapLetterToNumber(input);
+      if (letterIndex >= 0 && letterIndex <= 25) {
+        setRange([range[0], letterIndex]);
+      }
+    }
+  };
+
+  const handleSave = () => {
+    if (selectedAttribute) {
+      let minValStr: string, maxValStr: string;
+      if (selectedAttribute.type === 'number') {
+        const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+        minValStr = (attrMin + range[0]).toString();
+        maxValStr = (attrMin + range[1]).toString();
+      } else if (selectedAttribute.type === 'date') {
+        const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+        // For saving, use ISO format.
+        minValStr = dayOffsetToISODateString(attrMin + range[0]);
+        maxValStr = dayOffsetToISODateString(attrMin + range[1]);
+      } else {
+        minValStr = mapNumberToLetter(range[0]);
+        maxValStr = mapNumberToLetter(range[1]);
+      }
+      const gameFilter: GameFilter = {
+        id: selectedAttribute.id,
+        attribute: selectedAttribute,
+        minValue: minValStr,
+        maxValue: maxValStr,
+      };
+      onSave(gameFilter);
+    }
+    onClose();
+  };
+
+  const handleDelete = () => {
+    if (initialFilter) {
+      handleDeleteFilter(initialFilter.id);
+    }
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="md"
+      PaperProps={{
+        style: {
+          minWidth: 500,
+          overflow: 'visible',
+        },
+      }}
+    >
+      <DialogTitle>{initialFilter ? 'Edit Filter' : 'Add a Filter'}</DialogTitle>
+      <DialogContent dividers sx={{ overflowY: 'auto' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+          {attributesToRender.map((attr) => (
             <AttributeCard
-                key={attribute.id}
-                attribute={attribute}
-                isSelected={selectedAttribute?.id === attribute.id}
-                onSelect={handleSelectAttribute}
+              key={attr.id}
+              attribute={attr}
+              isSelected={selectedAttribute?.id === attr.id}
+              onSelect={handleSelectAttribute}
             />
-        ));
-    };
-
-    const getMarksForPromotion = () => {
-        // Dynamically select fewer years for marks, e.g., every 4th year
-        const years = [];
-        for (let i = 0; i <= 19; i += 4) {
-            years.push({ value: i, label: (2005 + i).toString() });
-        }
-        // Always include the first and last year
-        if (years[years.length - 1].value !== 19) {
-            years.push({ value: 19, label: '2024' });
-        }
-        return years;
-    };
-
-    return (
-        <Dialog open={open} onClose={onClose}>
-            <DialogTitle>Add a Filter</DialogTitle>
-            <DialogContent>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-                    {renderAttributes()}
-                </Box>
-
-                {selectedAttribute && (
-                    <>
-                        <Box sx={{ mt: 2 }}>
-                            <Slider
-                                value={range}
-                                onChange={handleSliderChange}
-                                valueLabelDisplay="auto"
-                                min={0}
-                                max={selectedAttribute.name === 'promotion' ? 19 : 25}
-                                step={1}
-                                marks={selectedAttribute.name === 'promotion' ? getMarksForPromotion() : alphabet.map((letter, index) => ({ value: index, label: letter }))}
-                                valueLabelFormat={(value) =>
-                                    selectedAttribute.name === 'promotion' ? (2005 + value).toString() : mapNumberToLetter(value)
-                                }
-                            />
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                            <TextField
-                                label="Min"
-                                type="text"
-                                value={selectedAttribute.name === 'promotion' ? (2005 + range[0]).toString() : mapNumberToLetter(range[0])}
-                                onChange={handleMinInputChange}
-                                sx={{ width: '45%' }}
-                                inputProps={{ maxLength: selectedAttribute.name === 'promotion' ? 4 : 1 }}
-                            />
-                            <TextField
-                                label="Max"
-                                type="text"
-                                value={selectedAttribute.name === 'promotion' ? (2005 + range[1]).toString() : mapNumberToLetter(range[1])}
-                                onChange={handleMaxInputChange}
-                                sx={{ width: '45%' }}
-                                inputProps={{ maxLength: selectedAttribute.name === 'promotion' ? 4 : 1 }}
-                            />
-                        </Box>
-                    </>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button variant="outlined" onClick={onClose}>Cancel</Button>
-                <Button variant="contained" onClick={handleSave} disabled={!selectedAttribute}>Save</Button>
-            </DialogActions>
-        </Dialog>
-    );
+          ))}
+        </Box>
+        {selectedAttribute && (
+          <>
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+              <StyledSlider
+                value={range}
+                onChange={handleSliderChange}
+                valueLabelDisplay="auto"
+                min={0}
+                max={getSliderMax()}
+                step={1}
+                marks={getSliderMarks()}
+                valueLabelFormat={formatSliderValue}
+                sx={{ width: '80%' }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <TextField
+                label="Min"
+                type={selectedAttribute.type === 'date' ? 'date' : 'text'}
+                value={
+                  selectedAttribute.type === 'number'
+                    ? (selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[0]
+                    : selectedAttribute.type === 'date'
+                    ? dayOffsetToISODateString(
+                        (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[0]
+                      )
+                    : mapNumberToLetter(range[0])
+                }
+                onChange={handleMinInputChange}
+                sx={{ width: '45%' }}
+                InputLabelProps={selectedAttribute.type === 'date' ? { shrink: true } : undefined}
+              />
+              <TextField
+                label="Max"
+                type={selectedAttribute.type === 'date' ? 'date' : 'text'}
+                value={
+                  selectedAttribute.type === 'number'
+                    ? (selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[1]
+                    : selectedAttribute.type === 'date'
+                    ? dayOffsetToISODateString(
+                        (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[1]
+                      )
+                    : mapNumberToLetter(range[1])
+                }
+                onChange={handleMaxInputChange}
+                sx={{ width: '45%' }}
+                InputLabelProps={selectedAttribute.type === 'date' ? { shrink: true } : undefined}
+              />
+            </Box>
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        {initialFilter && (
+          <Button variant="outlined" color="error" onClick={handleDelete}>
+            Delete
+          </Button>
+        )}
+        <Button variant="outlined" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="contained" onClick={handleSave} disabled={!selectedAttribute}>
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 };
+
+export default AddFilterModal;

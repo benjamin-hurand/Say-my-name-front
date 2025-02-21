@@ -16,12 +16,12 @@ import {
   DialogContentText,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { AddFilterModal } from './components/AddFilterModal';
 import { AddSortModal } from './components/AddSortModal';
 import { GameRepetitionPattern } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { Attribute } from '../../models/commons/Attribute';
 import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
 import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
+import AddFilterModal from './components/AddFilterModal';
 
 interface QuizOptionsProps {
   color: string;
@@ -31,7 +31,7 @@ interface QuizOptionsProps {
   openFilterModal: boolean;
   setOpenFilterModal: (open: boolean) => void;
   availableFilters: Attribute[];
-  handleAddFilter: (filter: GameFilter) => void;
+  handleSaveFilter: (filter: GameFilter) => void;
   renderSortingMethods: () => React.ReactNode;
   openSortModal: boolean;
   setOpenSortModal: (open: boolean) => void;
@@ -51,6 +51,9 @@ interface QuizOptionsProps {
   }) => void;
   renderHelpsOptions: () => React.ReactNode;
   hasCriticalChanges: boolean;
+  initialFilter: GameFilter | undefined;
+  setEditingFilter:  (initialFilter: GameFilter | undefined) => void;
+  handleDeleteFilter: (filterId: number) => void;
 }
 
 const QuizOptions: React.FC<QuizOptionsProps> = ({
@@ -61,7 +64,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   openFilterModal,
   setOpenFilterModal,
   availableFilters,
-  handleAddFilter,
+  handleSaveFilter,
   renderSortingMethods,
   openSortModal,
   setOpenSortModal,
@@ -72,10 +75,20 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   repeatSettings,
   setRepeatSettings,
   renderHelpsOptions,
-  hasCriticalChanges
+  hasCriticalChanges,
+  initialFilter,
+  setEditingFilter,
+  handleDeleteFilter
 }) => {
   // Local state for confirmation dialog
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+
+    const closeFilterModal = () => {
+      setOpenFilterModal(false);
+      if (initialFilter) {
+        setEditingFilter(undefined);
+      }
+    }
 
     const handleSaveClick = () => {
     if (hasCriticalChanges) {
@@ -161,8 +174,10 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         <AddFilterModal
           open={openFilterModal}
           attributes={availableFilters}
-          onSave={handleAddFilter}
-          onClose={() => setOpenFilterModal(false)}
+          onSave={handleSaveFilter}
+          onClose={() => closeFilterModal()}
+          initialFilter={initialFilter}
+          handleDeleteFilter={handleDeleteFilter}
         />
         <Divider>
           <Typography variant="h6">Sorting Methods</Typography>

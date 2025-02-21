@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Chip, Tooltip } from '@mui/material';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 import { getGameModes } from '../../services/business/gamemodes/gameMode.service';
-import { getAttributes } from '../../services/business/attributes/attribute.service';
+import { getFilters, getSorts } from '../../services/business/attributes/attribute.service';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
 import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
 import { Attribute } from '../../models/commons/Attribute';
@@ -39,6 +39,7 @@ export const Quiz: React.FC<QuizProps> = () => {
     const [backupQuizList, setBackupQuizList] = useState<QuizEntryWithRepetition[]>([]);
     
     // QUIZ 1 QUESTION
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [photoUrl, setPhotoUrl] = useState<string | null>(null);
     const [personId, setPersonId] = useState<number | null>(null);
     const [initials, setInitials] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export const Quiz: React.FC<QuizProps> = () => {
           !tempSelectedFilters.some(selected => selected.attribute.id === attr.id)
         );
       }, [filters, tempSelectedFilters]);
+    const [editingFilter, setEditingFilter] = useState<GameFilter | undefined>();
     const [openFilterModal, setOpenFilterModal] = useState(false);
     const [selectedFilters, setSelectedFilters] = useState<GameFilter[]>([]);
     // SORTING METHODS
@@ -123,7 +125,8 @@ export const Quiz: React.FC<QuizProps> = () => {
     useEffect(() => {
         (async () => {
             console.log('INIT');
-            await fetchAttributes();
+            await fetchFilters();
+            await fetchSorts();
             await fetchModes();
         })();
     }, []);
@@ -181,7 +184,18 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     // FetchedQuizList changed: update question (photo, person, answer)
     useEffect(() => {
-        if (fetchedQuizList.length === 0) return;
+        if (fetchedQuizList.length === 0) {
+            setPhotoUrl(null);
+            setPersonId(null);
+            setInitials(null);
+            setCurrentRepetitionData({
+                totalRepetitionCount: 0,
+                correctRepetitionCount: 0,
+                easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+                interval: selectedRepetitionPattern.initialInterval
+            });
+            setAnswer('');
+        }
         console.log("10 next entries: ", JSON.stringify(fetchedQuizList.slice(0,10)));
         fetchQuiz();
     }, [fetchedQuizList]);
@@ -189,46 +203,57 @@ export const Quiz: React.FC<QuizProps> = () => {
     // INIT FULL QUIZ WITH OPTIONS
     const fetchQuizList = useCallback(async () => {
         try {
-        const gameOptions: GameOptions = {
-            id: Date.now(),
-            gameMode: selectedMode,
-            filters: selectedFilters,
-            sortBy: selectedSortingMethods,
-            repetitionPattern: selectedRepetitionPattern,
-            initialGiven: selectedHelps.initialGiven, // assumes selectedHelps is now an object with booleans
-            typosFriendly: selectedHelps.typosFriendly,
-        };
-        const reducedGameOptionsDto: ReducedGameOptionsDto = toReducedGameOptionsDto(gameOptions);
-        const quizList: QuizEntry[] = await getQuizList(reducedGameOptionsDto);
-        // Enrich each quiz entry with initial repetitionData from the current repetition pattern:
-        const enrichedQuizList: QuizEntryWithRepetition[] = quizList.map(qe => ({
-            ...qe,
-            repetitionData: {
-                totalRepetitionCount: 0,
-                correctRepetitionCount: 0,
-                easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
-                interval: selectedRepetitionPattern.initialInterval,
+            setIsLoading(true);
+            const gameOptions: GameOptions = {
+                id: Date.now(),
+                gameMode: selectedMode,
+                filters: selectedFilters,
+                sortBy: selectedSortingMethods,
+                repetitionPattern: selectedRepetitionPattern,
+                initialGiven: selectedHelps.initialGiven, // assumes selectedHelps is now an object with booleans
+                typosFriendly: selectedHelps.typosFriendly,
+            };
+            const reducedGameOptionsDto: ReducedGameOptionsDto = toReducedGameOptionsDto(gameOptions);
+            const quizList: QuizEntry[] = await getQuizList(reducedGameOptionsDto);
+
+            if (quizList.length === 0) {
+                // No results found: notify the user and clear the quiz list.
+                notifyWarning("Aucun résultat trouvé pour les options sélectionnées. Veuillez ajuster vos filtres.");
+                setFetchedQuizList([]);
+                return;
             }
-        }));
-        // Save a backup copy as well as the working list:
-        setBackupQuizList(enrichedQuizList);
-        setFetchedQuizList(enrichedQuizList);
+
+            // Enrich each quiz entry with initial repetitionData from the current repetition pattern:
+            const enrichedQuizList: QuizEntryWithRepetition[] = quizList.map(qe => ({
+                ...qe,
+                repetitionData: {
+                    totalRepetitionCount: 0,
+                    correctRepetitionCount: 0,
+                    easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+                    interval: selectedRepetitionPattern.initialInterval,
+                }
+            }));
+            // Save a backup copy as well as the working list:
+            setBackupQuizList(enrichedQuizList);
+            setFetchedQuizList(enrichedQuizList);
         } catch (error) {
-        console.error('Error fetching quiz list: ', error);
-        notifyError('Error fetching quiz list: ' + error);
+            console.error('Error fetching quiz list: ', error);
+            notifyError('Error fetching quiz list: ' + error);
+        } finally {
+            setIsLoading(false);
         }
     }, [selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
     
     // INIT 1 QUESTION
     const fetchQuiz = useCallback(async () => {
         try {
-        if (fetchedQuizList.length > 0) {
-            setPhotoUrl(fetchedQuizList[0].photoUrl);
-            setPersonId(fetchedQuizList[0].personId);
-            setInitials(fetchedQuizList[0].initials);
-            setCurrentRepetitionData(fetchedQuizList[0].repetitionData);
-            setAnswer('');
-        }
+            if (fetchedQuizList.length > 0) {
+                setPhotoUrl(fetchedQuizList[0].photoUrl);
+                setPersonId(fetchedQuizList[0].personId);
+                setInitials(fetchedQuizList[0].initials);
+                setCurrentRepetitionData(fetchedQuizList[0].repetitionData);
+                setAnswer('');
+            }
         } catch (error) {
             console.error('Error fetching quiz: ', error);
             notifyError('Error fetching quiz: ' + error);
@@ -445,13 +470,22 @@ export const Quiz: React.FC<QuizProps> = () => {
 
     // OPTIONS
     // INIT OPTIONS
-    const fetchAttributes = async () => {
+    const fetchFilters = async () => {
         try {
-            const fetchedAttributes: Attribute[] = await getAttributes();
-            setFilters(fetchedAttributes.filter(attr => attr.filter === true));
-            setSorts(fetchedAttributes.filter(attr => attr.sort === true));
+            const fetchedFilters: Attribute[] = await getFilters();
+            console.log('filters: ' + JSON.stringify(fetchedFilters));
+            setFilters(fetchedFilters);
         } catch (error) {
-            console.error('Error fetching attributes:', error);
+            console.error('Error fetching filters:', error);
+        }
+    };
+
+    const fetchSorts = async () => {
+        try {
+            const fetchedSorts: Attribute[] = await getSorts();
+            setSorts(fetchedSorts);
+        } catch (error) {
+            console.error('Error fetching sorts:', error);
         }
     };
 
@@ -508,15 +542,34 @@ export const Quiz: React.FC<QuizProps> = () => {
     };
 
     // OPTIONS: FILTERS
-    const handleAddFilter = (filter: GameFilter) => {
-        setTempSelectedFilters(prevFilters => [...prevFilters, filter]);
+    const handleSaveFilter = (filter: GameFilter) => {
+        if (editingFilter) {
+          // Update existing filter based on its id.
+          setTempSelectedFilters(prevFilters =>
+            prevFilters.map(f => (f.id === editingFilter.id ? filter : f))
+          );
+          setEditingFilter(undefined);
+        } else {
+          // Add new filter.
+          setTempSelectedFilters(prevFilters => [...prevFilters, filter]);
+        }
         setOpenFilterModal(false);
-    };
+      };
+      
 
-    const handleDeleteFilter = (index: number) => {
-        const newFilters = tempSelectedFilters.filter((_, i) => i !== index);
+    const handleDeleteFilter = (filterId: number) => {
+        const newFilters = tempSelectedFilters.filter(filter => filter.id !== filterId);
         setTempSelectedFilters(newFilters);
-    };
+      };
+
+    const handleEditFilter = (index: number) => {
+        // Retrieve the filter to be edited (from tempSelectedFilters)
+        const filterToEdit = tempSelectedFilters[index];
+        // Set a state that indicates “editing mode” and which filter is being edited
+        setEditingFilter(filterToEdit);
+        // Open the addFilterModal with the editing prop populated
+        setOpenFilterModal(true);
+      };
     
     const renderFilters = () => {
         if (tempSelectedFilters.length === 0) {
@@ -526,7 +579,8 @@ export const Quiz: React.FC<QuizProps> = () => {
             <Chip
                 key={index}
                 label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
-                onDelete={() => handleDeleteFilter(index)}
+                onClick={() => handleEditFilter(index)}
+                onDelete={() => handleDeleteFilter(filter.id)}
             />
         ));
     };
@@ -610,7 +664,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             openFilterModal={openFilterModal}
             setOpenFilterModal={setOpenFilterModal}
             availableFilters={availableFilters}
-            handleAddFilter={handleAddFilter}
+            handleSaveFilter={handleSaveFilter}
             renderSortingMethods={renderSortingMethods}
             openSortModal={openSortModal}
             setOpenSortModal={setOpenSortModal}
@@ -622,6 +676,9 @@ export const Quiz: React.FC<QuizProps> = () => {
             setRepeatSettings={setRepeatSettings}
             renderHelpsOptions={renderHelpsOptions}
             hasCriticalChanges={hasCriticalChanges}
+            initialFilter={editingFilter}
+            setEditingFilter={setEditingFilter}
+            handleDeleteFilter={handleDeleteFilter}
           />
         );
       }
@@ -638,6 +695,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             validateAnswer={validateAnswer}
             toggleOptions={toggleOptions}
             goBackToMenu={goBackToMenu}
+            isLoading={isLoading}
         />
       );
 };

@@ -14,6 +14,7 @@ export interface QuizDisplayProps {
   validateAnswer: () => void;
   toggleOptions: () => void;
   goBackToMenu: () => void;
+  isLoading: boolean;
 }
 
 const QuizDisplay: React.FC<QuizDisplayProps> = ({
@@ -26,6 +27,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
   validateAnswer,
   toggleOptions,
   goBackToMenu,
+  isLoading
 }) => {
   return (
     <div className="quiz" style={{ padding: '20px', width: '100%', height: '100%' }}>
@@ -58,7 +60,15 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
         </Box>
 
         {/* Photo or skeleton */}
-        {photoUrl ? (
+        {isLoading ? (
+          <Skeleton
+            variant="rectangular"
+            width="100%"
+            height={300}
+            animation="wave"
+            style={{ backdropFilter: 'blur(3px)', backgroundColor: color + '10' }}
+          />
+        ) : photoUrl ? (
           <img
             src={`photos/${photoUrl}`}
             alt="Quiz"
@@ -70,14 +80,31 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
             }}
           />
         ) : (
-          <Skeleton
-            variant="rectangular"
-            width="100%"
-            height={300}
-            animation="wave"
-            style={{ backdropFilter: 'blur(3px)', backgroundColor: color + '10' }}
-          />
+          // Outer container that preserves the overall "photo" space
+          <Box
+            sx={{
+              height: '56vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {/* Inner box wrapping only the text with a semi-transparent background and border */}
+            <Box
+              sx={{
+                backgroundColor: 'rgba(128, 128, 128, 0.5)',
+                border: '1px solid rgba(128, 128, 128, 0.7)',
+                borderRadius: '8px',
+                padding: '16px',
+              }}
+            >
+              <Typography variant="h6" color="error">
+                Aucun résultat trouvé.
+              </Typography>
+            </Box>
+          </Box>
         )}
+
 
         <TextField
           variant="outlined"
