@@ -43,7 +43,7 @@ const Menu: React.FC = () => {
                 }}
             >
                 <Button onClick={() => navigate('/quiz')} variant='outlined' className='menu'>{t('TRAINING')}</Button>
-                <Button onClick={() => navigate('/quiz')} variant='outlined' className='menu'>{t('RANKED')}</Button>
+                <Button onClick={() => navigate('/challenges')} variant='outlined' className='menu'>{t('RANKED')}</Button>
                 <Button onClick={() => navigate('/profile')} variant='outlined' className='menu'>{t('PROFILE')}</Button>
                 <Button onClick={() => navigate('/settings')} variant='outlined' className='menu'>{t('SETTINGS')}</Button>
             </Stack>

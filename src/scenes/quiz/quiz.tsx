@@ -34,6 +34,7 @@ export const Quiz: React.FC<QuizProps> = () => {
     const [showOptions, setShowOptions] = useState<boolean>(false);
 
     // FULL QUIZ DATA
+    const [hasFetched, setHasFetched] = useState<boolean>(false);
     const [fetchedQuizList, setFetchedQuizList] = useState<QuizEntryWithRepetition[]>([]);
     const [quizHistory, setQuizHistory] = useState<QuizHistoryEntry[]>([]);
     const [backupQuizList, setBackupQuizList] = useState<QuizEntryWithRepetition[]>([]);
@@ -72,6 +73,7 @@ export const Quiz: React.FC<QuizProps> = () => {
           !tempSelectedSortingMethods.some(selected => selected.attribute.id === attr.id)
         );
       }, [sorts, tempSelectedSortingMethods]);
+    const [editingSort, setEditingSort] = useState<GameSortBy | undefined>();
     const [openSortModal, setOpenSortModal] = useState(false);
     const [selectedSortingMethods, setSelectedSortingMethods] = useState<GameSortBy[]>([]);
     // CRITICAL CHANGES: MODE, FILTERS OR SORTING METHODS
@@ -124,17 +126,21 @@ export const Quiz: React.FC<QuizProps> = () => {
     // INIT
     useEffect(() => {
         (async () => {
-            console.log('INIT');
+            // console.log('INIT');
             await fetchFilters();
             await fetchSorts();
             await fetchModes();
         })();
     }, []);
 
+    useEffect(() => {
+        // console.log('tempSelectedSortingMethods changed: ' + JSON.stringify(tempSelectedSortingMethods));
+    }, [tempSelectedSortingMethods]);
+
     // Repetition Pattern Changed
     useEffect(() => {
         if (backupQuizList.length === 0) return;
-        console.log('new selectedRepetitionPattern: ', JSON.stringify(selectedRepetitionPattern));
+        // console.log('new selectedRepetitionPattern: ', JSON.stringify(selectedRepetitionPattern));
         const newBackupQuizList: QuizEntryWithRepetition[] = backupQuizList.map(prevAttrs => ({
             ...prevAttrs,
             repetitionData: {
@@ -168,13 +174,14 @@ export const Quiz: React.FC<QuizProps> = () => {
         }
         // Update the fetched quiz list with this new list.
         setFetchedQuizList(baseList);
+        setHasFetched(true);
         notifySuccess("The repetition pattern has been updated. The frequency of repetitions might have been modified.");
     }, [selectedRepetitionPattern]);
 
     // Some Critical options changed (as during initialization)
     useEffect(() => {
         const handler = setTimeout(() => {
-            console.log('Critical options were changed');
+            // console.log('Critical options were changed');
             setQuizHistory([]);
             fetchQuizList();
         }, 300);
@@ -196,53 +203,63 @@ export const Quiz: React.FC<QuizProps> = () => {
             });
             setAnswer('');
         }
-        console.log("10 next entries: ", JSON.stringify(fetchedQuizList.slice(0,10)));
+        // console.log("10 next entries: ", JSON.stringify(fetchedQuizList.slice(0,10)));
         fetchQuiz();
     }, [fetchedQuizList]);
 
     // INIT FULL QUIZ WITH OPTIONS
     const fetchQuizList = useCallback(async () => {
         try {
-            setIsLoading(true);
-            const gameOptions: GameOptions = {
-                id: Date.now(),
-                gameMode: selectedMode,
-                filters: selectedFilters,
-                sortBy: selectedSortingMethods,
-                repetitionPattern: selectedRepetitionPattern,
-                initialGiven: selectedHelps.initialGiven, // assumes selectedHelps is now an object with booleans
-                typosFriendly: selectedHelps.typosFriendly,
-            };
-            const reducedGameOptionsDto: ReducedGameOptionsDto = toReducedGameOptionsDto(gameOptions);
-            const quizList: QuizEntry[] = await getQuizList(reducedGameOptionsDto);
-
-            if (quizList.length === 0) {
-                // No results found: notify the user and clear the quiz list.
-                notifyWarning("Aucun résultat trouvé pour les options sélectionnées. Veuillez ajuster vos filtres.");
-                setFetchedQuizList([]);
-                return;
-            }
-
-            // Enrich each quiz entry with initial repetitionData from the current repetition pattern:
-            const enrichedQuizList: QuizEntryWithRepetition[] = quizList.map(qe => ({
-                ...qe,
-                repetitionData: {
-                    totalRepetitionCount: 0,
-                    correctRepetitionCount: 0,
-                    easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
-                    interval: selectedRepetitionPattern.initialInterval,
-                }
-            }));
-            // Save a backup copy as well as the working list:
-            setBackupQuizList(enrichedQuizList);
-            setFetchedQuizList(enrichedQuizList);
+          // Ne rien faire tant que le mode n'est pas défini
+          if (!selectedMode) return;
+      
+          setIsLoading(true);
+          const gameOptions: GameOptions = {
+            id: Date.now(),
+            gameMode: selectedMode,
+            filters: selectedFilters,
+            sortBy: selectedSortingMethods,
+            repetitionPattern: selectedRepetitionPattern,
+            initialGiven: selectedHelps.initialGiven,
+            typosFriendly: selectedHelps.typosFriendly,
+          };
+      
+          const reducedGameOptionsDto: ReducedGameOptionsDto = toReducedGameOptionsDto(gameOptions);
+          const quizList: QuizEntry[] = await getQuizList(reducedGameOptionsDto);
+      
+          if (quizList.length === 0) {
+            notifyWarning("Aucun résultat trouvé pour les options sélectionnées. Veuillez ajuster vos filtres.");
+            setFetchedQuizList([]);
+            setHasFetched(true);
+            return;
+          }
+      
+          // Enrich each quiz entry with initial repetitionData from the current repetition pattern:
+          const enrichedQuizList: QuizEntryWithRepetition[] = quizList.map(qe => ({
+            ...qe,
+            repetitionData: {
+              totalRepetitionCount: 0,
+              correctRepetitionCount: 0,
+              easinessFactor: selectedRepetitionPattern.initialEasinessFactor,
+              interval: selectedRepetitionPattern.initialInterval,
+            },
+          }));
+      
+          // Save a backup copy as well as the working list:
+          setBackupQuizList(enrichedQuizList);
+          setFetchedQuizList(enrichedQuizList);
+          setHasFetched(true);
         } catch (error) {
-            console.error('Error fetching quiz list: ', error);
+          console.error('Error fetching quiz list: ', error);
+          // On ne notifie l'erreur que si l'on est sûr que ce n'est pas lié à l'absence de mode
+          if (selectedMode) {
             notifyError('Error fetching quiz list: ' + error);
+          }
         } finally {
-            setIsLoading(false);
+          setIsLoading(false);
         }
-    }, [selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
+      }, [selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
+      
     
     // INIT 1 QUESTION
     const fetchQuiz = useCallback(async () => {
@@ -328,7 +345,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             
             // FAIRE REPETER SI CA N'A PAS MATCHE DU PREMIER COUP et QUE L'INTERVAL N'EST PAS -1 
             if(((match && updatedRepetitionData.totalRepetitionCount > 1) || !match) && updatedRepetitionData.interval !== -1) {
-                console.log('On fait répéter car:' , match, currentRepetitionData.totalRepetitionCount, updatedRepetitionData.interval);
+                // console.log('On fait répéter car:' , match, currentRepetitionData.totalRepetitionCount, updatedRepetitionData.interval);
                 const insertionIndex: number = updatedRepetitionData.interval < (fetchedQuizList.length-1) ? updatedRepetitionData.interval : (fetchedQuizList.length-1);
                 setFetchedQuizList(prevList => {
                   const currentQuestion: QuizEntryWithRepetition = prevList[0];
@@ -340,9 +357,11 @@ export const Quiz: React.FC<QuizProps> = () => {
                   });
                   return newList;
                 });
+                setHasFetched(true);
             } else {
-                console.log('On fait PAS repeter car:' , match, currentRepetitionData.totalRepetitionCount, updatedRepetitionData.interval);
+                // console.log('On fait PAS repeter car:' , match, currentRepetitionData.totalRepetitionCount, updatedRepetitionData.interval);
                 setFetchedQuizList(prevList => prevList.slice(1));
+                setHasFetched(true);
             }
 
             if (match) {
@@ -449,7 +468,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             }
             let newInterval: number;
             if (newCorrectRepetitionCount === 1) {
-                console.log('SECOND INTERVAL : ' + selectedRepetitionPattern.secondInterval);
+                // console.log('SECOND INTERVAL : ' + selectedRepetitionPattern.secondInterval);
                 newInterval = selectedRepetitionPattern.secondInterval;
             } else {
                 // L'interval de répétition augmente avec la facilité d'apprentissage et donc la qualité des reponses
@@ -457,7 +476,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             }
             // Le facteur de facilité augmente avec la qualité des réponses
             let newEasinessFactor = data.easinessFactor - 0.8 + 0.28 * quality - 0.02 * quality * quality;
-            console.log('new ezFactor de ', newEasinessFactor);
+            // console.log('new ezFactor de ', newEasinessFactor);
             if (newEasinessFactor < 1.3) newEasinessFactor = 1.3;
             return {
                 totalRepetitionCount: newTotalRepetitionCount,
@@ -473,7 +492,7 @@ export const Quiz: React.FC<QuizProps> = () => {
     const fetchFilters = async () => {
         try {
             const fetchedFilters: Attribute[] = await getFilters();
-            console.log('filters: ' + JSON.stringify(fetchedFilters));
+            // console.log('filters: ' + JSON.stringify(fetchedFilters));
             setFilters(fetchedFilters);
         } catch (error) {
             console.error('Error fetching filters:', error);
@@ -586,24 +605,50 @@ export const Quiz: React.FC<QuizProps> = () => {
     };
 
     // OPTIONS: SORTING METHODS
-    const handleAddSortingMethod = (sortBy: GameSortBy) => {
-        setTempSelectedSortingMethods([...tempSelectedSortingMethods, sortBy]);
-        setOpenSortModal(false);
+    const handleSaveSortingMethod = (sortBy: GameSortBy) => {
+        // console.log('Save : ', JSON.stringify(sortBy));
+        // console.log('With editingSort: ', JSON.stringify(editingSort));
+        // console.log('With tempSelectedSortingMethods: ', JSON.stringify(tempSelectedSortingMethods));
+        if (editingSort) {
+            // console.log('ya editingSort, on remplace celui de base');
+            // Update existing sort based on its id.
+            setTempSelectedSortingMethods(prevSorts =>
+              prevSorts.map(s => (s.id === editingSort.id ? sortBy : s))
+            );
+            setEditingSort(undefined);
+          } else {
+            // console.log('ya pas editingSort, on rajoute normalement');
+            // Add new sort.
+            setTempSelectedSortingMethods(prevSorts => [...prevSorts, sortBy]);
+          }
+          setOpenSortModal(false);
     };
     
-    const handleDeleteSortingMethod = (index: number) => {
-        const newSortingMethods = tempSelectedSortingMethods.filter((_, i) => i !== index);
-        setTempSelectedSortingMethods(newSortingMethods);
+    const handleDeleteSortingMethod = (sortId: number) => {
+        const newSorts = tempSelectedSortingMethods.filter(sort => sort.id !== sortId);
+        setTempSelectedSortingMethods(newSorts);
     };
 
-    const renderSortingMethods = () => {
+    const handleEditSort = (index: number) => {
+        const sortToEdit = tempSelectedSortingMethods[index];
+        setEditingSort(sortToEdit);
+        setOpenSortModal(true);
+      };
+      
+
+      const renderSortingMethods = () => {
         if (tempSelectedSortingMethods.length === 0) {
-            return <Chip label="No sorting methods" disabled />;
+          return <Chip label="No sorting methods" disabled />;
         }
         return tempSelectedSortingMethods.map((method, index) => (
-            <Chip key={index} label={`${method.attribute.name} (${method.order})`} onDelete={() => handleDeleteSortingMethod(index)} />
+          <Chip
+            key={index}
+            label={`${method.attribute.name} (${method.order})`}
+            onClick={() => handleEditSort(index)}
+            onDelete={() => handleDeleteSortingMethod(method.id)}
+          />
         ));
-    };
+      };      
     
     // OPTIONS: REPETITIONS
     const renderRepetitionOptions = () => {
@@ -665,11 +710,13 @@ export const Quiz: React.FC<QuizProps> = () => {
             setOpenFilterModal={setOpenFilterModal}
             availableFilters={availableFilters}
             handleSaveFilter={handleSaveFilter}
-            renderSortingMethods={renderSortingMethods}
+            tempSelectedSortingMethods={tempSelectedSortingMethods}
+            setTempSelectedSortingMethods={setTempSelectedSortingMethods}
+            handleEditSort={handleEditSort}
             openSortModal={openSortModal}
             setOpenSortModal={setOpenSortModal}
             availableSorts={availableSorts}
-            handleAddSortingMethod={handleAddSortingMethod}
+            handleAddSortingMethod={handleSaveSortingMethod}
             renderRepetitionOptions={renderRepetitionOptions}
             tempSelectedRepetitionPattern={tempSelectedRepetitionPattern}
             repeatSettings={repeatSettings}
@@ -677,8 +724,11 @@ export const Quiz: React.FC<QuizProps> = () => {
             renderHelpsOptions={renderHelpsOptions}
             hasCriticalChanges={hasCriticalChanges}
             initialFilter={editingFilter}
+            initialSort={editingSort}
             setEditingFilter={setEditingFilter}
+            setEditingSort={setEditingSort}
             handleDeleteFilter={handleDeleteFilter}
+            handleDeleteSort={handleDeleteSortingMethod}
           />
         );
       }
@@ -696,6 +746,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             toggleOptions={toggleOptions}
             goBackToMenu={goBackToMenu}
             isLoading={isLoading}
+            hasFetched={hasFetched}
         />
       );
 };

@@ -7,6 +7,7 @@ const endpoint = "/quiz";
 
 export async function getQuizList(reducedGameOptionsDto: ReducedGameOptionsDto): Promise<QuizEntry[]> {
     try {
+        console.log('reducedGameOptionsDto: ', JSON.stringify(reducedGameOptionsDto));
         const response = await API.post<QuizEntry[]>(`${endpoint}/list`, reducedGameOptionsDto);
         // console.log("Received quiz list:", JSON.stringify(response.data));
         return response.data;

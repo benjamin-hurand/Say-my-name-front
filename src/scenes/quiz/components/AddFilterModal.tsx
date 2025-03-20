@@ -176,11 +176,11 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
   
 
   useEffect(() => {
-    console.log('range changed: ', JSON.stringify(range));
+    // console.log('range changed: ', JSON.stringify(range));
   }, [range]);
 
   useEffect(() => {
-    console.log('selected attribute changed: ', JSON.stringify(selectedAttribute));
+    // console.log('selected attribute changed: ', JSON.stringify(selectedAttribute));
   }, [selectedAttribute]);
 
   // Compute the attributes to render.

@@ -5,8 +5,6 @@ import {
   Button,
   FormGroup,
   Divider,
-  Chip,
-  TextField,
   Typography,
   IconButton,
   Dialog,
@@ -14,6 +12,7 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
+  Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { AddSortModal } from './components/AddSortModal';
@@ -22,6 +21,7 @@ import { Attribute } from '../../models/commons/Attribute';
 import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
 import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
 import AddFilterModal from './components/AddFilterModal';
+import { DraggableSortingMethods } from './components/DraggableSortingMethods';
 
 interface QuizOptionsProps {
   color: string;
@@ -32,7 +32,9 @@ interface QuizOptionsProps {
   setOpenFilterModal: (open: boolean) => void;
   availableFilters: Attribute[];
   handleSaveFilter: (filter: GameFilter) => void;
-  renderSortingMethods: () => React.ReactNode;
+  tempSelectedSortingMethods: GameSortBy[];
+  setTempSelectedSortingMethods: (methods: GameSortBy[]) => void;
+  handleEditSort: (sortId: number) => void;
   openSortModal: boolean;
   setOpenSortModal: (open: boolean) => void;
   availableSorts: Attribute[];
@@ -52,8 +54,11 @@ interface QuizOptionsProps {
   renderHelpsOptions: () => React.ReactNode;
   hasCriticalChanges: boolean;
   initialFilter: GameFilter | undefined;
-  setEditingFilter:  (initialFilter: GameFilter | undefined) => void;
+  initialSort: GameSortBy | undefined;
+  setEditingFilter: (initialFilter: GameFilter | undefined) => void;
+  setEditingSort: (initialSort: GameSortBy | undefined) => void;
   handleDeleteFilter: (filterId: number) => void;
+  handleDeleteSort: (sortId: number) => void;
 }
 
 const QuizOptions: React.FC<QuizOptionsProps> = ({
@@ -65,7 +70,9 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   setOpenFilterModal,
   availableFilters,
   handleSaveFilter,
-  renderSortingMethods,
+  tempSelectedSortingMethods,
+  setTempSelectedSortingMethods,
+  handleEditSort,
   openSortModal,
   setOpenSortModal,
   availableSorts,
@@ -77,22 +84,31 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   renderHelpsOptions,
   hasCriticalChanges,
   initialFilter,
+  initialSort,
   setEditingFilter,
-  handleDeleteFilter
+  setEditingSort,
+  handleDeleteFilter,
+  handleDeleteSort,
 }) => {
   // Local state for confirmation dialog
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-    const closeFilterModal = () => {
-      setOpenFilterModal(false);
-      if (initialFilter) {
-        setEditingFilter(undefined);
-      }
+  const closeFilterModal = () => {
+    setOpenFilterModal(false);
+    if (initialFilter) {
+      setEditingFilter(undefined);
     }
+  };
 
-    const handleSaveClick = () => {
+  const closeSortModal = () => {
+    setOpenSortModal(false);
+    if (initialSort) {
+      setEditingSort(undefined);
+    }
+  };
+
+  const handleSaveClick = () => {
     if (hasCriticalChanges) {
-      console.log('dialog should open');
       setOpenConfirmDialog(true);
     } else {
       toggleOptions(true);
@@ -106,10 +122,8 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
 
   const handleCancelSave = () => {
     setOpenConfirmDialog(false);
-    // Optionally, you could also revert changes by calling toggleOptions(false)
-    // or simply keep the dialog closed.
   };
-  
+
   return (
     <Box
       sx={{
@@ -121,6 +135,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         alignItems: 'center',
       }}
     >
+      {/* Header */}
       <Box
         sx={{
           display: 'flex',
@@ -146,69 +161,131 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           Quiz Options
         </Typography>
       </Box>
+
       <FormGroup sx={{ width: '100%' }}>
+        {/* Mode */}
         <Divider>
           <Typography variant="h6">Mode</Typography>
         </Divider>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {renderModes()}
         </Box>
+
+        {/* Filters */}
         <Divider>
           <Typography variant="h6">Filters</Typography>
         </Divider>
+        {/* 
+          Sépare la zone des chips (avec flexWrap) et le bouton (avec whiteSpace: 'nowrap').
+        */}
         <Box
           sx={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
+            gap: '16px',
             width: '100%',
           }}
         >
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginTop: '8px',
+            }}
+          >
             {renderFilters()}
           </Box>
-          <Button onClick={() => setOpenFilterModal(true)} variant="contained" size="small">
-            Add filter
-          </Button>
+          <Box sx={{ flexShrink: 0, marginTop: '8px' }}>
+          <Tooltip title={availableFilters.length === 0 ? "Aucun filtre disponible" : ""}>
+            <span>
+              <Button
+                onClick={() => setOpenFilterModal(true)}
+                variant="contained"
+                size="small"
+                disabled={availableFilters.length === 0}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Add filter
+              </Button>
+            </span>
+          </Tooltip>
+          </Box>
         </Box>
         <AddFilterModal
           open={openFilterModal}
           attributes={availableFilters}
           onSave={handleSaveFilter}
-          onClose={() => closeFilterModal()}
+          onClose={closeFilterModal}
           initialFilter={initialFilter}
           handleDeleteFilter={handleDeleteFilter}
         />
+
+        {/* Sorting Methods */}
         <Divider>
           <Typography variant="h6">Sorting Methods</Typography>
         </Divider>
         <Box
           sx={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
+            gap: '16px',
             width: '100%',
           }}
         >
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-            {renderSortingMethods()}
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginTop: '8px',
+            }}
+          >
+            <DraggableSortingMethods
+              tempSelectedSortingMethods={tempSelectedSortingMethods}
+              setTempSelectedSortingMethods={setTempSelectedSortingMethods}
+              handleEditSort={handleEditSort}
+              handleDeleteSortingMethod={handleDeleteSort}
+            />
           </Box>
-          <Button onClick={() => setOpenSortModal(true)} variant="contained" size="small">
-            Add Sorting Method
-          </Button>
+          <Box sx={{ flexShrink: 0, marginTop: '8px' }}>
+            <Tooltip title={availableSorts.length === 0 ? "Aucun tri disponible" : ""}>
+              <span>
+                <Button
+                  onClick={() => setOpenSortModal(true)}
+                  variant="contained"
+                  size="small"
+                  sx={{
+                    whiteSpace: 'nowrap', // Empêche le texte de passer à la ligne
+                  }}
+                  disabled={availableSorts.length === 0}
+                >
+                  Add Sorting Method
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
         </Box>
         <AddSortModal
           open={openSortModal}
-          attributes={availableSorts}
+          availableAttributes={availableSorts}
           onSave={handleAddSortingMethod}
-          onClose={() => setOpenSortModal(false)}
+          onClose={closeSortModal}
+          initialSort={initialSort}
+          handleDeleteSort={handleDeleteSort}
         />
+
+        {/* Learning repetition */}
         <Divider>
           <Typography variant="h6">Learning repetition</Typography>
         </Divider>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {renderRepetitionOptions()}
         </Box>
+
+        {/* Helps */}
         <Divider>
           <Typography variant="h6">Helps</Typography>
         </Divider>
@@ -216,6 +293,8 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           {renderHelpsOptions()}
         </Box>
       </FormGroup>
+
+      {/* Footer Buttons */}
       <Box
         sx={{
           display: 'flex',
@@ -225,13 +304,20 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           marginTop: '15px',
         }}
       >
-        <Button variant="outlined" className="menu nobg" onClick={() => toggleOptions(false)} sx={{ marginRight: '1vw' }}>
+        <Button
+          variant="outlined"
+          className="menu nobg"
+          onClick={() => toggleOptions(false)}
+          sx={{ marginRight: '1vw' }}
+        >
           Cancel
         </Button>
         <Button variant="contained" className="menu" onClick={handleSaveClick}>
           Save Options
         </Button>
       </Box>
+
+      {/* Confirmation Dialog */}
       <Dialog
         open={openConfirmDialog}
         onClose={handleCancelSave}

@@ -1,20 +1,20 @@
 // QuizDisplay.tsx
 
 import React from 'react';
-import { Button, Box, TextField, Typography, IconButton, Skeleton } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Button, Box, TextField, Typography, Skeleton } from '@mui/material';
 
 export interface QuizDisplayProps {
   color: string;
   photoUrl: string | null;
   initials: string | null;
-  showInitials: boolean;          // <-- new prop to control display
+  showInitials: boolean;
   answer: string;
   handleAnswerChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   validateAnswer: () => void;
   toggleOptions: () => void;
   goBackToMenu: () => void;
   isLoading: boolean;
+  hasFetched: boolean;
 }
 
 const QuizDisplay: React.FC<QuizDisplayProps> = ({
@@ -26,41 +26,14 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
   handleAnswerChange,
   validateAnswer,
   toggleOptions,
-  goBackToMenu,
-  isLoading
+  isLoading,
+  hasFetched
 }) => {
   return (
     <div className="quiz" style={{ padding: '20px', width: '100%', height: '100%' }}>
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-        {/* Header row */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            width: '100%',
-            marginBottom: '1vh',
-          }}
-        >
-          <IconButton
-            onClick={goBackToMenu}
-            sx={{
-              color: color,
-              boxShadow: `0 0 8px ${color}`,
-              transition: 'box-shadow 0.2s ease-in-out',
-              backdropFilter: 'blur(6px)',
-            }}
-            aria-label="Back to menu"
-          >
-            <ArrowBackIcon style={{ color }} />
-          </IconButton>
-          <Typography variant="h4" style={{ color: color, textShadow: `0 0 8px ${color}` }}>
-            Hello Quiz
-          </Typography>
-        </Box>
-
         {/* Photo or skeleton */}
-        {isLoading ? (
+        {isLoading || !hasFetched ? (
           <Skeleton
             variant="rectangular"
             width="100%"
@@ -73,7 +46,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
             src={`photos/${photoUrl}`}
             alt="Quiz"
             style={{
-              width: 'auto',
+              maxWidth: '100%',
               height: '56vh',
               zIndex: 1,
               boxShadow: `0 0 20px ${color}`,

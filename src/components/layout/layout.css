@@ -1,20 +1,29 @@
-.layout {
+:root {
+    --header-height: 40px; /* Ajuste cette valeur selon la hauteur de ton header */
+  }
+  
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  
+  .layout {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100%; /* Use 100% of its container height */
-    width: 100%; /* Use 100% of its container width */
+    justify-content: space-between; /* Header en haut, footer en bas */
+    min-height: 100vh;
+    width: 100%;
     max-width: 500px;
-    overflow: hidden; /* Optional: prevent any scrolling within layout */
     margin: 0 auto;
-}
-
-.layout__content {
-    flex: 1; /* Expands to use available space */
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    height: 100%; /* Use 100% of its container height */
-    width: 100%; /* Use 100% of its container width */
-}
+  }
+  
+  .layout__content {
+    flex: 1;
+    overflow-y: auto;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 10px;
+    margin-top: var(--header-height);
+    overflow-y: hidden;
+  }
+  

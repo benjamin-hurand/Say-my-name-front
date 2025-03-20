@@ -7,7 +7,12 @@ import { googleLogout } from "@react-oauth/google";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 
-export const Footer = ({ isMenu }: { isMenu: boolean }) => {
+interface FooterProps {
+  isMenu?: boolean;
+  handleHomeClick: () => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
 	const { color, randomizeColor, toggleTheme, theme: currentTheme } = useThemeColorContext();
 	const { i18n } = useTranslation();
 	const navigate: NavigateFunction = useNavigate();
@@ -26,10 +31,6 @@ export const Footer = ({ isMenu }: { isMenu: boolean }) => {
 			setAnchorEl(null);
 		});
 	};
-
-	const handleHomeClick = () => {
-        navigate('/', { replace: true });
-    };
 
 	const handleLogout = () => {
 		localStorage.clear();
@@ -98,3 +99,5 @@ export const Footer = ({ isMenu }: { isMenu: boolean }) => {
 		</div>
 	);
 };
+
+export default Footer;
