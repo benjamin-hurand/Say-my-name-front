@@ -3,18 +3,20 @@ import Footer from "./components/footer/Footer";
 import Header from "./components/header/Header";
 import "./layout.css";
 import { useThemeColorContext } from "../../contexts/ThemeColorContext";
-import { NavigateFunction, useNavigate } from "react-router-dom";
+import { NavigateFunction, Outlet, useNavigate } from "react-router-dom";
 
 interface LayoutProps {
   children: ReactNode;
   isMenu?: boolean;
   headerTitle?: string;
+  onBack?: string;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
   isMenu = false,
   headerTitle,
+  onBack
 }) => {
   const { color } = useThemeColorContext();
   const navigate: NavigateFunction = useNavigate();
@@ -27,10 +29,12 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className="layout">
       {/* Si un headerTitle est fourni, on affiche le Header */}
       {headerTitle && (
-        <Header color={color} title={headerTitle} handleHomeClick={handleHomeClick}/>
+        <Header color={color} title={headerTitle} onBack={onBack}/>
       )}
       <div className="layout__content container">
         {children}
+        {/* Outlet pour les routes imbriquées */}
+        <Outlet />
       </div>
       <Footer isMenu={isMenu} handleHomeClick={handleHomeClick}/>
     </div>

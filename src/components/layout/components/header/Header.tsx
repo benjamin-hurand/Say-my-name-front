@@ -1,14 +1,20 @@
 import React from 'react';
 import { Box, IconButton, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   color: string;
   title: string;
-  handleHomeClick: () => void;
+  onBack?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ color, title, handleHomeClick }) => {
+const Header: React.FC<HeaderProps> = ({ color, title, onBack = "/" }) => {
+  const navigate = useNavigate();
+  const handleBack = () => {
+    navigate(onBack, { replace: true });
+  };
+
   return (
     <Box
       sx={{
@@ -24,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({ color, title, handleHomeClick }) => {
       }}
     >
       <IconButton
-        onClick={handleHomeClick}
+        onClick={handleBack}
         sx={{
           color: color,
           boxShadow: `0 0 8px ${color}`,

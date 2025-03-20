@@ -1,27 +1,18 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Chip, Tooltip } from '@mui/material';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { getGameModes } from '../../services/business/gamemodes/gameMode.service';
-import { getFilters, getSorts } from '../../services/business/attributes/attribute.service';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
-import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
-import { Attribute } from '../../models/commons/Attribute';
-import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
-import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
-import { GameRepetitionPattern, repetitionPatterns, SpacedRepetitionData } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
+import { repetitionPatterns, SpacedRepetitionData } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameOptions } from '../../models/commons/Game/GameOptions/GameOptions.model';
 import { PersonAttribute } from '../../models/commons/PersonAttribute';
 import { getQuizList } from '../../services/business/quiz/quiz.service';
 import { QuizEntry, QuizEntryWithRepetition } from '../../models/commons/Game/QuizEntry';
 import { getPersonAttributesById } from '../../services/business/persons/person.service';
-import OptionCard from './components/OptionCard';
-import ModeCard from './components/ModeCard';
 import QuizDisplay from './QuizDisplay';
-import QuizOptions from './QuizOptions';
 import { ReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDto';
 import { toReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDtoMapper';
 import { QuizHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
+import { useQuizOptions } from '../../contexts/QuizOptionsProvider';
 
 interface QuizProps {}
 
@@ -31,7 +22,6 @@ export const Quiz: React.FC<QuizProps> = () => {
     const { color } = useThemeColorContext();
 
     // TOGGLE OPTIONS / QUIZ TAB
-    const [showOptions, setShowOptions] = useState<boolean>(false);
 
     // FULL QUIZ DATA
     const [hasFetched, setHasFetched] = useState<boolean>(false);
@@ -48,94 +38,23 @@ export const Quiz: React.FC<QuizProps> = () => {
 
 
     // OPTIONS
-    // OPTIONS MENU
-
-    // MODES
-    const [modesList, setModesList] = useState<GameMode[]>([]);
-    const [tempSelectedMode, setTempSelectedMode] = useState<GameMode | null>(null);
-    const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
-    // FILTERS
-    const [filters, setFilters] = useState<Attribute[]>([]);
-    const [tempSelectedFilters, setTempSelectedFilters] = useState<GameFilter[]>([]);
-    const availableFilters: Attribute[] = useMemo(() => {
-        return filters.filter(attr => 
-          !tempSelectedFilters.some(selected => selected.attribute.id === attr.id)
-        );
-      }, [filters, tempSelectedFilters]);
-    const [editingFilter, setEditingFilter] = useState<GameFilter | undefined>();
-    const [openFilterModal, setOpenFilterModal] = useState(false);
-    const [selectedFilters, setSelectedFilters] = useState<GameFilter[]>([]);
-    // SORTING METHODS
-    const [sorts, setSorts] = useState<Attribute[]>([]);
-    const [tempSelectedSortingMethods, setTempSelectedSortingMethods] = useState<GameSortBy[]>([]);
-    const availableSorts: Attribute[] = useMemo(() => {
-        return sorts.filter(attr => 
-          !tempSelectedSortingMethods.some(selected => selected.attribute.id === attr.id)
-        );
-      }, [sorts, tempSelectedSortingMethods]);
-    const [editingSort, setEditingSort] = useState<GameSortBy | undefined>();
-    const [openSortModal, setOpenSortModal] = useState(false);
-    const [selectedSortingMethods, setSelectedSortingMethods] = useState<GameSortBy[]>([]);
-    // CRITICAL CHANGES: MODE, FILTERS OR SORTING METHODS
-    const hasCriticalChanges = useMemo(() => {
-        return (
-          JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
-          JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
-          JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
-        );
-      }, [tempSelectedMode, selectedMode, tempSelectedFilters, selectedFilters, tempSelectedSortingMethods, selectedSortingMethods]);
-      
+    // CONTEXT:
+    const 
+    {
+      selectedMode,
+      selectedFilters,
+      selectedSortingMethods,
+      selectedRepetitionPattern,
+      selectedHelps,
+    } = useQuizOptions();
 
     // REPETITIONS
-    const [repeatSettings, setRepeatSettings] = useState<{
-        initialEasinessFactor: number;
-        initialInterval: number;
-        secondInterval: number;
-    }>({
-        initialEasinessFactor: repetitionPatterns.never.initialEasinessFactor,
-        initialInterval: repetitionPatterns.never.initialInterval,
-        secondInterval: repetitionPatterns.never.secondInterval
-    });
-    const [tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
-    const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
     const [currentRepetitionData, setCurrentRepetitionData] = useState<SpacedRepetitionData>({
         totalRepetitionCount: 0,
         correctRepetitionCount: 0,
         easinessFactor: repetitionPatterns.never.initialEasinessFactor,
         interval: repetitionPatterns.never.initialInterval
     });
-    // HELPS
-    const helpOptions: {
-        key: string;
-        label: string;
-    }[] = [
-        { key: 'typosFriendly', label: 'Typos friendly' },
-        { key: 'initialGiven', label: 'Initial given' }
-      ];
-      const [tempSelectedHelps, setTempSelectedHelps] = useState<{ [key: string]: boolean }>({
-        typosFriendly: false,
-        initialGiven: false,
-      });
-      
-      // And for the committed selection:
-      const [selectedHelps, setSelectedHelps] = useState<{ [key: string]: boolean }>({
-        typosFriendly: false,
-        initialGiven: false,
-      });
-
-    // INIT
-    useEffect(() => {
-        (async () => {
-            // console.log('INIT');
-            await fetchFilters();
-            await fetchSorts();
-            await fetchModes();
-        })();
-    }, []);
-
-    useEffect(() => {
-        // console.log('tempSelectedSortingMethods changed: ' + JSON.stringify(tempSelectedSortingMethods));
-    }, [tempSelectedSortingMethods]);
 
     // Repetition Pattern Changed
     useEffect(() => {
@@ -487,251 +406,14 @@ export const Quiz: React.FC<QuizProps> = () => {
         }
       };
 
-    // OPTIONS
-    // INIT OPTIONS
-    const fetchFilters = async () => {
-        try {
-            const fetchedFilters: Attribute[] = await getFilters();
-            // console.log('filters: ' + JSON.stringify(fetchedFilters));
-            setFilters(fetchedFilters);
-        } catch (error) {
-            console.error('Error fetching filters:', error);
-        }
-    };
-
-    const fetchSorts = async () => {
-        try {
-            const fetchedSorts: Attribute[] = await getSorts();
-            setSorts(fetchedSorts);
-        } catch (error) {
-            console.error('Error fetching sorts:', error);
-        }
-    };
-
-    // OPEN / CLOSE OPTIONS - SAVE / CANCEL OPTIONS CHANGES
-    const toggleOptions = (saveChanges = false) => {
-        if(showOptions) { // CLOSING OPTIONS
-            if (saveChanges) {
-                setSelectedMode(tempSelectedMode);
-                setSelectedFilters(tempSelectedFilters);
-                setSelectedSortingMethods(tempSelectedSortingMethods);
-                setSelectedRepetitionPattern(tempSelectedRepetitionPattern);
-                setSelectedHelps(tempSelectedHelps);
-            } else {
-                // Revert interim states to last committed state if changes were made but user cancelled
-                setTempSelectedMode(selectedMode);
-                setTempSelectedFilters(selectedFilters);
-                setTempSelectedSortingMethods(selectedSortingMethods);
-                setTempSelectedRepetitionPattern(selectedRepetitionPattern);
-                setTempSelectedHelps(selectedHelps);
-            }
-        }
-        
-        setShowOptions(!showOptions);  // Toggle the visibility of the options panel
-    };
-
-    // OPTIONS: MODES
-    const fetchModes = async () => {
-        try {
-            const fetchedModes: GameMode[] = await getGameModes();
-            setModesList(fetchedModes);
-            if (fetchedModes.length > 0) {
-                setSelectedMode(fetchedModes[0]); // Set the first mode as the default selected mode
-                setTempSelectedMode(fetchedModes[0]); // Set the first mode as the default selected mode
-                
-            }
-        } catch (error) {
-            console.error('Error fetching game themes:', error);
-        }
-    };
-
-    const renderModes = () => {
-        return modesList.map((mode) => (
-            <ModeCard
-                key={mode.id}
-                mode={mode}
-                isSelected={tempSelectedMode?.id === mode.id}
-                onSelect={() => handleSelectMode(mode)}
-            />
-        ));
-    };
-
-    const handleSelectMode = (mode: GameMode) => {
-        setTempSelectedMode(mode);
-    };
-
-    // OPTIONS: FILTERS
-    const handleSaveFilter = (filter: GameFilter) => {
-        if (editingFilter) {
-          // Update existing filter based on its id.
-          setTempSelectedFilters(prevFilters =>
-            prevFilters.map(f => (f.id === editingFilter.id ? filter : f))
-          );
-          setEditingFilter(undefined);
-        } else {
-          // Add new filter.
-          setTempSelectedFilters(prevFilters => [...prevFilters, filter]);
-        }
-        setOpenFilterModal(false);
-      };
-      
-
-    const handleDeleteFilter = (filterId: number) => {
-        const newFilters = tempSelectedFilters.filter(filter => filter.id !== filterId);
-        setTempSelectedFilters(newFilters);
-      };
-
-    const handleEditFilter = (index: number) => {
-        // Retrieve the filter to be edited (from tempSelectedFilters)
-        const filterToEdit = tempSelectedFilters[index];
-        // Set a state that indicates “editing mode” and which filter is being edited
-        setEditingFilter(filterToEdit);
-        // Open the addFilterModal with the editing prop populated
-        setOpenFilterModal(true);
-      };
-    
-    const renderFilters = () => {
-        if (tempSelectedFilters.length === 0) {
-            return <Chip label="No filters" disabled />;
-        }
-        return tempSelectedFilters.map((filter, index) => (
-            <Chip
-                key={index}
-                label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
-                onClick={() => handleEditFilter(index)}
-                onDelete={() => handleDeleteFilter(filter.id)}
-            />
-        ));
-    };
-
-    // OPTIONS: SORTING METHODS
-    const handleSaveSortingMethod = (sortBy: GameSortBy) => {
-        // console.log('Save : ', JSON.stringify(sortBy));
-        // console.log('With editingSort: ', JSON.stringify(editingSort));
-        // console.log('With tempSelectedSortingMethods: ', JSON.stringify(tempSelectedSortingMethods));
-        if (editingSort) {
-            // console.log('ya editingSort, on remplace celui de base');
-            // Update existing sort based on its id.
-            setTempSelectedSortingMethods(prevSorts =>
-              prevSorts.map(s => (s.id === editingSort.id ? sortBy : s))
-            );
-            setEditingSort(undefined);
-          } else {
-            // console.log('ya pas editingSort, on rajoute normalement');
-            // Add new sort.
-            setTempSelectedSortingMethods(prevSorts => [...prevSorts, sortBy]);
-          }
-          setOpenSortModal(false);
-    };
-    
-    const handleDeleteSortingMethod = (sortId: number) => {
-        const newSorts = tempSelectedSortingMethods.filter(sort => sort.id !== sortId);
-        setTempSelectedSortingMethods(newSorts);
-    };
-
-    const handleEditSort = (index: number) => {
-        const sortToEdit = tempSelectedSortingMethods[index];
-        setEditingSort(sortToEdit);
-        setOpenSortModal(true);
-      };
-      
-
-      const renderSortingMethods = () => {
-        if (tempSelectedSortingMethods.length === 0) {
-          return <Chip label="No sorting methods" disabled />;
-        }
-        return tempSelectedSortingMethods.map((method, index) => (
-          <Chip
-            key={index}
-            label={`${method.attribute.name} (${method.order})`}
-            onClick={() => handleEditSort(index)}
-            onDelete={() => handleDeleteSortingMethod(method.id)}
-          />
-        ));
-      };      
-    
-    // OPTIONS: REPETITIONS
-    const renderRepetitionOptions = () => {
-        return Object.keys(repetitionPatterns).map((option) => (
-            <Tooltip key={option} title={
-            option.toLowerCase() === 'optimal'
-                ? 'Optimal: We will automatically schedule reviews based on your performance.'
-                : option.toLowerCase() === 'immediate'
-                ? 'Immediate: The question will repeat right away if answered incorrectly.'
-                : 'Never: Do not repeat this question.'
-            }>
-            <OptionCard
-                option={option.charAt(0).toUpperCase() + option.slice(1)}
-                isSelected={tempSelectedRepetitionPattern.patternName === option.toLowerCase()}
-                onSelect={() => handleSelectRepetition(option)}
-            />
-            </Tooltip>
-        ));
-    };
-
-    const handleSelectRepetition = (option: string) => {
-        const pattern: GameRepetitionPattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
-        setTempSelectedRepetitionPattern(pattern);
-    };      
-      
-    
-    // OPTIONS: HELPS
-    const renderHelpsOptions = () => {
-        return helpOptions.map((option) => (
-          <OptionCard
-            key={option.key}
-            option={option.label}
-            isSelected={tempSelectedHelps[option.key]}
-            onSelect={() => handleSelectHelps(option.key)}
-          />
-        ));
-      };
-      
-      const handleSelectHelps = (key: string) => {
-        // Toggle the boolean for the specific help option.
-        setTempSelectedHelps((prev) => ({ ...prev, [key]: !prev[key] }));
-      };
-      
-
     // NAVIGATION IN WEBSITE
     const goBackToMenu = () => {
         navigate('/', { replace: true }); // Adjust the route as necessary
     };
 
-    // RETURNING OPTIONS TAB
-    if (showOptions) {
-        return (
-          <QuizOptions
-            color={color}
-            toggleOptions={toggleOptions}
-            renderModes={renderModes}
-            renderFilters={renderFilters}
-            openFilterModal={openFilterModal}
-            setOpenFilterModal={setOpenFilterModal}
-            availableFilters={availableFilters}
-            handleSaveFilter={handleSaveFilter}
-            tempSelectedSortingMethods={tempSelectedSortingMethods}
-            setTempSelectedSortingMethods={setTempSelectedSortingMethods}
-            handleEditSort={handleEditSort}
-            openSortModal={openSortModal}
-            setOpenSortModal={setOpenSortModal}
-            availableSorts={availableSorts}
-            handleAddSortingMethod={handleSaveSortingMethod}
-            renderRepetitionOptions={renderRepetitionOptions}
-            tempSelectedRepetitionPattern={tempSelectedRepetitionPattern}
-            repeatSettings={repeatSettings}
-            setRepeatSettings={setRepeatSettings}
-            renderHelpsOptions={renderHelpsOptions}
-            hasCriticalChanges={hasCriticalChanges}
-            initialFilter={editingFilter}
-            initialSort={editingSort}
-            setEditingFilter={setEditingFilter}
-            setEditingSort={setEditingSort}
-            handleDeleteFilter={handleDeleteFilter}
-            handleDeleteSort={handleDeleteSortingMethod}
-          />
-        );
-      }
+    const openQuizOptions = () => {
+      navigate('/quiz/options', { replace: true });
+    };
       
     // RETURNING QUIZ TAB
     return (
@@ -743,7 +425,7 @@ export const Quiz: React.FC<QuizProps> = () => {
             answer={answer}
             handleAnswerChange={handleAnswerChange}
             validateAnswer={validateAnswer}
-            toggleOptions={toggleOptions}
+            openQuizOptions={openQuizOptions}
             goBackToMenu={goBackToMenu}
             isLoading={isLoading}
             hasFetched={hasFetched}

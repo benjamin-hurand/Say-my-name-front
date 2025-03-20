@@ -1,114 +1,198 @@
-// QuizOptionsContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { Attribute } from '../models/commons/Attribute';
 import { GameFilter } from '../models/commons/Game/GameOptions/GameFilter.model';
-import { GameRepetitionPattern } from '../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameSortBy } from '../models/commons/Game/GameOptions/GameSortBy.model';
+import { GameRepetitionPattern, repetitionPatterns } from '../models/commons/Game/GameOptions/GameRepetitionPattern.model';
+import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
+import { getFilters } from '../services/business/attributes/attribute.service';
+import { getSorts } from '../services/business/attributes/attribute.service';
+import { getGameModes } from '../services/business/gamemodes/gameMode.service';
 
 interface QuizOptionsContextType {
+  // Modes
+  modesList: GameMode[];
+  setModesList: React.Dispatch<React.SetStateAction<GameMode[]>>;
+  tempSelectedMode: GameMode | null;
+  setTempSelectedMode: React.Dispatch<React.SetStateAction<GameMode | null>>;
+  selectedMode: GameMode | null;
+  setSelectedMode: React.Dispatch<React.SetStateAction<GameMode | null>>;
   // Filters
-  openFilterModal: boolean;
-  setOpenFilterModal: (open: boolean) => void;
+  filters: Attribute[];
+  setFilters: React.Dispatch<React.SetStateAction<Attribute[]>>;
   availableFilters: Attribute[];
-  setAvailableFilters: (filters: Attribute[]) => void;
+  selectedFilters: GameFilter[];
+  setSelectedFilters: React.Dispatch<React.SetStateAction<GameFilter[]>>;
   tempSelectedFilters: GameFilter[];
-  setTempSelectedFilters: (filters: GameFilter[]) => void;
+  setTempSelectedFilters: React.Dispatch<React.SetStateAction<GameFilter[]>>;
   // Sorting methods
-  openSortModal: boolean;
-  setOpenSortModal: (open: boolean) => void;
+  sorts: Attribute[];
+  setSorts: React.Dispatch<React.SetStateAction<Attribute[]>>;
   availableSorts: Attribute[];
-  setAvailableSorts: (sorts: Attribute[]) => void;
+  selectedSortingMethods: GameSortBy[];
+  setSelectedSortingMethods: React.Dispatch<React.SetStateAction<GameSortBy[]>>;
   tempSelectedSortingMethods: GameSortBy[];
-  setTempSelectedSortingMethods: (sorts: GameSortBy[]) => void;
+  setTempSelectedSortingMethods: React.Dispatch<React.SetStateAction<GameSortBy[]>>;
   // Repetition options
+  selectedRepetitionPattern: GameRepetitionPattern;
+  setSelectedRepetitionPattern: React.Dispatch<React.SetStateAction<GameRepetitionPattern>>;
   tempSelectedRepetitionPattern: GameRepetitionPattern;
-  setTempSelectedRepetitionPattern: (pattern: GameRepetitionPattern) => void;
+  setTempSelectedRepetitionPattern: React.Dispatch<React.SetStateAction<GameRepetitionPattern>>;
   repeatSettings: {
     initialEasinessFactor: number;
     initialInterval: number;
     secondInterval: number;
   };
-  setRepeatSettings: (settings: {
-    initialEasinessFactor: number;
-    initialInterval: number;
-    secondInterval: number;
-  }) => void;
+  setRepeatSettings: React.Dispatch<
+    React.SetStateAction<{
+      initialEasinessFactor: number;
+      initialInterval: number;
+      secondInterval: number;
+    }>
+  >;
   // Helps and other options
+  selectedHelps: { [key: string]: boolean };
+  setSelectedHelps: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
   tempSelectedHelps: { [key: string]: boolean };
-  setTempSelectedHelps: (helps: { [key: string]: boolean }) => void;
+  setTempSelectedHelps: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
   // Pour la gestion des modales d'édition
   editingFilter?: GameFilter;
   setEditingFilter: (filter: GameFilter | undefined) => void;
   editingSort?: GameSortBy;
   setEditingSort: (sort: GameSortBy | undefined) => void;
-  // Détection des changements critiques
-  hasCriticalChanges: boolean;
 }
 
 const QuizOptionsContext = createContext<QuizOptionsContextType | undefined>(undefined);
 
 export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
-  // Initialisations (valeurs par défaut à adapter)
-  const [openFilterModal, setOpenFilterModal] = useState<boolean>(false);
-  const [availableFilters, setAvailableFilters] = useState<Attribute[]>([]);
+  // Modes
+  const [modesList, setModesList] = useState<GameMode[]>([]);
+  const [tempSelectedMode, setTempSelectedMode] = useState<GameMode | null>(null);
+  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+  
+  // Filters
+  const [filters, setFilters] = useState<Attribute[]>([]); 
+  const [selectedFilters, setSelectedFilters] = useState<GameFilter[]>([]);
   const [tempSelectedFilters, setTempSelectedFilters] = useState<GameFilter[]>([]);
+  const availableFilters: Attribute[] = useMemo(() => {
+      return filters.filter(attr => 
+        !tempSelectedFilters.some(selected => selected.attribute.id === attr.id)
+      );
+    }, [filters, tempSelectedFilters]);
   
-  const [openSortModal, setOpenSortModal] = useState<boolean>(false);
-  const [availableSorts, setAvailableSorts] = useState<Attribute[]>([]);
+  // Sorting methods
+  const [sorts, setSorts] = useState<Attribute[]>([]);
+  const [selectedSortingMethods, setSelectedSortingMethods] = useState<GameSortBy[]>([]);
   const [tempSelectedSortingMethods, setTempSelectedSortingMethods] = useState<GameSortBy[]>([]);
+  const availableSorts: Attribute[] = useMemo(() => {
+      return sorts.filter(attr => 
+        !tempSelectedSortingMethods.some(selected => selected.attribute.id === attr.id)
+      );
+    }, [sorts, tempSelectedSortingMethods]);
   
-  const [tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern] = useState<GameRepetitionPattern>(
-    // Par exemple, le pattern "never"
-    { patternName: 'never', initialEasinessFactor: 2.5, initialInterval: 1, secondInterval: 6 }
-  );
-  const [repeatSettings, setRepeatSettings] = useState<{
-    initialEasinessFactor: number;
-    initialInterval: number;
-    secondInterval: number;
-  }>({
+  // Repetition options
+  const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
+  
+  const [tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern] = useState<GameRepetitionPattern>({
+    patternName: 'never',
+    initialEasinessFactor: 2.5,
+    initialInterval: 1,
+    secondInterval: 6,
+  });
+  const [repeatSettings, setRepeatSettings] = useState({
     initialEasinessFactor: 2.5,
     initialInterval: 1,
     secondInterval: 6,
   });
   
+  // Helps
+  const [selectedHelps, setSelectedHelps] = useState<{ [key: string]: boolean }>({
+    typosFriendly: false,
+    initialGiven: false,
+  });
   const [tempSelectedHelps, setTempSelectedHelps] = useState<{ [key: string]: boolean }>({
     typosFriendly: false,
     initialGiven: false,
   });
   
+  // For edit modals
   const [editingFilter, setEditingFilter] = useState<GameFilter | undefined>(undefined);
   const [editingSort, setEditingSort] = useState<GameSortBy | undefined>(undefined);
-
-  // Pour le calcul de "hasCriticalChanges", c'est à adapter en fonction de ta logique
-  // Par exemple, si les options temporaires diffèrent des options validées
-  const hasCriticalChanges = false; // À implémenter selon ta logique
-
+  
+  // Fetch des données lors du montage du provider
+  useEffect(() => {
+    (async () => {
+      try {
+        const fetchedFilters: Attribute[] = await getFilters();
+        setFilters(fetchedFilters);
+      } catch (error) {
+        console.error('Error fetching filters:', error);
+      }
+    })();
+  }, []);
+  
+  useEffect(() => {
+    (async () => {
+      try {
+        const fetchedSorts: Attribute[] = await getSorts();
+        setSorts(fetchedSorts);
+      } catch (error) {
+        console.error('Error fetching sorts:', error);
+      }
+    })();
+  }, []);
+  
+  useEffect(() => {
+    (async () => {
+      try {
+        const fetchedModes: GameMode[] = await getGameModes();
+        setModesList(fetchedModes);
+        if (fetchedModes.length > 0) {
+          setSelectedMode(fetchedModes[0]);
+          setTempSelectedMode(fetchedModes[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching game modes:', error);
+      }
+    })();
+  }, []);
+  
   return (
     <QuizOptionsContext.Provider
       value={{
-        openFilterModal,
-        setOpenFilterModal,
+        modesList,
+        setModesList,
+        tempSelectedMode,
+        setTempSelectedMode,
+        selectedMode,
+        setSelectedMode,
+        filters,
+        setFilters,
         availableFilters,
-        setAvailableFilters,
+        selectedFilters,
+        setSelectedFilters,
         tempSelectedFilters,
         setTempSelectedFilters,
-        openSortModal,
-        setOpenSortModal,
+        sorts,
+        setSorts,
         availableSorts,
-        setAvailableSorts,
+        selectedSortingMethods,
+        setSelectedSortingMethods,
         tempSelectedSortingMethods,
         setTempSelectedSortingMethods,
+        selectedRepetitionPattern,
+        setSelectedRepetitionPattern,
         tempSelectedRepetitionPattern,
         setTempSelectedRepetitionPattern,
         repeatSettings,
         setRepeatSettings,
+        selectedHelps,
+        setSelectedHelps,
         tempSelectedHelps,
         setTempSelectedHelps,
         editingFilter,
         setEditingFilter,
         editingSort,
-        setEditingSort,
-        hasCriticalChanges,
+        setEditingSort
       }}
     >
       {children}

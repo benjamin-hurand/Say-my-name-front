@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import { Profile } from "../../scenes/profile/profile";
 import { PersonsTable } from "../persons/personsTable";
@@ -8,6 +8,8 @@ import Menu from "../../scenes/menu/menu";
 import { Layout } from "../layout/Layout";
 import Quiz from "../../scenes/quiz/quiz";
 import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
+import { QuizOptionsProvider } from "../../contexts/QuizOptionsProvider";
+import QuizOptions from "../../scenes/quiz/QuizOptions";
 
 const router = createBrowserRouter([
   {
@@ -31,12 +33,31 @@ const router = createBrowserRouter([
         ),
       },
       {
+        // Ici, on enveloppe la section quiz avec le provider et un Outlet, sans Layout fixe
         path: "quiz",
         element: (
-          <Layout headerTitle="Quiz">
-            <ProtectedRoute element={<Quiz />} />
-          </Layout>
+          <QuizOptionsProvider>
+            <Outlet />
+          </QuizOptionsProvider>
         ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Layout headerTitle="Quiz">
+                <ProtectedRoute element={<Quiz />} />
+              </Layout>
+            ),
+          },
+          {
+            path: "options",
+            element: (
+              <Layout headerTitle="Quiz Options" onBack="/quiz">
+                <ProtectedRoute element={<QuizOptions />} />
+              </Layout>
+            ),
+          },
+        ],
       },
       {
         path: "challenges",

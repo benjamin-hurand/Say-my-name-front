@@ -1,5 +1,5 @@
 // QuizOptions.tsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -13,116 +13,240 @@ import {
   DialogContent,
   DialogContentText,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { AddSortModal } from './components/AddSortModal';
-import { GameRepetitionPattern } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
-import { Attribute } from '../../models/commons/Attribute';
+import AddFilterModal from './components/AddFilterModal';
 import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
 import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
-import AddFilterModal from './components/AddFilterModal';
+import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { DraggableSortingMethods } from './components/DraggableSortingMethods';
+import ModeCard from './components/ModeCard';
+import { useQuizOptions } from '../../contexts/QuizOptionsProvider';
+import { useThemeColorContext } from '../../contexts/ThemeColorContext';
+import OptionCard from './components/OptionCard';
+import { useNavigate } from 'react-router-dom';
 
 interface QuizOptionsProps {
-  color: string;
-  toggleOptions: (saveChanges?: boolean) => void;
-  renderModes: () => React.ReactNode;
-  renderFilters: () => React.ReactNode;
-  openFilterModal: boolean;
-  setOpenFilterModal: (open: boolean) => void;
-  availableFilters: Attribute[];
-  handleSaveFilter: (filter: GameFilter) => void;
-  tempSelectedSortingMethods: GameSortBy[];
-  setTempSelectedSortingMethods: (methods: GameSortBy[]) => void;
-  handleEditSort: (sortId: number) => void;
-  openSortModal: boolean;
-  setOpenSortModal: (open: boolean) => void;
-  availableSorts: Attribute[];
-  handleAddSortingMethod: (sortBy: GameSortBy) => void;
-  renderRepetitionOptions: () => React.ReactNode;
-  tempSelectedRepetitionPattern: GameRepetitionPattern;
-  repeatSettings: {
-    initialEasinessFactor: number;
-    initialInterval: number;
-    secondInterval: number;
-  };
-  setRepeatSettings: (settings: {
-    initialEasinessFactor: number;
-    initialInterval: number;
-    secondInterval: number;
-  }) => void;
-  renderHelpsOptions: () => React.ReactNode;
-  hasCriticalChanges: boolean;
-  initialFilter: GameFilter | undefined;
-  initialSort: GameSortBy | undefined;
-  setEditingFilter: (initialFilter: GameFilter | undefined) => void;
-  setEditingSort: (initialSort: GameSortBy | undefined) => void;
-  handleDeleteFilter: (filterId: number) => void;
-  handleDeleteSort: (sortId: number) => void;
 }
 
 const QuizOptions: React.FC<QuizOptionsProps> = ({
-  color,
-  toggleOptions,
-  renderModes,
-  renderFilters,
-  openFilterModal,
-  setOpenFilterModal,
-  availableFilters,
-  handleSaveFilter,
-  tempSelectedSortingMethods,
-  setTempSelectedSortingMethods,
-  handleEditSort,
-  openSortModal,
-  setOpenSortModal,
-  availableSorts,
-  handleAddSortingMethod,
-  renderRepetitionOptions,
-  tempSelectedRepetitionPattern,
-  repeatSettings,
-  setRepeatSettings,
-  renderHelpsOptions,
-  hasCriticalChanges,
-  initialFilter,
-  initialSort,
-  setEditingFilter,
-  setEditingSort,
-  handleDeleteFilter,
-  handleDeleteSort,
 }) => {
+  // Navigation
+  const navigate = useNavigate();
+
   // Local state for confirmation dialog
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
+  // RECUP DEPUIS CONTEXT
+  const { color } = useThemeColorContext();
+  const {
+    modesList, selectedMode, setSelectedMode, tempSelectedMode, setTempSelectedMode,
+    availableFilters, selectedFilters, setSelectedFilters, tempSelectedFilters, setTempSelectedFilters,
+    availableSorts, selectedSortingMethods, setSelectedSortingMethods, tempSelectedSortingMethods, setTempSelectedSortingMethods,
+    selectedRepetitionPattern, setSelectedRepetitionPattern, tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern,
+    selectedHelps, setSelectedHelps, tempSelectedHelps, setTempSelectedHelps
+  } = useQuizOptions();
+
+  // MODES
+  const renderModes = () => {
+      return modesList.map((mode) => (
+          <ModeCard
+              key={mode.id}
+              mode={mode}
+              isSelected={tempSelectedMode?.id === mode.id}
+              onSelect={() => setTempSelectedMode(mode)}
+          />
+      ));
+  };
+
+  // FILTERS
+  const [editingFilter, setEditingFilter] = useState<GameFilter | undefined>();
+  const [openFilterModal, setOpenFilterModal] = useState(false);
+
+  const renderFilters = () => {
+      if (tempSelectedFilters.length === 0) {
+          return <Chip label="No filters" disabled />;
+      }
+      return tempSelectedFilters.map((filter, index) => (
+          <Chip
+              key={index}
+              label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
+              onClick={() => handleEditFilter(index)}
+              onDelete={() => handleDeleteFilter(filter.id)}
+          />
+      ));
+  };
+
+  const handleSaveFilter = (filter: GameFilter) => {
+      if (editingFilter) {
+        // Update existing filter based on its id.
+        setTempSelectedFilters(prevFilters =>
+          prevFilters.map(f => (f.id === editingFilter.id ? filter : f))
+        );
+        setEditingFilter(undefined);
+      } else {
+        // Add new filter.
+        setTempSelectedFilters(prevFilters => [...prevFilters, filter]);
+      }
+      setOpenFilterModal(false);
+  };
+
+  const handleEditFilter = (index: number) => {
+    // Retrieve the filter to be edited (from tempSelectedFilters)
+    const filterToEdit = tempSelectedFilters[index];
+    // Set a state that indicates “editing mode” and which filter is being edited
+    setEditingFilter(filterToEdit);
+    // Open the addFilterModal with the editing prop populated
+    setOpenFilterModal(true);
+  };
+
+  const handleDeleteFilter = (filterId: number) => {
+    const newFilters = tempSelectedFilters.filter(filter => filter.id !== filterId);
+    setTempSelectedFilters(newFilters);
+  };
+
   const closeFilterModal = () => {
     setOpenFilterModal(false);
-    if (initialFilter) {
+    if (editingFilter) {
       setEditingFilter(undefined);
     }
   };
 
+
+  // SORTS
+  const [editingSort, setEditingSort] = useState<GameSortBy | undefined>();
+  const [openSortModal, setOpenSortModal] = useState(false);
+
+  const handleSaveSortingMethod = (sortBy: GameSortBy) => {
+      // console.log('Save : ', JSON.stringify(sortBy));
+      // console.log('With editingSort: ', JSON.stringify(editingSort));
+      // console.log('With tempSelectedSortingMethods: ', JSON.stringify(tempSelectedSortingMethods));
+      if (editingSort) {
+          // console.log('ya editingSort, on remplace celui de base');
+          // Update existing sort based on its id.
+          setTempSelectedSortingMethods(prevSorts =>
+            prevSorts.map(s => (s.id === editingSort.id ? sortBy : s))
+          );
+          setEditingSort(undefined);
+        } else {
+          // console.log('ya pas editingSort, on rajoute normalement');
+          // Add new sort.
+          setTempSelectedSortingMethods(prevSorts => [...prevSorts, sortBy]);
+        }
+        setOpenSortModal(false);
+  };
+
+  const handleEditSort = (index: number) => {
+    const sortToEdit = tempSelectedSortingMethods[index];
+    setEditingSort(sortToEdit);
+    setOpenSortModal(true);
+  }; 
+
+  const handleDeleteSortingMethod = (sortId: number) => {
+    const newSorts = tempSelectedSortingMethods.filter(sort => sort.id !== sortId);
+    setTempSelectedSortingMethods(newSorts);
+};  
+
   const closeSortModal = () => {
     setOpenSortModal(false);
-    if (initialSort) {
+    if (editingSort) {
       setEditingSort(undefined);
     }
   };
 
+  // REPETITIONS
+  const renderRepetitionOptions = () => {
+    return Object.keys(repetitionPatterns).map((option) => (
+        <Tooltip key={option} title={
+        option.toLowerCase() === 'optimal'
+            ? 'Optimal: We will automatically schedule reviews based on your performance.'
+            : option.toLowerCase() === 'immediate'
+            ? 'Immediate: The question will repeat right away if answered incorrectly.'
+            : 'Never: Do not repeat this question.'
+        }>
+        <OptionCard
+            option={option.charAt(0).toUpperCase() + option.slice(1)}
+            isSelected={tempSelectedRepetitionPattern.patternName === option.toLowerCase()}
+            onSelect={() => handleSelectRepetition(option)}
+        />
+        </Tooltip>
+    ));
+  };
+
+  const handleSelectRepetition = (option: string) => {
+      const pattern: GameRepetitionPattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
+      setTempSelectedRepetitionPattern(pattern);
+  }; 
+
+  // HELPS
+  const helpOptions: {
+    key: string;
+    label: string;
+  }[] = [
+    { key: 'typosFriendly', label: 'Typos friendly' },
+    { key: 'initialGiven', label: 'Initial given' }
+  ];
+  const renderHelpsOptions = () => {
+    return helpOptions.map((option) => (
+      <OptionCard
+        key={option.key}
+        option={option.label}
+        isSelected={tempSelectedHelps[option.key]}
+        onSelect={() => handleSelectHelps(option.key)}
+      />
+    ));
+  };
+  
+  const handleSelectHelps = (key: string) => {
+    // Toggle the boolean for the specific help option.
+    setTempSelectedHelps((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  //GLOBAL SAVE
+  const hasCriticalChanges = useMemo(() => {
+        return (
+          JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
+          JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
+          JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
+        );
+      }, [tempSelectedMode, selectedMode, tempSelectedFilters, selectedFilters, tempSelectedSortingMethods, selectedSortingMethods]);
+      
   const handleSaveClick = () => {
     if (hasCriticalChanges) {
       setOpenConfirmDialog(true);
     } else {
-      toggleOptions(true);
+      goToQuiz(true);
     }
   };
 
   const handleConfirmSave = () => {
     setOpenConfirmDialog(false);
-    toggleOptions(true);
+    goToQuiz(true);
   };
 
   const handleCancelSave = () => {
     setOpenConfirmDialog(false);
   };
+
+  const goToQuiz = (saveChanges: boolean = false) => {
+    if (saveChanges) {
+      setSelectedMode(tempSelectedMode);
+      setSelectedFilters(tempSelectedFilters);
+      setSelectedSortingMethods(tempSelectedSortingMethods);
+      setSelectedRepetitionPattern(tempSelectedRepetitionPattern);
+      setSelectedHelps(tempSelectedHelps);
+    } else {
+        // Revert interim states to last committed state if changes were made but user cancelled
+        setTempSelectedMode(selectedMode);
+        setTempSelectedFilters(selectedFilters);
+        setTempSelectedSortingMethods(selectedSortingMethods);
+        setTempSelectedRepetitionPattern(selectedRepetitionPattern);
+        setTempSelectedHelps(selectedHelps);
+    }
+    navigate('/quiz' , { replace: true });
+  }
 
   return (
     <Box
@@ -135,33 +259,6 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         alignItems: 'center',
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          width: '100%',
-          marginBottom: '1vh',
-        }}
-      >
-        <IconButton
-          onClick={() => toggleOptions(false)}
-          sx={{
-            color: color,
-            boxShadow: `0 0 8px ${color}`,
-            transition: 'box-shadow 0.2s ease-in-out',
-            backdropFilter: 'blur(6px)',
-          }}
-          aria-label="Back to quiz"
-        >
-          <ArrowBackIcon style={{ color }} />
-        </IconButton>
-        <Typography variant="h4" style={{ color: color, textShadow: `0 0 8px ${color}` }}>
-          Quiz Options
-        </Typography>
-      </Box>
-
       <FormGroup sx={{ width: '100%' }}>
         {/* Mode */}
         <Divider>
@@ -218,7 +315,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           attributes={availableFilters}
           onSave={handleSaveFilter}
           onClose={closeFilterModal}
-          initialFilter={initialFilter}
+          initialFilter={editingFilter}
           handleDeleteFilter={handleDeleteFilter}
         />
 
@@ -247,7 +344,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
               tempSelectedSortingMethods={tempSelectedSortingMethods}
               setTempSelectedSortingMethods={setTempSelectedSortingMethods}
               handleEditSort={handleEditSort}
-              handleDeleteSortingMethod={handleDeleteSort}
+              handleDeleteSortingMethod={handleDeleteSortingMethod}
             />
           </Box>
           <Box sx={{ flexShrink: 0, marginTop: '8px' }}>
@@ -271,10 +368,10 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         <AddSortModal
           open={openSortModal}
           availableAttributes={availableSorts}
-          onSave={handleAddSortingMethod}
+          onSave={handleSaveSortingMethod}
           onClose={closeSortModal}
-          initialSort={initialSort}
-          handleDeleteSort={handleDeleteSort}
+          initialSort={editingSort}
+          handleDeleteSort={handleDeleteSortingMethod}
         />
 
         {/* Learning repetition */}
@@ -307,7 +404,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         <Button
           variant="outlined"
           className="menu nobg"
-          onClick={() => toggleOptions(false)}
+          onClick={() => goToQuiz(false)}
           sx={{ marginRight: '1vw' }}
         >
           Cancel

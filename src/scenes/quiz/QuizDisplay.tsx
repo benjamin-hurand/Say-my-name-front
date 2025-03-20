@@ -11,7 +11,7 @@ export interface QuizDisplayProps {
   answer: string;
   handleAnswerChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   validateAnswer: () => void;
-  toggleOptions: () => void;
+  openQuizOptions: () => void;
   goBackToMenu: () => void;
   isLoading: boolean;
   hasFetched: boolean;
@@ -25,7 +25,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
   answer,
   handleAnswerChange,
   validateAnswer,
-  toggleOptions,
+  openQuizOptions,
   isLoading,
   hasFetched
 }) => {
@@ -92,7 +92,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
 
         {/* Buttons row */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', height: '7vh' }}>
-          <Button variant="outlined" className="menu nobg" onClick={toggleOptions} sx={{ marginRight: '1vw' }}>
+          <Button variant="outlined" className="menu nobg" onClick={openQuizOptions} sx={{ marginRight: '1vw' }}>
             Options
           </Button>
           <Button variant="contained" className="menu" onClick={validateAnswer}>
