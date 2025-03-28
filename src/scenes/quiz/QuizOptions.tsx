@@ -23,7 +23,7 @@ import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.mod
 import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { DraggableSortingMethods } from './components/DraggableSortingMethods';
 import ModeCard from './components/ModeCard';
-import { useQuizOptions } from '../../contexts/QuizOptionsProvider';
+import { useQuizOptions } from '../../contexts/QuizOptionsContext';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 import OptionCard from './components/OptionCard';
 import { useNavigate } from 'react-router-dom';
@@ -42,7 +42,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   // RECUP DEPUIS CONTEXT
   const { color } = useThemeColorContext();
   const {
-    modesList, selectedMode, setSelectedMode, tempSelectedMode, setTempSelectedMode,
+    modes, selectedMode, setSelectedMode, tempSelectedMode, setTempSelectedMode,
     availableFilters, selectedFilters, setSelectedFilters, tempSelectedFilters, setTempSelectedFilters,
     availableSorts, selectedSortingMethods, setSelectedSortingMethods, tempSelectedSortingMethods, setTempSelectedSortingMethods,
     selectedRepetitionPattern, setSelectedRepetitionPattern, tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern,
@@ -51,7 +51,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
 
   // MODES
   const renderModes = () => {
-      return modesList.map((mode) => (
+      return modes.map((mode) => (
           <ModeCard
               key={mode.id}
               mode={mode}

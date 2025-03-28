@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { neonColors, lightThemeColors } from '../models/commons/NeonColors';
@@ -50,6 +50,10 @@ export const ThemeColorProvider: React.FC<ThemeColorProviderProps> = ({ children
         const randomIndex = Math.floor(Math.random() * colors.length);
         setColor(colors[randomIndex]);
     };
+
+    useEffect(() => {
+        document.documentElement.style.setProperty('--theme-color', color);
+      }, [color]);
 
     const themeConfig = useMemo(() => theme === 'dark' ? darkTheme(color) : lightTheme(color), [theme, color]);
 

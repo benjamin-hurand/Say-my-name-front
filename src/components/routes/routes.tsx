@@ -8,8 +8,11 @@ import Menu from "../../scenes/menu/menu";
 import { Layout } from "../layout/Layout";
 import Quiz from "../../scenes/quiz/quiz";
 import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
-import { QuizOptionsProvider } from "../../contexts/QuizOptionsProvider";
+import { QuizOptionsProvider } from "../../contexts/QuizOptionsContext";
 import QuizOptions from "../../scenes/quiz/QuizOptions";
+import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
+import FiltersPage from "../../scenes/challenges/menu/FiltersPage";
+import { ChallengesProvider } from "../../contexts/ChallengesContext";
 
 const router = createBrowserRouter([
   {
@@ -60,12 +63,39 @@ const router = createBrowserRouter([
         ],
       },
       {
+        // Envelopper la section challenges avec ChallengesProvider
         path: "challenges",
         element: (
-          <Layout headerTitle="Challenges">
-            <ProtectedRoute element={<ChallengeMenu />} />
-          </Layout>
+          <ChallengesProvider>
+            <Outlet />
+          </ChallengesProvider>
         ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Layout headerTitle="Challenges">
+                <ProtectedRoute element={<ChallengeMenu />} />
+              </Layout>
+            ),
+          },
+          {
+            path: "new",
+            element: (
+              <Layout headerTitle="Create challenge" onBack="/challenges">
+                <ProtectedRoute element={<AddChallengeForm />} />
+              </Layout>
+            ),
+          },
+          {
+            path: "filters",
+            element: (
+              <Layout headerTitle="Filter challenges" onBack="/challenges">
+                <ProtectedRoute element={<FiltersPage />} />
+              </Layout>
+            ),
+          },
+        ],
       },
       {
         path: "persons",

@@ -4,10 +4,12 @@ import 'react-toastify/dist/ReactToastify.css';
 import { router } from "./components/routes/routes";
 import './services/notification/toastifyCustom.css';
 import ParticlesBackground from "./components/layout/ParticleBackground";
+import { GlobalDataProvider } from "./contexts/GlobalDataContext";
 
 function App() {
   return (
     <>
+    <GlobalDataProvider>
       <ToastContainer />
       <div style={{
         maxWidth: '100%', // Ensure width does not exceed the viewport
@@ -22,6 +24,7 @@ function App() {
         <ParticlesBackground />
         <RouterProvider router={router} />
       </div>
+    </GlobalDataProvider>
     </>
   )
 }

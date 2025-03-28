@@ -12,7 +12,7 @@ import QuizDisplay from './QuizDisplay';
 import { ReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDto';
 import { toReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDtoMapper';
 import { QuizHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
-import { useQuizOptions } from '../../contexts/QuizOptionsProvider';
+import { useQuizOptions } from '../../contexts/QuizOptionsContext';
 
 interface QuizProps {}
 

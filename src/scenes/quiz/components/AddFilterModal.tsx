@@ -12,71 +12,8 @@ import {
 import { Attribute } from '../../../models/commons/Attribute';
 import { GameFilter } from '../../../models/commons/Game/GameOptions/GameFilter.model';
 import { StyledSlider } from './StyledSlider';
-
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const mapNumberToLetter = (num: number): string => (alphabet[num] || '');
-const mapLetterToNumber = (letter: string): number => alphabet.indexOf(letter.toUpperCase());
-
-const msPerDay = 24 * 60 * 60 * 1000;
-// Convert a YYYY-MM-DD string to a day offset (days since epoch)
-const dateStringToDayOffset = (dateString: string): number =>
-  Math.floor(new Date(dateString).getTime() / msPerDay);
-// Convert a day offset back to an ISO date string (YYYY-MM-DD)
-const dayOffsetToISODateString = (dayOffset: number): string => {
-  const date = new Date(dayOffset * msPerDay);
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-// Convert a day offset to a localized date string for slider display.
-const dayOffsetToLocalizedDateString = (dayOffset: number, locale = navigator.language): string => {
-  const date = new Date(dayOffset * msPerDay);
-  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
-};
-
-function createNumericMarks(minVal: number, maxVal: number, steps = 5) {
-  const rangeLength = maxVal - minVal;
-  if (rangeLength <= 0) return [{ value: 0, label: minVal.toString() }];
-  const marks = [];
-  const stepSize = Math.round(rangeLength / steps);
-  for (let i = 0; i < steps; i++) {
-    const val = minVal + i * stepSize;
-    marks.push({ value: val - minVal, label: val.toString() });
-  }
-  marks.push({ value: rangeLength, label: maxVal.toString() });
-  return marks;
-}
-
-function createDateMarks(minDay: number, maxDay: number, steps = 5) {
-  const rangeLength = maxDay - minDay;
-  if (rangeLength <= 0) return [{ value: 0, label: dayOffsetToLocalizedDateString(minDay) }];
-  const marks = [];
-  const stepSize = Math.round(rangeLength / steps);
-  for (let i = 0; i < steps; i++) {
-    const offset = i * stepSize;
-    marks.push({ value: offset, label: dayOffsetToLocalizedDateString(minDay + offset) });
-  }
-  marks.push({ value: rangeLength, label: dayOffsetToLocalizedDateString(maxDay) });
-  return marks;
-}
-
-const AttributeCard = ({
-  attribute,
-  isSelected,
-  onSelect,
-}: {
-  attribute: Attribute;
-  isSelected: boolean;
-  onSelect: (attribute: Attribute) => void;
-}) => (
-  <Chip
-    label={attribute.name}
-    onClick={() => onSelect(attribute)}
-    color={isSelected ? 'primary' : 'default'}
-    sx={{ margin: 1, cursor: 'pointer' }}
-  />
-);
+import { AttributeCard } from './AttributeCard';
+import { dateStringToDayOffset, mapLetterToNumber, createNumericMarks, createDateMarks, alphabet, mapNumberToLetter, dayOffsetToISODateString, dayOffsetToLocalizedDateString } from './FilterChoiceUtils';
 
 interface AddFilterModalProps {
   open: boolean;
@@ -355,7 +292,7 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
     >
       <DialogTitle>{initialFilter ? 'Edit Filter' : 'Add a Filter'}</DialogTitle>
       <DialogContent dividers sx={{ overflowY: 'auto' }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
           {attributesToRender.map((attr) => (
             <AttributeCard
               key={attr.id}

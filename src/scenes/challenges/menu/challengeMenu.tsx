@@ -3,124 +3,412 @@ import React, { useState } from 'react';
 import {
   Box,
   Button,
-  IconButton,
   TextField,
   Typography,
   Card,
   CardContent,
-  CardActions,
-  Divider
+  Chip,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PeopleIcon from '@mui/icons-material/People';
+import { useThemeColorContext } from '../../../contexts/ThemeColorContext';
+import FilterAndSortBar from './components/FilterAndSortBar';
+import { useNavigate } from 'react-router-dom';
+import { SortCriterion } from './components/SortModal';
+import StatusBubble from './components/StatusBubble';
+import { ChallengeFilters, defaultFilters } from './components/FilterAndSortBar.types';
 
 interface Challenge {
   id: number;
-  title: string;
-  mode: string;
+  title: string;         
+  mode: string;          
   participants: number;
-  status: string; // "Validé" ou "En attente"
+  status: string;
+  period: string;
+  numQuestions: number;
+  details: string;
+  userCompleted: boolean;
+  userScore: number | null;
+  userTimeScore: string | null;
+  createdAt: string;
 }
 
-// Données factices pour illustration
 const dummyChallenges: Challenge[] = [
-  { id: 1, title: 'Challenge A', mode: 'Prénom', participants: 15, status: 'Validé' },
-  { id: 2, title: 'Challenge B', mode: 'Prénom & Nom', participants: 5, status: 'En attente' },
-  { id: 3, title: 'Challenge C', mode: 'Prénom', participants: 20, status: 'Validé' },
-  { id: 4, title: 'Challenge D', mode: 'Prénom', participants: 12, status: 'Validé' },
-  { id: 5, title: 'Challenge E', mode: 'Prénom & Nom', participants: 7, status: 'En attente' },
-  { id: 6, title: 'Challenge F', mode: 'Prénom', participants: 25, status: 'Validé' },
-  // Ajoutez autant de challenges pour tester le scroll...
+  {
+    id: 1,
+    title: 'Promo 2025 – Prénom',
+    mode: 'Prénom',
+    participants: 7,
+    status: 'En attente',
+    period: 'Semaine du 20/04 au 26/04',
+    numQuestions: 10,
+    details: 'Ce challenge vous permet d’apprendre les prénoms de la promo 2025.',
+    userCompleted: false,
+    userScore: null,
+    userTimeScore: null,
+    createdAt: '2025-04-10',
+  },
+  {
+    id: 2,
+    title: 'Promo 2025 – Prénom & Nom',
+    mode: 'Prénom & Nom',
+    participants: 15,
+    status: 'Validé',
+    period: 'Semaine du 20/04 au 26/04',
+    numQuestions: 12,
+    details: 'Ce challenge vous permet d’apprendre les prénoms et noms de la promo 2025.',
+    userCompleted: false,
+    userScore: null,
+    userTimeScore: null,
+    createdAt: '2025-04-11',
+  },
+  {
+    id: 3,
+    title: 'Promo 2025 – Prénom',
+    mode: 'Prénom',
+    participants: 20,
+    status: 'Validé',
+    period: 'Semaine du 20/04 au 26/04',
+    numQuestions: 8,
+    details: 'Testez vos connaissances sur les prénoms de la promo 2025.',
+    userCompleted: true,
+    userScore: 75,
+    userTimeScore: null,
+    createdAt: '2025-04-09',
+  },
+  {
+    id: 4,
+    title: 'Promo 2025 – Prénom',
+    mode: 'Prénom',
+    participants: 9,
+    status: 'En attente',
+    period: 'Semaine du 20/04 au 26/04',
+    numQuestions: 10,
+    details: 'Challenge en attente de validation (nombre de participants insuffisant).',
+    userCompleted: false,
+    userScore: null,
+    userTimeScore: null,
+    createdAt: '2025-04-12',
+  },
+  {
+    id: 5,
+    title: 'Promo 2025 – Prénom & Nom',
+    mode: 'Prénom & Nom',
+    participants: 11,
+    status: 'Validé',
+    period: 'Semaine du 20/04 au 26/04',
+    numQuestions: 15,
+    details: 'Challenge complet pour apprendre prénoms et noms.',
+    userCompleted: true,
+    userScore: 100,
+    userTimeScore: '2:37',
+    createdAt: '2025-04-08',
+  },
 ];
 
-const ChallengeMenu: React.FC = () => {
-  const [search, setSearch] = useState<string>('');
+const getPerformanceValue = (challenge: Challenge): number => {
+  if (challenge.status === 'En attente') return 0;
+  return challenge.userScore ?? 0;
+};
 
-  const handleBack = () => {
-    // Rediriger vers le menu principal
-    console.log('Retour au menu principal');
+const compareChallenges = (a: Challenge, b: Challenge, criteria: SortCriterion[]): number => {
+  for (const crit of criteria) {
+    let comp = 0;
+    switch (crit.id) {
+      case 'popularity':
+        comp = a.participants - b.participants;
+        break;
+      case 'length':
+        comp = a.numQuestions - b.numQuestions;
+        break;
+      case 'performance':
+        const getPerf = (c: Challenge) => (c.userCompleted ? (c.userScore === 100 ? 100 : c.userScore || 0) : 0);
+        comp = getPerf(a) - getPerf(b);
+        break;
+      case 'createdAt':
+        comp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      default:
+        break;
+    }
+    if (comp !== 0) {
+      return crit.order === 'asc' ? comp : -comp;
+    }
+  }
+  return 0;
+};
+
+const getStatusTooltip = (challenge: Challenge) => {
+  if (challenge.status === 'En attente') {
+    return "Challenge en attente de validation";
+  }
+  if (challenge.status === 'Validé' && !challenge.userCompleted) {
+    return "Challenge validé, à faire";
+  }
+  if (
+    challenge.status === 'Validé' &&
+    challenge.userCompleted &&
+    challenge.userScore !== null &&
+    challenge.userScore < 100
+  ) {
+    return `Score : ${challenge.userScore}%`;
+  }
+  if (
+    challenge.status === 'Validé' &&
+    challenge.userCompleted &&
+    challenge.userScore === 100
+  ) {
+    return `Challenge réussi en ${challenge.userTimeScore}`;
+  }
+  return "";
+};
+
+const ChallengeMenu: React.FC = () => {
+  const { color } = useThemeColorContext();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState<string>('');
+  
+  // Modal de détails
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+  // États de tri et filtres
+  const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
+    { id: 'popularity', label: 'Popularité', order: 'desc' },
+    { id: 'length', label: 'Longueur', order: 'asc' },
+    { id: 'performance', label: 'Performance', order: 'desc' },
+    { id: 'createdAt', label: 'Date de création', order: 'desc' },
+  ]);
+  const [filters, setFilters] = useState<ChallengeFilters>(defaultFilters);
+
+  const handleSortChange = (criteria: SortCriterion[]) => {
+    setSortCriteria(criteria);
   };
 
-  const handleCreateChallenge = () => {
-    // Rediriger vers le formulaire de création de challenge
-    console.log('Créer un challenge');
+  const handleFilterChange = (newFilters: ChallengeFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleOpenModal = (challenge: Challenge) => {
+    setSelectedChallenge(challenge);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedChallenge(null);
   };
 
   const handleParticipate = (challenge: Challenge) => {
-    // Rediriger vers le challenge sélectionné
     console.log('Participer au challenge', challenge);
+    // Navigation vers le challenge
+  };
+
+  const handleCreateChallenge = () => {
+    navigate('/challenges/new');
   };
 
   const handleMesChallenges = () => {
-    // Rediriger vers la page "Mes Challenges"
     console.log('Accès à Mes Challenges');
+    // Navigation vers "Mes Challenges"
   };
+
+  // Appliquer les filtres aux challenges puis trier
+  const filteredChallenges = dummyChallenges.filter(challenge =>
+    challenge.title.toLowerCase().includes(search.toLowerCase())
+  );
+  const filteredAndSortedChallenges = filteredChallenges
+    .filter(challenge => {
+      // Filtre par mode
+      if (filters.mode.length > 0 && !filters.mode.includes(challenge.mode)) return false;
+      // Filtre par performance
+      if (filters.performance.length > 0) {
+        let perf = '';
+        if (!challenge.userCompleted) {
+          perf = 'Pas commencé';
+        } else if (challenge.userScore === 100) {
+          perf = 'Réussi';
+        } else {
+          perf = 'Achevé';
+        }
+        if (!filters.performance.includes(perf)) return false;
+      }
+      // Filtre par nombre de participants
+      if (filters.participantsRange) {
+        if (challenge.participants < filters.participantsRange.min || challenge.participants > filters.participantsRange.max)
+          return false;
+      }
+      // Filtre par nombre de questions
+      if (filters.questionsRange) {
+        if (challenge.numQuestions < filters.questionsRange.min || challenge.numQuestions > filters.questionsRange.max)
+          return false;
+      }
+      // Filtre par panel de questions
+      if (filters.panel.length > 0) {
+        const firstLetter = challenge.title.charAt(0).toUpperCase();
+        let match = false;
+        for (const range of filters.panel) {
+          const [start, end] = range.split('-');
+          if (firstLetter >= start && firstLetter <= end) {
+            match = true;
+            break;
+          }
+        }
+        if (!match) return false;
+      }
+      // Filtre par date de création
+      if (filters.dateRange && filters.dateRange.start && filters.dateRange.end) {
+        const challengeDate = new Date(challenge.createdAt);
+        const startDate = new Date(filters.dateRange.start);
+        const endDate = new Date(filters.dateRange.end);
+        if (challengeDate < startDate || challengeDate > endDate) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => compareChallenges(a, b, sortCriteria));
 
   return (
     <Box
       sx={{
-        padding: '20px',
         width: '100%',
-        height: '100vh',
+        maxWidth: 600,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
+        height: '100%',
+        boxSizing: 'border-box',
+        padding: 2,
       }}
     >
-      {/* Barre de recherche et filtres */}
-      <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 2 }}>
-        <TextField
-          label="Recherche de challenge..."
-          variant="outlined"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ width: { xs: '90%', sm: '60%', md: '40%' } }}
-        />
+      {/* Barre de recherche */}
+      <TextField
+        label="Recherche de challenge..."
+        variant="outlined"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+      />
+
+      {/* Période affichée */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle1">Semaine du 20/04 au 26/04</Typography>
       </Box>
 
-      {/* Bouton "Créer un Challenge" */}
-      <Box sx={{ mb: 3 }}>
-        <Button variant="contained" onClick={handleCreateChallenge} sx={{ whiteSpace: 'nowrap' }}>
-          Créer un Challenge
+      {/* Barre de filtres et tris */}
+      <Box sx={{ mb: 2 }}>
+        <FilterAndSortBar onSortChange={handleSortChange} onFilterChange={handleFilterChange} />
+      </Box>
+
+      {/* Bouton "Créer un challenge" */}
+      <Box sx={{ mb: 2 }}>
+        <Button
+          className="menu"
+          onClick={handleCreateChallenge}
+          variant="outlined"
+          fullWidth
+          sx={{
+            whiteSpace: 'nowrap',
+            boxShadow: `0 0 4px ${color}`,
+            textShadow: `0 0 4px ${color}`,
+          }}
+        >
+          + Créer un challenge
         </Button>
       </Box>
 
-      {/* Zone scrollable pour la liste des challenges */}
+      {/* Liste des challenges */}
       <Box
+        className="scrollable-content"
         sx={{
-          width: '100%',
-          maxWidth: 600,
-          flexGrow: 1,          // Prend l'espace restant
-          overflowY: 'auto',    // Permet le scroll vertical
-          mb: 2,
+          flexGrow: 1,
+          overflowY: 'auto',
         }}
       >
-        {dummyChallenges
-          .filter((challenge) =>
-            challenge.title.toLowerCase().includes(search.toLowerCase())
-          )
-          .map((challenge) => (
-            <Card key={challenge.id} sx={{ mb: 2 }}>
-              <CardContent>
+        {filteredAndSortedChallenges.map((challenge) => (
+          <Card key={challenge.id} sx={{ mb: 1, cursor: 'pointer' }} onClick={() => handleOpenModal(challenge)}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ flex: 1 }}>
                 <Typography variant="h6">{challenge.title}</Typography>
-                <Typography variant="body2">Mode : {challenge.mode}</Typography>
-                <Typography variant="body2">Participants : {challenge.participants}</Typography>
-                <Typography variant="body2">Statut : {challenge.status}</Typography>
-              </CardContent>
-              <CardActions>
-                <Button size="small" onClick={() => handleParticipate(challenge)}>
-                  Cliquez ici pour participer
-                </Button>
-              </CardActions>
-            </Card>
-          ))}
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <Chip label={`${challenge.numQuestions} questions`} variant="outlined" size="medium" sx={{ pl: 1, pr: 1 }} />
+                  <Chip
+                    icon={<PeopleIcon fontSize="small" sx={{ mr: 0.5 }} />}
+                    label={challenge.participants}
+                    variant="outlined"
+                    size="medium"
+                    sx={{ pl: 1, pr: 1 }}
+                  />
+                </Box>
+              </Box>
+              <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Tooltip title={
+                  challenge.status === 'En attente'
+                    ? "Challenge en attente de validation"
+                    : challenge.status === 'Validé' && !challenge.userCompleted
+                      ? "Challenge validé, à faire"
+                      : challenge.status === 'Validé' && challenge.userCompleted && challenge.userScore !== null && challenge.userScore < 100
+                        ? `Score : ${challenge.userScore}%`
+                        : challenge.status === 'Validé' && challenge.userCompleted && challenge.userScore === 100
+                          ? `Challenge réussi en ${challenge.userTimeScore}`
+                          : ""
+                }>
+                  <span>
+                    <StatusBubble challenge={challenge} />
+                  </span>
+                </Tooltip>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
       </Box>
 
-      {/* Lien "Mes Challenges" fixé en bas */}
+      {/* Bouton "Mes Challenges" */}
       <Box sx={{ mt: 2 }}>
-        <Button variant="text" onClick={handleMesChallenges}>
+        <Button className="menu" variant="outlined" onClick={handleMesChallenges} fullWidth>
           Mes Challenges
         </Button>
       </Box>
+
+      {/* Modal des détails du challenge */}
+      <Dialog open={modalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
+        <DialogTitle>{selectedChallenge?.title}</DialogTitle>
+        <DialogContent dividers>
+          {selectedChallenge && (
+            <>
+              <Typography variant="body2" gutterBottom>
+                <strong>Mode :</strong> {selectedChallenge.mode}
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                <strong>Participants :</strong> {selectedChallenge.participants}
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                <strong>Statut :</strong> {selectedChallenge.status}
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                <strong>Nombre de questions :</strong> {selectedChallenge.numQuestions}
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                <strong>Période :</strong> {selectedChallenge.period}
+              </Typography>
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="body2" gutterBottom>
+                {selectedChallenge.details}
+              </Typography>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Annuler</Button>
+          <Button onClick={() => { if (selectedChallenge) handleParticipate(selectedChallenge); }} variant="contained">
+            Participer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
