@@ -1,8 +1,10 @@
 // FilterAndSortBar.tsx
 import React, { useState } from 'react';
 import { Box, Button, Stack } from '@mui/material';
-import SortModal, { SortCriterion } from './SortModal';
 import { useNavigate } from 'react-router-dom';
+import SortModal, { SortCriterion } from './SortModal';
+import InlineSortBar from './InlineSortBar';
+import InlineFiltersBar from './InlineFiltersBar';
 import { ChallengeFilters, defaultFilters } from './FilterAndSortBar.types';
 
 const FilterAndSortBar: React.FC<{
@@ -11,8 +13,11 @@ const FilterAndSortBar: React.FC<{
 }> = ({ onSortChange, onFilterChange }) => {
   const navigate = useNavigate();
 
+  // États pour activer les vues inline pour tri et filtres
+  const [sortInlineActive, setSortInlineActive] = useState(false);
+  const [filtersInlineActive, setFiltersInlineActive] = useState(false);
+
   // TRI
-  const [sortModalOpen, setSortModalOpen] = useState<boolean>(false);
   const defaultSortCriteria: SortCriterion[] = [
     { id: 'popularity', label: 'Popularité', order: null },
     { id: 'length', label: 'Longueur', order: null },
@@ -21,42 +26,78 @@ const FilterAndSortBar: React.FC<{
   ];
   const [currentSortCriteria, setCurrentSortCriteria] = useState<SortCriterion[]>(defaultSortCriteria);
 
-  // FILTRES (les filtres seront gérés sur la page dédiée)
-  const [filters] = useState<ChallengeFilters>(defaultFilters);
+  // FILTRES
+  const [filters, setFilters] = useState<ChallengeFilters>(defaultFilters);
 
-  const handleOpenSortModal = () => {
-    setSortModalOpen(true);
-  };
-  const handleCloseSortModal = () => {
-    setSortModalOpen(false);
-  };
-  const handleApplySort = (criteria: SortCriterion[]) => {
+  // Handlers pour le tri inline
+  const handleInlineSortChange = (criteria: SortCriterion[]) => {
     setCurrentSortCriteria(criteria);
     onSortChange(criteria);
   };
-
-  // Ici, le bouton "Filtrer" navigue vers la page de filtres
-  const handleOpenFiltersPage = () => {
-    navigate("/challenges/filters");
+  const handleActivateInlineSort = () => {
+    // Désactiver la vue inline des filtres si elle est active
+    setFiltersInlineActive(false);
+    setSortInlineActive(true);
+  };
+  const handleDeactivateInlineSort = () => {
+    setSortInlineActive(false);
   };
 
+  // Handlers pour le filtre inline
+  const handleActivateInlineFilters = () => {
+    // Désactiver la vue inline de tri si elle est active
+    setSortInlineActive(false);
+    setFiltersInlineActive(true);
+  };
+  const handleDeactivateInlineFilters = () => {
+    setFiltersInlineActive(false);
+  };
+  const handleApplyInlineFilters = (newFilters: ChallengeFilters) => {
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  // Si une vue inline est active, l'afficher en priorité
+  if (sortInlineActive) {
+    return (
+      <InlineSortBar
+        criteria={currentSortCriteria}
+        onCriteriaChange={handleInlineSortChange}
+        onBack={handleDeactivateInlineSort}
+      />
+    );
+  }
+  if (filtersInlineActive) {
+    return (
+      <InlineFiltersBar
+        initialFilters={filters}
+        onFiltersChange={handleApplyInlineFilters}
+        onBack={handleDeactivateInlineFilters}
+      />
+    );
+  }
+
+  // Vue par défaut : affiche deux boutons pour activer les vues inline
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}>
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={handleOpenFiltersPage}>
-          Filtrer
-        </Button>
-        <Button variant="outlined" onClick={handleOpenSortModal}>
-          Options de tri
-        </Button>
-      </Stack>
-
-      <SortModal
-        open={sortModalOpen}
-        initialCriteria={currentSortCriteria}
-        onClose={handleCloseSortModal}
-        onApply={handleApplySort}
-      />
+      <Button
+        className="menu"
+        variant="outlined"
+        size="small"
+        onClick={handleActivateInlineFilters}
+        sx={{ flex: 1 }}
+      >
+        Filtrer
+      </Button>
+      <Button
+        className="menu"
+        variant="outlined"
+        size="small"
+        onClick={handleActivateInlineSort}
+        sx={{ flex: 1 }}
+      >
+        Options de tri
+      </Button>
     </Box>
   );
 };

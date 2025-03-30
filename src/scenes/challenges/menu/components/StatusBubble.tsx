@@ -10,7 +10,6 @@ interface Challenge {
   mode: string;
   participants: number;
   status: string;
-  period: string;
   numQuestions: number;
   details: string;
   userCompleted: boolean;

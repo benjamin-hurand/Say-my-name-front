@@ -10,10 +10,11 @@ interface LayoutProps {
   children?: ReactNode;
   isMenu?: boolean;
   headerTitle?: string;
+  headerTooltip?: string;
   onBack?: string;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, isMenu = false, headerTitle, onBack }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, isMenu = false, headerTitle, headerTooltip, onBack }) => {
   const { color } = useThemeColorContext();
   const navigate = useNavigate();
 
@@ -24,7 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, isMenu = false, header
   return (
     <div className="layout">
       {headerTitle && (
-        <Header color={color} title={headerTitle} onBack={onBack} />
+        <Header color={color} title={headerTitle} tooltip={headerTooltip} onBack={onBack} />
       )}
       <div className="layout__content">
         {children}

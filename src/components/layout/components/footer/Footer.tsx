@@ -50,7 +50,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
 
   return (
     <div className="footer">
-      <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '300px', padding: '10px' }}>
+      <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '400px', padding: '5px' }}>
         <IconButton className="menu" style={iconButtonStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
           <Settings style={{ color }} />
         </IconButton>

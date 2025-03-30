@@ -5,10 +5,17 @@ import { getFilters, getSorts } from '../services/business/attributes/attribute.
 import { getGameModes } from '../services/business/gamemodes/gameMode.service';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
 
+interface WeekPeriod {
+  start: Date;
+  end: Date;
+}
+
 interface GlobalDataContextType {
   filters: Attribute[];
   sorts: Attribute[];
   modes: GameMode[];
+  currentWeek: WeekPeriod;
+  competitiveSeason: number;
 }
 
 const GlobalDataContext = createContext<GlobalDataContextType | undefined>(undefined);
@@ -17,6 +24,33 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   const [filters, setFilters] = useState<Attribute[]>([]);
   const [sorts, setSorts] = useState<Attribute[]>([]);
   const [modes, setModes] = useState<GameMode[]>([]);
+  const [currentWeek, setCurrentWeek] = useState<WeekPeriod>({ start: new Date(), end: new Date() });
+  const [competitiveSeason, setCompetitiveSeason] = useState<number>(0);
+
+  // Calcul de la semaine en cours (lundi à dimanche)
+  useEffect(() => {
+    const today = new Date();
+    const day = today.getDay();
+    // Dans JS, 0 = dimanche, 1 = lundi, etc.
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    setCurrentWeek({ start: monday, end: sunday });
+  }, []);
+
+  // Calcul du numéro de saison compétitive
+  // Par exemple, on part d'une date de départ fixe (ici le 2 janvier 2023, un lundi)
+  useEffect(() => {
+    const seasonStart = new Date("2023-01-02T00:00:00");
+    const today = new Date();
+    const diffTime = today.getTime() - seasonStart.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Chaque saison dure 7 jours, donc le numéro de saison est :
+    const seasonNumber = Math.floor(diffDays / 7) + 1;
+    setCompetitiveSeason(seasonNumber);
+  }, []);
 
   // Fetch des filtres
   useEffect(() => {
@@ -55,7 +89,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <GlobalDataContext.Provider value={{ filters, sorts, modes }}>
+    <GlobalDataContext.Provider value={{ filters, sorts, modes, currentWeek, competitiveSeason }}>
       {children}
     </GlobalDataContext.Provider>
   );

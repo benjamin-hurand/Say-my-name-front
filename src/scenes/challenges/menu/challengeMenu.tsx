@@ -29,7 +29,6 @@ interface Challenge {
   mode: string;          
   participants: number;
   status: string;
-  period: string;
   numQuestions: number;
   details: string;
   userCompleted: boolean;
@@ -45,7 +44,6 @@ const dummyChallenges: Challenge[] = [
     mode: 'Prénom',
     participants: 7,
     status: 'En attente',
-    period: 'Semaine du 20/04 au 26/04',
     numQuestions: 10,
     details: 'Ce challenge vous permet d’apprendre les prénoms de la promo 2025.',
     userCompleted: false,
@@ -59,7 +57,6 @@ const dummyChallenges: Challenge[] = [
     mode: 'Prénom & Nom',
     participants: 15,
     status: 'Validé',
-    period: 'Semaine du 20/04 au 26/04',
     numQuestions: 12,
     details: 'Ce challenge vous permet d’apprendre les prénoms et noms de la promo 2025.',
     userCompleted: false,
@@ -73,7 +70,6 @@ const dummyChallenges: Challenge[] = [
     mode: 'Prénom',
     participants: 20,
     status: 'Validé',
-    period: 'Semaine du 20/04 au 26/04',
     numQuestions: 8,
     details: 'Testez vos connaissances sur les prénoms de la promo 2025.',
     userCompleted: true,
@@ -87,7 +83,6 @@ const dummyChallenges: Challenge[] = [
     mode: 'Prénom',
     participants: 9,
     status: 'En attente',
-    period: 'Semaine du 20/04 au 26/04',
     numQuestions: 10,
     details: 'Challenge en attente de validation (nombre de participants insuffisant).',
     userCompleted: false,
@@ -101,7 +96,6 @@ const dummyChallenges: Challenge[] = [
     mode: 'Prénom & Nom',
     participants: 11,
     status: 'Validé',
-    period: 'Semaine du 20/04 au 26/04',
     numQuestions: 15,
     details: 'Challenge complet pour apprendre prénoms et noms.',
     userCompleted: true,
@@ -294,11 +288,6 @@ const ChallengeMenu: React.FC = () => {
         sx={{ mb: 2 }}
       />
 
-      {/* Période affichée */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle1">Semaine du 20/04 au 26/04</Typography>
-      </Box>
-
       {/* Barre de filtres et tris */}
       <Box sx={{ mb: 2 }}>
         <FilterAndSortBar onSortChange={handleSortChange} onFilterChange={handleFilterChange} />
@@ -367,13 +356,6 @@ const ChallengeMenu: React.FC = () => {
         ))}
       </Box>
 
-      {/* Bouton "Mes Challenges" */}
-      <Box sx={{ mt: 2 }}>
-        <Button className="menu" variant="outlined" onClick={handleMesChallenges} fullWidth>
-          Mes Challenges
-        </Button>
-      </Box>
-
       {/* Modal des détails du challenge */}
       <Dialog open={modalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
         <DialogTitle>{selectedChallenge?.title}</DialogTitle>
@@ -391,9 +373,6 @@ const ChallengeMenu: React.FC = () => {
               </Typography>
               <Typography variant="body2" gutterBottom>
                 <strong>Nombre de questions :</strong> {selectedChallenge.numQuestions}
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                <strong>Période :</strong> {selectedChallenge.period}
               </Typography>
               <Divider sx={{ my: 1 }} />
               <Typography variant="body2" gutterBottom>

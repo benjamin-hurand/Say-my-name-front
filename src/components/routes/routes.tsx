@@ -13,6 +13,7 @@ import QuizOptions from "../../scenes/quiz/QuizOptions";
 import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
 import FiltersPage from "../../scenes/challenges/menu/FiltersPage";
 import { ChallengesProvider } from "../../contexts/ChallengesContext";
+import ChallengeLayout from "../layout/ChallengeLayout";
 
 const router = createBrowserRouter([
   {
@@ -74,9 +75,9 @@ const router = createBrowserRouter([
           {
             index: true,
             element: (
-              <Layout headerTitle="Challenges">
+              <ChallengeLayout>
                 <ProtectedRoute element={<ChallengeMenu />} />
-              </Layout>
+              </ChallengeLayout>
             ),
           },
           {

@@ -1,5 +1,6 @@
+// Header.tsx
 import React from 'react';
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, IconButton, Typography, Tooltip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import "../../layout.css";
@@ -7,10 +8,11 @@ import "../../layout.css";
 interface HeaderProps {
   color: string;
   title: string;
+  tooltip?: string;
   onBack?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ color, title, onBack }) => {
+const Header: React.FC<HeaderProps> = ({ color, title, tooltip, onBack }) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -27,9 +29,19 @@ const Header: React.FC<HeaderProps> = ({ color, title, onBack }) => {
         <ArrowBackIcon style={{ color }} />
       </IconButton>
       <Box sx={{ flexGrow: 1, textAlign: 'right' }}>
-        <Typography variant="h4" sx={{ color, textShadow: `0 0 8px ${color}` }}>
-          {title}
-        </Typography>
+        {tooltip ? (
+          <Tooltip title={tooltip} arrow>
+            <span>
+              <Typography variant="h4" sx={{ color, textShadow: `0 0 8px ${color}` }}>
+                {title}
+              </Typography>
+            </span>
+          </Tooltip>
+        ) : (
+          <Typography variant="h4" sx={{ color, textShadow: `0 0 8px ${color}` }}>
+            {title}
+          </Typography>
+        )}
       </Box>
     </Box>
   );
