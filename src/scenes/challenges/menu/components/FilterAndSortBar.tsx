@@ -1,11 +1,12 @@
 // FilterAndSortBar.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import SortModal, { SortCriterion } from './SortModal';
 import InlineSortBar from './InlineSortBar';
 import InlineFiltersBar from './InlineFiltersBar';
-import { ChallengeFilters, defaultFilters } from './FilterAndSortBar.types';
+import { ChallengeFilters, initialFilters } from './FilterAndSortBar.types';
+import { getSortCriteria, SortCriterionDto } from '../../../../services/business/challenges/sortCriteria.service';
 
 const FilterAndSortBar: React.FC<{
   onSortChange: (criteria: SortCriterion[]) => void;
@@ -17,17 +18,31 @@ const FilterAndSortBar: React.FC<{
   const [sortInlineActive, setSortInlineActive] = useState(false);
   const [filtersInlineActive, setFiltersInlineActive] = useState(false);
 
-  // TRI
-  const defaultSortCriteria: SortCriterion[] = [
-    { id: 'popularity', label: 'Popularité', order: null },
-    { id: 'length', label: 'Longueur', order: null },
-    { id: 'performance', label: 'Performance', order: null },
-    { id: 'createdAt', label: 'Date de création', order: 'desc' },
-  ];
-  const [currentSortCriteria, setCurrentSortCriteria] = useState<SortCriterion[]>(defaultSortCriteria);
+  // TRI : on démarre avec un tableau vide que l'on va remplir via l'API
+  const [currentSortCriteria, setCurrentSortCriteria] = useState<SortCriterion[]>([]);
 
   // FILTRES
-  const [filters, setFilters] = useState<ChallengeFilters>(defaultFilters);
+  const [filters, setFilters] = useState<ChallengeFilters>(initialFilters);
+
+  // Récupération des critères de tri depuis l'API lors du montage du composant
+  useEffect(() => {
+    async function fetchSortCriteria() {
+      try {
+        const criteriaDtos: SortCriterionDto[] = await getSortCriteria();
+        // Par exemple, on peut mapper la clé en minuscule pour correspondre aux identifiants attendus
+        const criteria: SortCriterion[] = criteriaDtos.map((dto) => ({
+          id: dto.key.toLowerCase(),
+          label: dto.label,
+          // Ici, on définit l'ordre par défaut pour la date de création comme "desc", sinon null
+          order: dto.key === "CREATION_DATE" ? "desc" : null,
+        }));
+        setCurrentSortCriteria(criteria);
+      } catch (error) {
+        console.error("Error fetching sort criteria:", error);
+      }
+    }
+    fetchSortCriteria();
+  }, []);
 
   // Handlers pour le tri inline
   const handleInlineSortChange = (criteria: SortCriterion[]) => {

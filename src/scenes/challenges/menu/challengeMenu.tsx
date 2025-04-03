@@ -1,5 +1,4 @@
-// ChallengeMenu.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -16,179 +15,105 @@ import {
   Divider,
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
+import InfoIcon from '@mui/icons-material/Info';
 import { useThemeColorContext } from '../../../contexts/ThemeColorContext';
 import FilterAndSortBar from './components/FilterAndSortBar';
 import { useNavigate } from 'react-router-dom';
-import { SortCriterion } from './components/SortModal';
 import StatusBubble from './components/StatusBubble';
-import { ChallengeFilters, defaultFilters } from './components/FilterAndSortBar.types';
+import { getChallengesList } from '../../../services/business/challenges/challenge.service';
+import { ChallengeCardDto } from '../../../services/dto/ChallengeCardDto';
+import { ChallengeMenuDto } from '../../../services/dto/ChallengeMenuDto';
+import { ChallengeFilters, initialFilters } from './components/FilterAndSortBar.types';
+import { format, parseISO } from 'date-fns';
 
-interface Challenge {
-  id: number;
-  title: string;         
-  mode: string;          
-  participants: number;
-  status: string;
-  numQuestions: number;
-  details: string;
-  userCompleted: boolean;
-  userScore: number | null;
-  userTimeScore: string | null;
-  createdAt: string;
+// Fonction debounce personnalisée
+function debounce<T extends unknown[]>(func: (...args: T) => void, wait: number) {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: T) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 }
 
-const dummyChallenges: Challenge[] = [
-  {
-    id: 1,
-    title: 'Promo 2025 – Prénom',
-    mode: 'Prénom',
-    participants: 7,
-    status: 'En attente',
-    numQuestions: 10,
-    details: 'Ce challenge vous permet d’apprendre les prénoms de la promo 2025.',
-    userCompleted: false,
-    userScore: null,
-    userTimeScore: null,
-    createdAt: '2025-04-10',
-  },
-  {
-    id: 2,
-    title: 'Promo 2025 – Prénom & Nom',
-    mode: 'Prénom & Nom',
-    participants: 15,
-    status: 'Validé',
-    numQuestions: 12,
-    details: 'Ce challenge vous permet d’apprendre les prénoms et noms de la promo 2025.',
-    userCompleted: false,
-    userScore: null,
-    userTimeScore: null,
-    createdAt: '2025-04-11',
-  },
-  {
-    id: 3,
-    title: 'Promo 2025 – Prénom',
-    mode: 'Prénom',
-    participants: 20,
-    status: 'Validé',
-    numQuestions: 8,
-    details: 'Testez vos connaissances sur les prénoms de la promo 2025.',
-    userCompleted: true,
-    userScore: 75,
-    userTimeScore: null,
-    createdAt: '2025-04-09',
-  },
-  {
-    id: 4,
-    title: 'Promo 2025 – Prénom',
-    mode: 'Prénom',
-    participants: 9,
-    status: 'En attente',
-    numQuestions: 10,
-    details: 'Challenge en attente de validation (nombre de participants insuffisant).',
-    userCompleted: false,
-    userScore: null,
-    userTimeScore: null,
-    createdAt: '2025-04-12',
-  },
-  {
-    id: 5,
-    title: 'Promo 2025 – Prénom & Nom',
-    mode: 'Prénom & Nom',
-    participants: 11,
-    status: 'Validé',
-    numQuestions: 15,
-    details: 'Challenge complet pour apprendre prénoms et noms.',
-    userCompleted: true,
-    userScore: 100,
-    userTimeScore: '2:37',
-    createdAt: '2025-04-08',
-  },
-];
-
-const getPerformanceValue = (challenge: Challenge): number => {
-  if (challenge.status === 'En attente') return 0;
-  return challenge.userScore ?? 0;
+// Génère le titre de la carte en combinant le titre du mode et les infos du filtre
+const getCardTitle = (challengeCard: ChallengeCardDto): string => {
+  const modeTitle = challengeCard.challenge.gameMode.title;
+  const filter = challengeCard.challenge.filter;
+  if (filter && filter.attributeName && filter.minValue && filter.maxValue) {
+    return filter.minValue === filter.maxValue
+      ? `${modeTitle} - ${filter.attributeName} ${filter.minValue}`
+      : `${modeTitle} - ${filter.attributeName} ${filter.minValue} à ${filter.maxValue}`;
+  }
+  return modeTitle;
 };
 
-const compareChallenges = (a: Challenge, b: Challenge, criteria: SortCriterion[]): number => {
-  for (const crit of criteria) {
-    let comp = 0;
-    switch (crit.id) {
-      case 'popularity':
-        comp = a.participants - b.participants;
-        break;
-      case 'length':
-        comp = a.numQuestions - b.numQuestions;
-        break;
-      case 'performance':
-        const getPerf = (c: Challenge) => (c.userCompleted ? (c.userScore === 100 ? 100 : c.userScore || 0) : 0);
-        comp = getPerf(a) - getPerf(b);
-        break;
-      case 'createdAt':
-        comp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        break;
-      default:
-        break;
-    }
-    if (comp !== 0) {
-      return crit.order === 'asc' ? comp : -comp;
-    }
+// Formatage des dates (affichage standard et complet en tooltip)
+const formatDate = (isoString: string, withMs: boolean = false): string => {
+  try {
+    const date = parseISO(isoString);
+    return format(date, withMs ? "dd MMM yyyy, HH:mm:ss.SSS" : "dd MMM yyyy, HH:mm:ss");
+  } catch (e) {
+    return isoString;
   }
-  return 0;
 };
 
-const getStatusTooltip = (challenge: Challenge) => {
-  if (challenge.status === 'En attente') {
-    return "Challenge en attente de validation";
-  }
-  if (challenge.status === 'Validé' && !challenge.userCompleted) {
-    return "Challenge validé, à faire";
-  }
-  if (
-    challenge.status === 'Validé' &&
-    challenge.userCompleted &&
-    challenge.userScore !== null &&
-    challenge.userScore < 100
-  ) {
-    return `Score : ${challenge.userScore}%`;
-  }
-  if (
-    challenge.status === 'Validé' &&
-    challenge.userCompleted &&
-    challenge.userScore === 100
-  ) {
-    return `Challenge réussi en ${challenge.userTimeScore}`;
-  }
-  return "";
+// Formatage des durées (en ms) en mm:ss.SSS
+const formatTime = (ms: number): string => {
+  const totalSeconds = ms / 1000;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toFixed(3).padStart(6, '0')}`;
 };
+
+const initialSorts: any[] = [];
 
 const ChallengeMenu: React.FC = () => {
   const { color } = useThemeColorContext();
   const navigate = useNavigate();
+
+  // Champ de recherche
   const [search, setSearch] = useState<string>('');
-  
-  // Modal de détails
-  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+
+  // États pour filtres et tris
+  const [filters, setFilters] = useState<ChallengeFilters>(initialFilters);
+  const [sorts, setSorts] = useState(initialSorts);
+
+  // Liste des challenges récupérés
+  const [challengeList, setChallengeList] = useState<ChallengeCardDto[]>([]);
+  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeCardDto | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
-  // États de tri et filtres
-  const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
-    { id: 'popularity', label: 'Popularité', order: 'desc' },
-    { id: 'length', label: 'Longueur', order: 'asc' },
-    { id: 'performance', label: 'Performance', order: 'desc' },
-    { id: 'createdAt', label: 'Date de création', order: 'desc' },
-  ]);
-  const [filters, setFilters] = useState<ChallengeFilters>(defaultFilters);
+  // Valeurs fixes pour cet exemple
+  const userId = 1;
+  const seasonStart = new Date().toISOString();
 
-  const handleSortChange = (criteria: SortCriterion[]) => {
-    setSortCriteria(criteria);
+  // Fonction qui construit le DTO d'entrée et appelle le service
+  const fetchChallenges = async () => {
+    const challengeMenuDto: ChallengeMenuDto = {
+      userId,
+      seasonStart,
+      search,
+      filters,
+      sorts,
+    };
+
+    try {
+      const challenges = await getChallengesList(challengeMenuDto);
+      setChallengeList(challenges);
+    } catch (error) {
+      console.error("Error fetching challenges list:", error);
+    }
   };
 
-  const handleFilterChange = (newFilters: ChallengeFilters) => {
-    setFilters(newFilters);
-  };
+  // Version debounce de fetchChallenges (500ms)
+  const debouncedFetchChallenges = useCallback(debounce(fetchChallenges, 500), [search, filters, sorts]);
 
-  const handleOpenModal = (challenge: Challenge) => {
+  useEffect(() => {
+    debouncedFetchChallenges();
+  }, [search, filters, sorts, debouncedFetchChallenges]);
+
+  // Handlers pour la modal
+  const handleOpenModal = (challenge: ChallengeCardDto) => {
     setSelectedChallenge(challenge);
     setModalOpen(true);
   };
@@ -198,87 +123,29 @@ const ChallengeMenu: React.FC = () => {
     setSelectedChallenge(null);
   };
 
-  const handleParticipate = (challenge: Challenge) => {
+  const handleParticipate = (challenge: ChallengeCardDto) => {
     console.log('Participer au challenge', challenge);
-    // Navigation vers le challenge
+    // Implémentez ici la navigation ou la logique de participation
   };
 
   const handleCreateChallenge = () => {
     navigate('/challenges/new');
   };
 
-  const handleMesChallenges = () => {
-    console.log('Accès à Mes Challenges');
-    // Navigation vers "Mes Challenges"
+  // Exemple utilitaire pour afficher un tooltip sur la performance
+  const getStatusTooltip = (challenge: ChallengeCardDto): string => {
+    if (challenge.attempt.bestQuestionScore === null) {
+      return "Vous n'avez jamais tenté ce challenge";
+    }
+    if (challenge.attempt.bestQuestionScore < challenge.version.questionCount) {
+      return `Meilleur score : ${challenge.attempt.bestQuestionScore}/${challenge.version.questionCount}`;
+    }
+    return "Challenge réussi !";
   };
 
-  // Appliquer les filtres aux challenges puis trier
-  const filteredChallenges = dummyChallenges.filter(challenge =>
-    challenge.title.toLowerCase().includes(search.toLowerCase())
-  );
-  const filteredAndSortedChallenges = filteredChallenges
-    .filter(challenge => {
-      // Filtre par mode
-      if (filters.mode.length > 0 && !filters.mode.includes(challenge.mode)) return false;
-      // Filtre par performance
-      if (filters.performance.length > 0) {
-        let perf = '';
-        if (!challenge.userCompleted) {
-          perf = 'Pas commencé';
-        } else if (challenge.userScore === 100) {
-          perf = 'Réussi';
-        } else {
-          perf = 'Achevé';
-        }
-        if (!filters.performance.includes(perf)) return false;
-      }
-      // Filtre par nombre de participants
-      if (filters.participantsRange) {
-        if (challenge.participants < filters.participantsRange.min || challenge.participants > filters.participantsRange.max)
-          return false;
-      }
-      // Filtre par nombre de questions
-      if (filters.questionsRange) {
-        if (challenge.numQuestions < filters.questionsRange.min || challenge.numQuestions > filters.questionsRange.max)
-          return false;
-      }
-      // Filtre par panel de questions
-      if (filters.panel.length > 0) {
-        const firstLetter = challenge.title.charAt(0).toUpperCase();
-        let match = false;
-        for (const range of filters.panel) {
-          const [start, end] = range.split('-');
-          if (firstLetter >= start && firstLetter <= end) {
-            match = true;
-            break;
-          }
-        }
-        if (!match) return false;
-      }
-      // Filtre par date de création
-      if (filters.dateRange && filters.dateRange.start && filters.dateRange.end) {
-        const challengeDate = new Date(challenge.createdAt);
-        const startDate = new Date(filters.dateRange.start);
-        const endDate = new Date(filters.dateRange.end);
-        if (challengeDate < startDate || challengeDate > endDate) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => compareChallenges(a, b, sortCriteria));
-
   return (
-    <Box
-      sx={{
-        width: '100%',
-        maxWidth: 600,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        boxSizing: 'border-box',
-        padding: 2,
-      }}
-    >
-      {/* Barre de recherche */}
+    <Box sx={{ width: '100%', maxWidth: 600, display: 'flex', flexDirection: 'column', height: '100%', padding: 2 }}>
+      {/* Champ de recherche */}
       <TextField
         label="Recherche de challenge..."
         variant="outlined"
@@ -290,100 +157,189 @@ const ChallengeMenu: React.FC = () => {
 
       {/* Barre de filtres et tris */}
       <Box sx={{ mb: 2 }}>
-        <FilterAndSortBar onSortChange={handleSortChange} onFilterChange={handleFilterChange} />
+        <FilterAndSortBar
+          onFilterChange={(newFilters) => setFilters(newFilters)}
+          onSortChange={(newSorts) => setSorts(newSorts)}
+        />
       </Box>
 
       {/* Bouton "Créer un challenge" */}
       <Box sx={{ mb: 2 }}>
         <Button
-          className="menu"
-          onClick={handleCreateChallenge}
+          className='menu'
           variant="outlined"
           fullWidth
-          sx={{
-            whiteSpace: 'nowrap',
-            boxShadow: `0 0 4px ${color}`,
-            textShadow: `0 0 4px ${color}`,
-          }}
+          onClick={handleCreateChallenge}
+          sx={{ whiteSpace: 'nowrap', boxShadow: `0 0 4px ${color}`, textShadow: `0 0 4px ${color}` }}
         >
           + Créer un challenge
         </Button>
       </Box>
 
       {/* Liste des challenges */}
-      <Box
-        className="scrollable-content"
-        sx={{
-          flexGrow: 1,
-          overflowY: 'auto',
-        }}
-      >
-        {filteredAndSortedChallenges.map((challenge) => (
-          <Card key={challenge.id} sx={{ mb: 1, cursor: 'pointer' }} onClick={() => handleOpenModal(challenge)}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6">{challenge.title}</Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                  <Chip label={`${challenge.numQuestions} questions`} variant="outlined" size="medium" sx={{ pl: 1, pr: 1 }} />
-                  <Chip
-                    icon={<PeopleIcon fontSize="small" sx={{ mr: 0.5 }} />}
-                    label={challenge.participants}
-                    variant="outlined"
-                    size="medium"
-                    sx={{ pl: 1, pr: 1 }}
-                  />
+      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+        {challengeList.length === 0 ? (
+          <Typography variant="body1">Aucun challenge trouvé.</Typography>
+        ) : (
+          challengeList.map((challengeCard) => (
+            <Card key={challengeCard.challenge.id} sx={{ mb: 1, cursor: 'pointer' }} onClick={() => handleOpenModal(challengeCard)}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6">{getCardTitle(challengeCard)}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Chip label={`${challengeCard.version.questionCount} questions`} variant="outlined" size="medium" />
+                    <Chip icon={<PeopleIcon fontSize="small" />} label={challengeCard.attempt.nbParticipants} variant="outlined" size="medium" />
+                  </Box>
                 </Box>
-              </Box>
-              <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Tooltip title={
-                  challenge.status === 'En attente'
-                    ? "Challenge en attente de validation"
-                    : challenge.status === 'Validé' && !challenge.userCompleted
-                      ? "Challenge validé, à faire"
-                      : challenge.status === 'Validé' && challenge.userCompleted && challenge.userScore !== null && challenge.userScore < 100
-                        ? `Score : ${challenge.userScore}%`
-                        : challenge.status === 'Validé' && challenge.userCompleted && challenge.userScore === 100
-                          ? `Challenge réussi en ${challenge.userTimeScore}`
-                          : ""
-                }>
-                  <span>
-                    <StatusBubble challenge={challenge} />
-                  </span>
-                </Tooltip>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
+                <Box sx={{ ml: 2 }}>
+                  <Tooltip title={getStatusTooltip(challengeCard)}>
+                    <span>
+                      <StatusBubble challenge={challengeCard} />
+                    </span>
+                  </Tooltip>
+                </Box>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </Box>
 
       {/* Modal des détails du challenge */}
-      <Dialog open={modalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
-        <DialogTitle>{selectedChallenge?.title}</DialogTitle>
+      <Dialog
+        open={modalOpen}
+        onClose={handleCloseModal}
+        fullWidth
+        maxWidth="sm"
+        BackdropProps={{
+          style: {
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          },
+        }}
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(47, 47, 47, 0.9)',
+            color: 'white',
+            p: 2,
+          },
+        }}
+      >
+        <DialogTitle>{selectedChallenge ? getCardTitle(selectedChallenge) : ""}</DialogTitle>
         <DialogContent dividers>
           {selectedChallenge && (
             <>
+              {/* Section 1: Informations générales */}
               <Typography variant="body2" gutterBottom>
-                <strong>Mode :</strong> {selectedChallenge.mode}
+                <strong>Mode :</strong> {selectedChallenge.challenge.gameMode.title}{" "}
+                <Tooltip title={selectedChallenge.challenge.gameMode.description}>
+                  <InfoIcon fontSize="small" />
+                </Tooltip>
               </Typography>
               <Typography variant="body2" gutterBottom>
-                <strong>Participants :</strong> {selectedChallenge.participants}
+                <strong>Filtre :</strong> {selectedChallenge.challenge.filter.attributeName}{" "}
+                {selectedChallenge.challenge.filter.minValue && selectedChallenge.challenge.filter.maxValue && (
+                  selectedChallenge.challenge.filter.minValue === selectedChallenge.challenge.filter.maxValue
+                    ? `(${selectedChallenge.challenge.filter.minValue})`
+                    : `(${selectedChallenge.challenge.filter.minValue} à ${selectedChallenge.challenge.filter.maxValue})`
+                )}
               </Typography>
               <Typography variant="body2" gutterBottom>
-                <strong>Statut :</strong> {selectedChallenge.status}
+                <strong>Créé le :</strong>{" "}
+                <Tooltip title={formatDate(selectedChallenge.challenge.creationDate, true)}>
+                  <span>
+                    {formatDate(selectedChallenge.challenge.creationDate)}
+                  </span>
+                </Tooltip>
               </Typography>
               <Typography variant="body2" gutterBottom>
-                <strong>Nombre de questions :</strong> {selectedChallenge.numQuestions}
+                <strong>Créateur :</strong> {selectedChallenge.challenge.creator.username}
               </Typography>
               <Divider sx={{ my: 1 }} />
               <Typography variant="body2" gutterBottom>
-                {selectedChallenge.details}
+                <strong>Description :</strong> {selectedChallenge.challenge.description}
               </Typography>
+
+              {/* Section 2: Informations sur la version */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1">Version</Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Numéro :</strong> {selectedChallenge.version.versionNumber}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Début :</strong>{" "}
+                  <Tooltip title={formatDate(selectedChallenge.version.startDate, true)}>
+                    <span>
+                      {formatDate(selectedChallenge.version.startDate)}
+                    </span>
+                  </Tooltip>
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Fin :</strong>{" "}
+                  {selectedChallenge.version.endDate ? (
+                    <Tooltip title={formatDate(selectedChallenge.version.endDate, true)}>
+                      <span>
+                        {formatDate(selectedChallenge.version.endDate)}
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    "N/A"
+                  )}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Nombre de questions :</strong> {selectedChallenge.version.questionCount}
+                </Typography>
+              </Box>
+
+              {/* Section 3: Performance utilisateur */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1">Performance</Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Nb Participants :</strong> {selectedChallenge.attempt.nbParticipants}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Meilleur score :</strong>{" "}
+                  {selectedChallenge.attempt.bestQuestionScore !== null
+                    ? `${selectedChallenge.attempt.bestQuestionScore} / ${selectedChallenge.version.questionCount}`
+                    : "Non tenté"}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Meilleur temps :</strong>{" "}
+                  {selectedChallenge.attempt.bestTimeMs !== null
+                    ? formatTime(selectedChallenge.attempt.bestTimeMs)
+                    : "Non disponible"}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Date de début de tentative :</strong>{" "}
+                  <Tooltip title={formatDate(selectedChallenge.attempt.attemptStartDate, true)}>
+                    <span>
+                      {formatDate(selectedChallenge.attempt.attemptStartDate)}
+                    </span>
+                  </Tooltip>
+                </Typography>
+              </Box>
+
+              {/* Section 4: Sections supplémentaires */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1">Mes dernières tentatives</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  (Données à charger via API)
+                </Typography>
+              </Box>
+
+              {selectedChallenge.attempt.nbParticipants > 10 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1">Leaderboard</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    (Leaderboard à charger via API)
+                  </Typography>
+                </Box>
+              )}
             </>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseModal}>Annuler</Button>
-          <Button onClick={() => { if (selectedChallenge) handleParticipate(selectedChallenge); }} variant="contained">
+          <Button onClick={() => selectedChallenge && handleParticipate(selectedChallenge)} variant="contained">
             Participer
           </Button>
         </DialogActions>

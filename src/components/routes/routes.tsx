@@ -11,7 +11,6 @@ import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
 import { QuizOptionsProvider } from "../../contexts/QuizOptionsContext";
 import QuizOptions from "../../scenes/quiz/QuizOptions";
 import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
-import FiltersPage from "../../scenes/challenges/menu/FiltersPage";
 import { ChallengesProvider } from "../../contexts/ChallengesContext";
 import ChallengeLayout from "../layout/ChallengeLayout";
 
@@ -87,15 +86,7 @@ const router = createBrowserRouter([
                 <ProtectedRoute element={<AddChallengeForm />} />
               </Layout>
             ),
-          },
-          {
-            path: "filters",
-            element: (
-              <Layout headerTitle="Filter challenges" onBack="/challenges">
-                <ProtectedRoute element={<FiltersPage />} />
-              </Layout>
-            ),
-          },
+          }
         ],
       },
       {

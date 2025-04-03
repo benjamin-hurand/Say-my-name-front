@@ -11,7 +11,10 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReplayIcon from '@mui/icons-material/Replay';
 import CloseIcon from '@mui/icons-material/Close';
-import { ChallengeFilters, defaultFilters } from './FilterAndSortBar.types';
+import { ChallengeFilters } from './FilterAndSortBar.types';
+import { useGlobalData } from '../../../../contexts/GlobalDataContext';
+import { useChallenges } from '../../../../contexts/ChallengesContext';
+import { Attribute } from '../../../../models/commons/Attribute';
 
 type FilterCategory =
   | 'mode'
@@ -22,9 +25,6 @@ type FilterCategory =
   | 'dateRange'
   | null;
 
-const modeOptions = ['Prénom', 'Nom', 'Prénom & Nom'];
-const performanceOptions = ['Réussi', 'Podium', 'Achevé', 'Nouveau', 'Pas commencé'];
-const panelOptions = ['A-D', 'E-H', 'I-L', 'M-P', 'Q-Z'];
 const participantsPredefined = [
   { label: '0-10', range: { min: 0, max: 10 } },
   { label: '10-100', range: { min: 10, max: 100 } },
@@ -66,7 +66,7 @@ const isPredefinedDate = (range: { start: string; end: string }, label: string):
 interface InlineFiltersBarProps {
   initialFilters: ChallengeFilters;
   onFiltersChange: (filters: ChallengeFilters) => void;
-  onBack: () => void; // Retour à la vue principale (boutons "Filtrer" et "Options de tri")
+  onBack: () => void; // Retour à la vue principale
 }
 
 interface ChipData {
@@ -79,23 +79,28 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
   onFiltersChange,
   onBack,
 }) => {
-  const [filters, setFilters] = useState<ChallengeFilters>(initialFilters);
+  const { modes, filters } = useGlobalData();
+  const { performances } = useChallenges();
+  // On utilise un state local pour gérer les filtres en cours de modification
+  const [localFilters, setLocalFilters] = useState<ChallengeFilters>(initialFilters);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
-  // Pour la saisie personnalisée (applicable aux plages numériques et dates)
+  // Pour la saisie personnalisée des ranges (participants, questions, date)
   const [customRange, setCustomRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
-  // Pour activer la vue custom dans une catégorie range
   const [customRangeActive, setCustomRangeActive] = useState<boolean>(false);
+  // Pour la gestion du panel (filtre d'attribut)
+  const [activePanelAttribute, setActivePanelAttribute] = useState<Attribute | null>(null);
+  const [panelRange, setPanelRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
 
   useEffect(() => {
-    setFilters(initialFilters);
+    setLocalFilters(initialFilters);
   }, [initialFilters]);
 
   const resetFilters = () => {
-    setFilters(defaultFilters);
-    onFiltersChange(defaultFilters);
+    setLocalFilters(initialFilters);
+    onFiltersChange(initialFilters);
   };
 
-  // Construction de la liste de chips pour le niveau B (affichage du résumé)
+  // Liste des catégories sous forme de chips (niveau B)
   const chipsData: ChipData[] = [
     { label: 'Mode', category: 'mode' },
     { label: 'Performance', category: 'performance' },
@@ -105,7 +110,7 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
     { label: 'Date', category: 'dateRange' },
   ];
 
-  // Vue principale : résumé de chaque catégorie avec chip (niveau B)
+  // Vue principale : résumé par catégorie
   if (!activeCategory) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', position: 'relative' }}>
@@ -119,27 +124,27 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
               label={chip.label}
               color={
                 chip.category === 'mode'
-                  ? filters.mode.length > 0
+                  ? localFilters.gameModeIds.length > 0
                     ? 'primary'
                     : 'default'
                   : chip.category === 'performance'
-                  ? filters.performance.length > 0
+                  ? localFilters.userPerformances.length > 0
                     ? 'primary'
                     : 'default'
                   : chip.category === 'panel'
-                  ? filters.panel.length > 0
+                  ? localFilters.attributeFilter !== null
                     ? 'primary'
                     : 'default'
                   : chip.category === 'participantsRange'
-                  ? filters.participantsRange
+                  ? localFilters.participantsRangeMin !== null && localFilters.participantsRangeMax !== null
                     ? 'primary'
                     : 'default'
                   : chip.category === 'questionsRange'
-                  ? filters.questionsRange
+                  ? localFilters.questionsRangeMin !== null && localFilters.questionsRangeMax !== null
                     ? 'primary'
                     : 'default'
                   : chip.category === 'dateRange'
-                  ? filters.dateRange
+                  ? localFilters.dateRangeMin !== null && localFilters.dateRangeMax !== null
                     ? 'primary'
                     : 'default'
                   : 'default'
@@ -157,34 +162,28 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
     );
   }
 
-  // Vue pour catégories simples : Mode, Performance, Panel (niveau C)
-  if (activeCategory === 'mode' || activeCategory === 'performance' || activeCategory === 'panel') {
-    const options =
-      activeCategory === 'mode'
-        ? modeOptions
-        : activeCategory === 'performance'
-        ? performanceOptions
-        : panelOptions;
-    const selected = filters[activeCategory] as string[];
+  // Vue pour la catégorie Mode
+  if (activeCategory === 'mode') {
+    const selected = localFilters.gameModeIds;
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton onClick={() => setActiveCategory(null)}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-          {activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} :
+          Mode :
         </Typography>
-        {options.map(opt => (
+        {modes.map((mode) => (
           <Chip
-            key={opt}
-            label={opt}
-            color={selected.includes(opt) ? 'primary' : 'default'}
+            key={mode.id}
+            label={mode.title}
+            color={selected.includes(mode.id) ? 'primary' : 'default'}
             onClick={() => {
-              const newSelected = selected.includes(opt)
-                ? selected.filter(item => item !== opt)
-                : [...selected, opt];
-              const updated = { ...filters, [activeCategory]: newSelected };
-              setFilters(updated);
+              const newSelected = selected.includes(mode.id)
+                ? selected.filter((id) => id !== mode.id)
+                : [...selected, mode.id];
+              const updated = { ...localFilters, gameModeIds: newSelected };
+              setLocalFilters(updated);
               onFiltersChange(updated);
             }}
           />
@@ -193,18 +192,139 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
     );
   }
 
-  // Vue pour les catégories range : Participants ou Questions (niveau C/D)
-  if (activeCategory === 'participantsRange' || activeCategory === 'questionsRange') {
-    const predefined = activeCategory === 'participantsRange' ? participantsPredefined : questionsPredefined;
+  // Vue pour la catégorie Performance
+  if (activeCategory === 'performance') {
+    const selected = localFilters.userPerformances;
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <IconButton onClick={() => setActiveCategory(null)}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+          Performance :
+        </Typography>
+        {performances.map((perf) => (
+          <Chip
+            key={perf.key}
+            label={perf.label}
+            color={selected.includes(perf.key) ? 'primary' : 'default'}
+            onClick={() => {
+              const newSelected = selected.includes(perf.key)
+                ? selected.filter((item) => item !== perf.key)
+                : [...selected, perf.key];
+              const updated = { ...localFilters, userPerformances: newSelected };
+              setLocalFilters(updated);
+              onFiltersChange(updated);
+            }}
+          />
+        ))}
+      </Box>
+    );
+  }
+
+  // Vue pour la catégorie Panel (filtre d'attribut unique)
+  if (activeCategory === 'panel') {
+    if (activePanelAttribute) {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton onClick={() => setActivePanelAttribute(null)}>
+            <ArrowBackIcon />
+          </IconButton>
+          <TextField
+            label="Min"
+            value={panelRange.min}
+            onChange={(e) => setPanelRange({ ...panelRange, min: e.target.value })}
+            size="small"
+            type={
+              activePanelAttribute.type === 'number'
+                ? 'number'
+                : activePanelAttribute.type === 'date'
+                ? 'date'
+                : 'text'
+            }
+            InputLabelProps={activePanelAttribute.type === 'date' ? { shrink: true } : {}}
+          />
+          <TextField
+            label="Max"
+            value={panelRange.max}
+            onChange={(e) => setPanelRange({ ...panelRange, max: e.target.value })}
+            size="small"
+            type={
+              activePanelAttribute.type === 'number'
+                ? 'number'
+                : activePanelAttribute.type === 'date'
+                ? 'date'
+                : 'text'
+            }
+            InputLabelProps={activePanelAttribute.type === 'date' ? { shrink: true } : {}}
+          />
+          <Chip
+            label="OK"
+            color="primary"
+            onClick={() => {
+              if (panelRange.min !== '' && panelRange.max !== '') {
+                const newAttributeFilter = {
+                  attributeId: activePanelAttribute.id,
+                  minValue: panelRange.min,
+                  maxValue: panelRange.max,
+                };
+                const updated = { ...localFilters, attributeFilter: newAttributeFilter };
+                setLocalFilters(updated);
+                onFiltersChange(updated);
+                setActivePanelAttribute(null);
+                setPanelRange({ min: '', max: '' });
+              }
+            }}
+          />
+          <IconButton onClick={() => setActivePanelAttribute(null)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      );
+    } else {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton onClick={() => setActiveCategory(null)}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Stack direction="row" spacing={1}>
+            {filters.map((attribute) => (
+              <Chip
+                key={attribute.id}
+                label={attribute.name}
+                color={
+                  localFilters.attributeFilter && localFilters.attributeFilter.attributeId === attribute.id
+                    ? 'primary'
+                    : 'default'
+                }
+                onClick={() => {
+                  setActivePanelAttribute(attribute);
+                  if (localFilters.attributeFilter && localFilters.attributeFilter.attributeId === attribute.id) {
+                    setPanelRange({ min: localFilters.attributeFilter.minValue, max: localFilters.attributeFilter.maxValue });
+                  } else {
+                    setPanelRange({ min: '', max: '' });
+                  }
+                }}
+              />
+            ))}
+          </Stack>
+        </Box>
+      );
+    }
+  }
+
+  // Vue pour la catégorie Participants
+  if (activeCategory === 'participantsRange') {
+    const predefined = participantsPredefined;
     const currentRange =
-      activeCategory === 'participantsRange' ? filters.participantsRange : filters.questionsRange;
-    // Vérifier si la plage sélectionnée est personnalisée (non prédéfinie)
+      localFilters.participantsRangeMin !== null && localFilters.participantsRangeMax !== null
+        ? { min: localFilters.participantsRangeMin, max: localFilters.participantsRangeMax }
+        : null;
     const isCustom =
       currentRange &&
       !predefined.some(
-        item => currentRange.min === item.range.min && currentRange.max === item.range.max
+        (item) => currentRange.min === item.range.min && currentRange.max === item.range.max
       );
-    // Fonction pour activer la saisie custom et pré-remplir si une plage existe déjà
     const handleCustomEntry = () => {
       if (currentRange) {
         setCustomRange({ min: currentRange.min.toString(), max: currentRange.max.toString() });
@@ -241,19 +361,18 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
               onClick={() => {
                 if (customRange.min !== '' && customRange.max !== '') {
                   const range = { min: Number(customRange.min), max: Number(customRange.max) };
-                  const updated = { ...filters, [activeCategory]: range };
-                  setFilters(updated);
+                  const updated = { ...localFilters, participantsRangeMin: range.min, participantsRangeMax: range.max };
+                  setLocalFilters(updated);
                   onFiltersChange(updated);
                   setCustomRangeActive(false);
                   setActiveCategory(null);
                 }
               }}
             />
-            {/* Bouton pour supprimer la sélection custom */}
             <IconButton
               onClick={() => {
-                const updated = { ...filters, [activeCategory]: null };
-                setFilters(updated);
+                const updated = { ...localFilters, participantsRangeMin: null, participantsRangeMax: null };
+                setLocalFilters(updated);
                 onFiltersChange(updated);
                 setCustomRange({ min: '', max: '' });
                 setCustomRangeActive(false);
@@ -272,9 +391,9 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            {activeCategory === 'participantsRange' ? 'Participants :' : 'Questions :'}
+            Participants :
           </Typography>
-          {predefined.map(item => (
+          {predefined.map((item) => (
             <Chip
               key={item.label}
               label={item.label}
@@ -291,13 +410,12 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
                   currentRange.min === item.range.min &&
                   currentRange.max === item.range.max
                 ) {
-                  // Désélection si déjà sélectionné
-                  const updated = { ...filters, [activeCategory]: null };
-                  setFilters(updated);
+                  const updated = { ...localFilters, participantsRangeMin: null, participantsRangeMax: null };
+                  setLocalFilters(updated);
                   onFiltersChange(updated);
                 } else {
-                  const updated = { ...filters, [activeCategory]: item.range };
-                  setFilters(updated);
+                  const updated = { ...localFilters, participantsRangeMin: item.range.min, participantsRangeMax: item.range.max };
+                  setLocalFilters(updated);
                   onFiltersChange(updated);
                 }
               }}
@@ -309,8 +427,8 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
             onDelete={
               isCustom
                 ? () => {
-                    const updated = { ...filters, [activeCategory]: null };
-                    setFilters(updated);
+                    const updated = { ...localFilters, participantsRangeMin: null, participantsRangeMax: null };
+                    setLocalFilters(updated);
                     onFiltersChange(updated);
                   }
                 : undefined
@@ -322,12 +440,141 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
     }
   }
 
-  // Vue pour le filtre de date (niveau C/D)
+  // Vue pour la catégorie Questions
+  if (activeCategory === 'questionsRange') {
+    const predefined = questionsPredefined;
+    const currentRange =
+      localFilters.questionsRangeMin !== null && localFilters.questionsRangeMax !== null
+        ? { min: localFilters.questionsRangeMin, max: localFilters.questionsRangeMax }
+        : null;
+    const isCustom =
+      currentRange &&
+      !predefined.some(
+        (item) => currentRange.min === item.range.min && currentRange.max === item.range.max
+      );
+    const handleCustomEntry = () => {
+      if (currentRange) {
+        setCustomRange({ min: currentRange.min.toString(), max: currentRange.max.toString() });
+      } else {
+        setCustomRange({ min: '', max: '' });
+      }
+      setCustomRangeActive(true);
+    };
+
+    if (customRangeActive) {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton onClick={() => setCustomRangeActive(false)}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TextField
+              label="Min"
+              value={customRange.min}
+              onChange={(e) => setCustomRange({ ...customRange, min: e.target.value })}
+              size="small"
+              type="number"
+            />
+            <TextField
+              label="Max"
+              value={customRange.max}
+              onChange={(e) => setCustomRange({ ...customRange, max: e.target.value })}
+              size="small"
+              type="number"
+            />
+            <Chip
+              label="OK"
+              color="primary"
+              onClick={() => {
+                if (customRange.min !== '' && customRange.max !== '') {
+                  const range = { min: Number(customRange.min), max: Number(customRange.max) };
+                  const updated = { ...localFilters, questionsRangeMin: range.min, questionsRangeMax: range.max };
+                  setLocalFilters(updated);
+                  onFiltersChange(updated);
+                  setCustomRangeActive(false);
+                  setActiveCategory(null);
+                }
+              }}
+            />
+            <IconButton
+              onClick={() => {
+                const updated = { ...localFilters, questionsRangeMin: null, questionsRangeMax: null };
+                setLocalFilters(updated);
+                onFiltersChange(updated);
+                setCustomRange({ min: '', max: '' });
+                setCustomRangeActive(false);
+                setActiveCategory(null);
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </Box>
+      );
+    } else {
+      return (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          <IconButton onClick={() => setActiveCategory(null)}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+            Questions :
+          </Typography>
+          {predefined.map((item) => (
+            <Chip
+              key={item.label}
+              label={item.label}
+              color={
+                currentRange &&
+                currentRange.min === item.range.min &&
+                currentRange.max === item.range.max
+                  ? 'primary'
+                  : 'default'
+              }
+              onClick={() => {
+                if (
+                  currentRange &&
+                  currentRange.min === item.range.min &&
+                  currentRange.max === item.range.max
+                ) {
+                  const updated = { ...localFilters, questionsRangeMin: null, questionsRangeMax: null };
+                  setLocalFilters(updated);
+                  onFiltersChange(updated);
+                } else {
+                  const updated = { ...localFilters, questionsRangeMin: item.range.min, questionsRangeMax: item.range.max };
+                  setLocalFilters(updated);
+                  onFiltersChange(updated);
+                }
+              }}
+            />
+          ))}
+          <Chip
+            label="Personnalisé"
+            onClick={handleCustomEntry}
+            onDelete={
+              isCustom
+                ? () => {
+                    const updated = { ...localFilters, questionsRangeMin: null, questionsRangeMax: null };
+                    setLocalFilters(updated);
+                    onFiltersChange(updated);
+                  }
+                : undefined
+            }
+            color={isCustom ? 'primary' : 'default'}
+          />
+        </Box>
+      );
+    }
+  }
+
+  // Vue pour la catégorie Date
   if (activeCategory === 'dateRange') {
-    const currentDateRange = filters.dateRange;
+    const currentDateRange =
+      localFilters.dateRangeMin !== null && localFilters.dateRangeMax !== null
+        ? { start: localFilters.dateRangeMin, end: localFilters.dateRangeMax }
+        : null;
     const handleCustomDateEntry = () => {
-      // Si une date custom est déjà sélectionnée, pré-remplir les inputs
-      if (currentDateRange && !predefinedDateRanges.some(l => isPredefinedDate(currentDateRange, l))) {
+      if (currentDateRange && !predefinedDateRanges.some((l) => isPredefinedDate(currentDateRange, l))) {
         setCustomRange({ min: currentDateRange.start, max: currentDateRange.end });
       } else {
         setCustomRange({ min: '', max: '' });
@@ -363,8 +610,12 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
               color="primary"
               onClick={() => {
                 if (customRange.min !== '' && customRange.max !== '') {
-                  const updated = { ...filters, dateRange: { start: customRange.min, end: customRange.max } };
-                  setFilters(updated);
+                  const updated = { 
+                    ...localFilters, 
+                    dateRangeMin: customRange.min, 
+                    dateRangeMax: customRange.max 
+                  };
+                  setLocalFilters(updated);
                   onFiltersChange(updated);
                   setCustomRangeActive(false);
                   setActiveCategory(null);
@@ -373,8 +624,8 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
             />
             <IconButton
               onClick={() => {
-                const updated = { ...filters, dateRange: null };
-                setFilters(updated);
+                const updated = { ...localFilters, dateRangeMin: null, dateRangeMax: null };
+                setLocalFilters(updated);
                 onFiltersChange(updated);
                 setCustomRange({ min: '', max: '' });
                 setCustomRangeActive(false);
@@ -395,7 +646,7 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
             Date :
           </Typography>
-          {predefinedDateRanges.map(label => (
+          {predefinedDateRanges.map((label) => (
             <Chip
               key={label}
               label={label}
@@ -407,13 +658,12 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
               onClick={() => {
                 const range = getPredefinedDateRange(label);
                 if (currentDateRange && isPredefinedDate(currentDateRange, label)) {
-                  // Désélection
-                  const updated = { ...filters, dateRange: null };
-                  setFilters(updated);
+                  const updated = { ...localFilters, dateRangeMin: null, dateRangeMax: null };
+                  setLocalFilters(updated);
                   onFiltersChange(updated);
                 } else {
-                  const updated = { ...filters, dateRange: range };
-                  setFilters(updated);
+                  const updated = { ...localFilters, dateRangeMin: range.start, dateRangeMax: range.end };
+                  setLocalFilters(updated);
                   onFiltersChange(updated);
                 }
               }}
@@ -424,17 +674,17 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
             onClick={handleCustomDateEntry}
             onDelete={
               currentDateRange &&
-              !predefinedDateRanges.some(l => isPredefinedDate(currentDateRange, l))
+              !predefinedDateRanges.some((l) => isPredefinedDate(currentDateRange, l))
                 ? () => {
-                    const updated = { ...filters, dateRange: null };
-                    setFilters(updated);
+                    const updated = { ...localFilters, dateRangeMin: null, dateRangeMax: null };
+                    setLocalFilters(updated);
                     onFiltersChange(updated);
                   }
                 : undefined
             }
             color={
               currentDateRange &&
-              !predefinedDateRanges.some(l => isPredefinedDate(currentDateRange, l))
+              !predefinedDateRanges.some((l) => isPredefinedDate(currentDateRange, l))
                 ? 'primary'
                 : 'default'
             }

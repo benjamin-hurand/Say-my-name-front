@@ -1,24 +1,18 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { ChallengeCardDto } from '../../../../services/dto/ChallengeCardDto';
 
-interface Challenge {
-  id: number;
-  title: string;
-  mode: string;
-  participants: number;
-  status: string;
-  numQuestions: number;
-  details: string;
-  userCompleted: boolean;
-  userScore: number | null;
-  userTimeScore: string | null;
-  // createdAt peut être ajouté si nécessaire
+// Fonction utilitaire pour formater un temps en millisecondes en "mm:ss"
+function formatTime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-const StatusBubble: React.FC<{ challenge: Challenge }> = ({ challenge }) => {
+const StatusBubble: React.FC<{ challenge: ChallengeCardDto }> = ({ challenge }) => {
   const bubbleSize = 50;
   let content = null;
   let extraOverlay = null;
@@ -32,53 +26,41 @@ const StatusBubble: React.FC<{ challenge: Challenge }> = ({ challenge }) => {
     position: 'relative' as 'relative',
   };
 
-  if (challenge.status === 'En attente') {
-    // Fond transparent, bordure grise et icône sablier grisée
+  const attempt = challenge.attempt;
+  const version = challenge.version;
+
+  // Si l'utilisateur n'a jamais tenté le challenge
+  if (attempt.bestQuestionScore === null) {
     style = { ...style, backgroundColor: 'transparent', border: '2px solid gray' };
-    content = (
-      <HourglassEmptyIcon 
-        sx={{ color: 'gray', fontSize: 24, '& path': { strokeWidth: 2 } }} 
-      />
-    );
-  } else if (challenge.status === 'Validé' && !challenge.userCompleted) {
-    // Fond transparent, bordure blanche et icône flèche blanche
-    style = { ...style, backgroundColor: 'transparent', border: '2px solid white' };
     content = (
       <ArrowForwardIcon 
         sx={{ color: 'white', fontSize: 24, '& path': { strokeWidth: 2 } }} 
       />
     );
-  } else if (
-    challenge.status === 'Validé' &&
-    challenge.userCompleted &&
-    challenge.userScore !== null &&
-    challenge.userScore < 100
-  ) {
-    // Style "camembert" : remplissage en gris semi-transparent selon le pourcentage
-    const angle = (challenge.userScore / 100) * 360;
+  } 
+  // Si l'utilisateur a tenté le challenge mais sans score parfait
+  else if (attempt.bestQuestionScore < version.questionCount) {
+    const percentage = Math.round((attempt.bestQuestionScore / version.questionCount) * 100);
+    const angle = (percentage / 100) * 360;
     style = { 
       ...style, 
-      background: `conic-gradient(rgba(110, 110, 110, 0.8) 0deg ${angle}deg, transparent ${angle}deg 360deg)`, 
-      border: '2px solid rgba(110, 110, 110, 0.8)',
+      background: `conic-gradient(rgba(110,110,110,0.8) 0deg ${angle}deg, transparent ${angle}deg 360deg)`, 
+      border: '2px solid rgba(110,110,110,0.8)',
     };
     content = (
       <Typography sx={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-        {`${challenge.userScore}%`}
+        {`${percentage}%`}
       </Typography>
     );
-  } else if (
-    challenge.status === 'Validé' &&
-    challenge.userCompleted &&
-    challenge.userScore === 100
-  ) {
-    // Challenge réussi avec chrono : fond blanc, bordure noire, texte en gras
+  } 
+  // Si l'utilisateur a réussi le challenge (score parfait)
+  else if (attempt.bestQuestionScore === version.questionCount) {
     style = { ...style, backgroundColor: '#fff', border: '2px solid black' };
     content = (
       <Typography sx={{ color: '#000', fontWeight: 'bold', fontSize: 16 }}>
-        {challenge.userTimeScore}
+        {formatTime(attempt.bestTimeMs)}
       </Typography>
     );
-    // Marqueur de réussite : petit check en surimpression
     extraOverlay = (
       <Box
         sx={{
@@ -95,9 +77,7 @@ const StatusBubble: React.FC<{ challenge: Challenge }> = ({ challenge }) => {
           justifyContent: 'center',
         }}
       >
-        <CheckCircleIcon 
-          sx={{ color: 'black', fontSize: 20, '& path': { strokeWidth: 2 } }} 
-        />
+        <CheckCircleIcon sx={{ color: 'black', fontSize: 20 }} />
       </Box>
     );
   }

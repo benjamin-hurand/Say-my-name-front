@@ -1,9 +1,9 @@
-// GlobalDataContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Attribute } from '../models/commons/Attribute';
 import { getFilters, getSorts } from '../services/business/attributes/attribute.service';
 import { getGameModes } from '../services/business/gamemodes/gameMode.service';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
+import { fetchCurrentSeason } from '../services/business/challenges/challenge.service';
 
 interface WeekPeriod {
   start: Date;
@@ -31,25 +31,13 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const today = new Date();
     const day = today.getDay();
-    // Dans JS, 0 = dimanche, 1 = lundi, etc.
+    // En JavaScript, 0 = dimanche, 1 = lundi, etc.
     const diffToMonday = day === 0 ? -6 : 1 - day;
     const monday = new Date(today);
     monday.setDate(today.getDate() + diffToMonday);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     setCurrentWeek({ start: monday, end: sunday });
-  }, []);
-
-  // Calcul du numéro de saison compétitive
-  // Par exemple, on part d'une date de départ fixe (ici le 2 janvier 2023, un lundi)
-  useEffect(() => {
-    const seasonStart = new Date("2023-01-02T00:00:00");
-    const today = new Date();
-    const diffTime = today.getTime() - seasonStart.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    // Chaque saison dure 7 jours, donc le numéro de saison est :
-    const seasonNumber = Math.floor(diffDays / 7) + 1;
-    setCompetitiveSeason(seasonNumber);
   }, []);
 
   // Fetch des filtres
@@ -84,6 +72,20 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
         setModes(fetchedModes);
       } catch (error) {
         console.error('Error fetching game modes:', error);
+      }
+    })();
+  }, []);
+
+  // Récupérer la saison actuelle depuis l'API
+  useEffect(() => {
+    (async () => {
+      try {
+        const season = await fetchCurrentSeason();
+        if (season && season.seasonNumber) {
+          setCompetitiveSeason(season.seasonNumber);
+        }
+      } catch (error) {
+        console.error("Error fetching current season", error);
       }
     })();
   }, []);
