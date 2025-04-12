@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Button,
@@ -13,6 +13,8 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  Skeleton,
+  Stack
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import InfoIcon from '@mui/icons-material/Info';
@@ -25,6 +27,11 @@ import { ChallengeCardDto } from '../../../services/dto/ChallengeCardDto';
 import { ChallengeMenuDto } from '../../../services/dto/ChallengeMenuDto';
 import { ChallengeFilters, initialFilters } from './components/FilterAndSortBar.types';
 import { format, parseISO } from 'date-fns';
+
+// Délai avant d’afficher le skeleton
+const MIN_DELAY_BEFORE_SKELETON = 300; // ms
+// Durée minimum pendant laquelle le skeleton reste visible
+const MIN_DISPLAY_TIME_SKELETON = 300; // ms
 
 // Fonction debounce personnalisée
 function debounce<T extends unknown[]>(func: (...args: T) => void, wait: number) {
@@ -80,28 +87,88 @@ const ChallengeMenu: React.FC = () => {
 
   // Liste des challenges récupérés
   const [challengeList, setChallengeList] = useState<ChallengeCardDto[]>([]);
+
+  // État de la modale
   const [selectedChallenge, setSelectedChallenge] = useState<ChallengeCardDto | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+  // État technique de chargement
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  /**
+   * showSkeleton = true => on affiche les skeletons
+   * showSkeleton = false => on affiche la liste ou le message "Aucun challenge"
+   */
+  const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
+
+  // Timers pour la logique de double-délai
+  const timerShowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Valeurs fixes pour cet exemple
   const userId = 1;
   const seasonStart = new Date().toISOString();
 
-  // Fonction qui construit le DTO d'entrée et appelle le service
-  const fetchChallenges = async () => {
-    const challengeMenuDto: ChallengeMenuDto = {
-      userId,
-      seasonStart,
-      search,
-      filters,
-      sorts,
-    };
+  // -----------
+  // Fonctions de gestion des timers pour le squelette
+  // -----------
 
+  const startLoading = () => {
+    setIsLoading(true);
+
+    // Si un précédent timerHide existe, on l'annule (cas où on enchaîne direct un nouveau fetch)
+    if (timerHideRef.current) {
+      clearTimeout(timerHideRef.current);
+      timerHideRef.current = null;
+    }
+
+    // Timer qui, au bout de MIN_DELAY_BEFORE_SKELETON ms, affichera le squelette si on est toujours en loading
+    timerShowRef.current = setTimeout(() => {
+      // On vérifie encore isLoading, au cas où le fetch a fini entre-temps
+      if (isLoading) {
+        setShowSkeleton(true);
+      }
+    }, MIN_DELAY_BEFORE_SKELETON);
+  };
+
+  const stopLoading = () => {
+    setIsLoading(false);
+
+    // Si on avait un timerShow non déclenché, on l'annule
+    if (timerShowRef.current) {
+      clearTimeout(timerShowRef.current);
+      timerShowRef.current = null;
+    }
+
+    // Si le squelette est effectivement affiché, on le maintient un minimum de temps
+    if (showSkeleton) {
+      timerHideRef.current = setTimeout(() => {
+        setShowSkeleton(false);
+        timerHideRef.current = null;
+      }, MIN_DISPLAY_TIME_SKELETON);
+    }
+  };
+
+  // -----------
+  // Appel API
+  // -----------
+  const fetchChallenges = async () => {
+    startLoading();
     try {
+      const challengeMenuDto: ChallengeMenuDto = {
+        userId,
+        seasonStart,
+        search,
+        filters,
+        sorts,
+      };
+
       const challenges = await getChallengesList(challengeMenuDto);
       setChallengeList(challenges);
     } catch (error) {
       console.error("Error fetching challenges list:", error);
+    } finally {
+      stopLoading();
     }
   };
 
@@ -112,7 +179,7 @@ const ChallengeMenu: React.FC = () => {
     debouncedFetchChallenges();
   }, [search, filters, sorts, debouncedFetchChallenges]);
 
-  // Handlers pour la modal
+  // Handlers de modal
   const handleOpenModal = (challenge: ChallengeCardDto) => {
     setSelectedChallenge(challenge);
     setModalOpen(true);
@@ -125,20 +192,20 @@ const ChallengeMenu: React.FC = () => {
 
   const handleParticipate = (challenge: ChallengeCardDto) => {
     console.log('Participer au challenge', challenge);
-    // Implémentez ici la navigation ou la logique de participation
+    // Navigation / logique de participation
   };
 
   const handleCreateChallenge = () => {
     navigate('/challenges/new');
   };
 
-  // Exemple utilitaire pour afficher un tooltip sur la performance
+  // Tooltip pour la performance
   const getStatusTooltip = (challenge: ChallengeCardDto): string => {
     if (challenge.attempt.bestQuestionScore === null) {
       return "Vous n'avez jamais tenté ce challenge";
     }
     if (challenge.attempt.bestQuestionScore < challenge.version.questionCount) {
-      return `Meilleur score : ${challenge.attempt.bestQuestionScore}/${challenge.version.questionCount}`;
+      return `Meilleur score : ${challenge.attempt.bestQuestionScore} / ${challenge.version.questionCount}`;
     }
     return "Challenge réussi !";
   };
@@ -166,7 +233,7 @@ const ChallengeMenu: React.FC = () => {
       {/* Bouton "Créer un challenge" */}
       <Box sx={{ mb: 2 }}>
         <Button
-          className='menu'
+          className="menu"
           variant="outlined"
           fullWidth
           onClick={handleCreateChallenge}
@@ -176,19 +243,97 @@ const ChallengeMenu: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Liste des challenges */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-        {challengeList.length === 0 ? (
-          <Typography variant="body1">Aucun challenge trouvé.</Typography>
+      {/* Liste des challenges (ou skeleton, ou message "Aucun challenge trouvé") */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto' }} className="scrollable-content">
+        {showSkeleton ? (
+          // -------------------------------------------------
+          // 1) SKELETONS en cas de chargement "réel" (>300ms)
+          // -------------------------------------------------
+          <Stack spacing={2}>
+            <Card>
+              <CardContent>
+                <Skeleton variant="text" width="50%" />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <Skeleton variant="rectangular" width={100} height={24} />
+                  <Skeleton variant="rectangular" width={60} height={24} />
+                </Box>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <Skeleton variant="text" width="70%" />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <Skeleton variant="rectangular" width={100} height={24} />
+                  <Skeleton variant="rectangular" width={60} height={24} />
+                </Box>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <Skeleton variant="text" width="60%" />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <Skeleton variant="rectangular" width={100} height={24} />
+                  <Skeleton variant="rectangular" width={60} height={24} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Stack>
+        ) : challengeList.length === 0 ? (
+          // ----------------------------------------
+          // 2) AUCUN CHALLENGE TROUVÉ
+          // ----------------------------------------
+          <Box
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              textAlign: 'center',
+              padding: 2
+            }}
+          >
+            <Box sx={{ fontSize: 48, opacity: 0.5 }}>😔</Box>
+            <Typography variant="h6" sx={{ opacity: 0.8 }}>
+              Aucun challenge trouvé
+            </Typography>
+            <Typography variant="body2" sx={{ marginBottom: 1, opacity: 0.7 }}>
+              Essayez de modifier vos filtres ou créez un nouveau challenge !
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleCreateChallenge}
+              sx={{ textTransform: 'none' }}
+            >
+              Créer un challenge
+            </Button>
+          </Box>
         ) : (
+          // ----------------------------------------
+          // 3) LISTE DES CHALLENGES
+          // ----------------------------------------
           challengeList.map((challengeCard) => (
-            <Card key={challengeCard.challenge.id} sx={{ mb: 1, cursor: 'pointer' }} onClick={() => handleOpenModal(challengeCard)}>
+            <Card
+              key={challengeCard.challenge.id}
+              sx={{ mb: 1, cursor: 'pointer' }}
+              onClick={() => handleOpenModal(challengeCard)}
+            >
               <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h6">{getCardTitle(challengeCard)}</Typography>
                   <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                    <Chip label={`${challengeCard.version.questionCount} questions`} variant="outlined" size="medium" />
-                    <Chip icon={<PeopleIcon fontSize="small" />} label={challengeCard.attempt.nbParticipants} variant="outlined" size="medium" />
+                    <Chip
+                      label={`${challengeCard.version.questionCount} questions`}
+                      variant="outlined"
+                      size="medium"
+                    />
+                    <Chip
+                      icon={<PeopleIcon fontSize="small" />}
+                      label={challengeCard.attempt.nbParticipants}
+                      variant="outlined"
+                      size="medium"
+                    />
                   </Box>
                 </Box>
                 <Box sx={{ ml: 2 }}>
@@ -227,72 +372,68 @@ const ChallengeMenu: React.FC = () => {
         <DialogTitle>{selectedChallenge ? getCardTitle(selectedChallenge) : ""}</DialogTitle>
         <DialogContent dividers>
           {selectedChallenge && (
-            <>
-              {/* Section 1: Informations générales */}
-              <Typography variant="body2" gutterBottom>
-                <strong>Mode :</strong> {selectedChallenge.challenge.gameMode.title}{" "}
-                <Tooltip title={selectedChallenge.challenge.gameMode.description}>
-                  <InfoIcon fontSize="small" />
-                </Tooltip>
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                <strong>Filtre :</strong> {selectedChallenge.challenge.filter.attributeName}{" "}
-                {selectedChallenge.challenge.filter.minValue && selectedChallenge.challenge.filter.maxValue && (
-                  selectedChallenge.challenge.filter.minValue === selectedChallenge.challenge.filter.maxValue
-                    ? `(${selectedChallenge.challenge.filter.minValue})`
-                    : `(${selectedChallenge.challenge.filter.minValue} à ${selectedChallenge.challenge.filter.maxValue})`
-                )}
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                <strong>Créé le :</strong>{" "}
-                <Tooltip title={formatDate(selectedChallenge.challenge.creationDate, true)}>
-                  <span>
-                    {formatDate(selectedChallenge.challenge.creationDate)}
-                  </span>
-                </Tooltip>
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                <strong>Créateur :</strong> {selectedChallenge.challenge.creator.username}
-              </Typography>
-              <Divider sx={{ my: 1 }} />
-              <Typography variant="body2" gutterBottom>
-                <strong>Description :</strong> {selectedChallenge.challenge.description}
-              </Typography>
-
-              {/* Section 2: Informations sur la version */}
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle1">Version</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}>
+              {/* Colonne de gauche */}
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Informations générales
+                </Typography>
                 <Typography variant="body2" gutterBottom>
-                  <strong>Numéro :</strong> {selectedChallenge.version.versionNumber}
+                  <strong>Mode :</strong> {selectedChallenge.challenge.gameMode.title}{" "}
+                  <Tooltip title={selectedChallenge.challenge.gameMode.description}>
+                    <InfoIcon fontSize="small" sx={{ verticalAlign: 'middle' }} />
+                  </Tooltip>
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Filtre :</strong> {selectedChallenge.challenge.filter.attributeName}{" "}
+                  {selectedChallenge.challenge.filter.minValue && selectedChallenge.challenge.filter.maxValue && (
+                    selectedChallenge.challenge.filter.minValue === selectedChallenge.challenge.filter.maxValue
+                      ? `(${selectedChallenge.challenge.filter.minValue})`
+                      : `(${selectedChallenge.challenge.filter.minValue} à ${selectedChallenge.challenge.filter.maxValue})`
+                  )}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Créé le :</strong>{" "}
+                  <Tooltip title={formatDate(selectedChallenge.challenge.creationDate, true)}>
+                    <span>{formatDate(selectedChallenge.challenge.creationDate)}</span>
+                  </Tooltip>
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Créateur :</strong> {selectedChallenge.challenge.creator.username}
+                </Typography>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="body2" gutterBottom>
+                  <strong>Description :</strong> {selectedChallenge.challenge.description}
+                </Typography>
+              </Box>
+              {/* Colonne de droite */}
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Version & Performance
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Version :</strong> {selectedChallenge.version.versionNumber}
                 </Typography>
                 <Typography variant="body2" gutterBottom>
                   <strong>Début :</strong>{" "}
                   <Tooltip title={formatDate(selectedChallenge.version.startDate, true)}>
-                    <span>
-                      {formatDate(selectedChallenge.version.startDate)}
-                    </span>
+                    <span>{formatDate(selectedChallenge.version.startDate)}</span>
                   </Tooltip>
                 </Typography>
                 <Typography variant="body2" gutterBottom>
                   <strong>Fin :</strong>{" "}
                   {selectedChallenge.version.endDate ? (
                     <Tooltip title={formatDate(selectedChallenge.version.endDate, true)}>
-                      <span>
-                        {formatDate(selectedChallenge.version.endDate)}
-                      </span>
+                      <span>{formatDate(selectedChallenge.version.endDate)}</span>
                     </Tooltip>
                   ) : (
                     "N/A"
                   )}
                 </Typography>
                 <Typography variant="body2" gutterBottom>
-                  <strong>Nombre de questions :</strong> {selectedChallenge.version.questionCount}
+                  <strong>Nb Questions :</strong> {selectedChallenge.version.questionCount}
                 </Typography>
-              </Box>
-
-              {/* Section 3: Performance utilisateur */}
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle1">Performance</Typography>
+                <Divider sx={{ my: 1 }} />
                 <Typography variant="body2" gutterBottom>
                   <strong>Nb Participants :</strong> {selectedChallenge.attempt.nbParticipants}
                 </Typography>
@@ -309,32 +450,13 @@ const ChallengeMenu: React.FC = () => {
                     : "Non disponible"}
                 </Typography>
                 <Typography variant="body2" gutterBottom>
-                  <strong>Date de début de tentative :</strong>{" "}
+                  <strong>Début tentative :</strong>{" "}
                   <Tooltip title={formatDate(selectedChallenge.attempt.attemptStartDate, true)}>
-                    <span>
-                      {formatDate(selectedChallenge.attempt.attemptStartDate)}
-                    </span>
+                    <span>{formatDate(selectedChallenge.attempt.attemptStartDate)}</span>
                   </Tooltip>
                 </Typography>
               </Box>
-
-              {/* Section 4: Sections supplémentaires */}
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle1">Mes dernières tentatives</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  (Données à charger via API)
-                </Typography>
-              </Box>
-
-              {selectedChallenge.attempt.nbParticipants > 10 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1">Leaderboard</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    (Leaderboard à charger via API)
-                  </Typography>
-                </Box>
-              )}
-            </>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>

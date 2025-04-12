@@ -4,6 +4,7 @@ import API from "../../api/apiUtils";
 import { AddChallengeDto } from "../../dto/addChallengeDto";
 import { ChallengeCardDto } from "../../dto/ChallengeCardDto";
 import { ChallengeMenuDto } from "../../dto/ChallengeMenuDto";
+import { CreatedChallengeVersionDto } from "../../dto/CreatedChallengeVersionDto";
 
 const endpoint = "/challenges";
 
@@ -17,9 +18,9 @@ export async function fetchCurrentSeason(): Promise<ChallengeSeason> {
     }
 }
 
-export async function createChallenge(addChallengeDto: AddChallengeDto): Promise<Challenge> {
+export async function createChallenge(addChallengeDto: AddChallengeDto): Promise<CreatedChallengeVersionDto> {
     try {
-      const response = await API.post<Challenge>(`${endpoint}/create`, addChallengeDto);
+      const response = await API.post<CreatedChallengeVersionDto>(`${endpoint}/create`, addChallengeDto);
       return response.data;
     } catch (error) {
       console.error("Erreur lors de la création du challenge", error);

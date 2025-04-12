@@ -9,16 +9,19 @@ import {
   dateStringToDayOffset,
   mapLetterToNumber,
   createNumericMarks,
-  createDateMarks,
-  alphabet,
+  getDateSliderMarks,
   dayOffsetToLocalizedDateString,
   mapNumberToLetter,
   dayOffsetToISODateString,
-  getDateSliderMarks
+  alphabet
 } from "../../quiz/components/FilterChoiceUtils";
 import { StyledSlider } from "../../quiz/components/StyledSlider";
 import { createChallenge } from "../../../services/business/challenges/challenge.service";
 import { AttributeCard } from "../../quiz/components/AttributeCard";
+
+// Import des toasts personnalisés
+import { CreatedChallengeVersionDto } from "../../../services/dto/CreatedChallengeVersionDto";
+import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 
 const AddChallengeForm: React.FC = () => {
   const navigate = useNavigate();
@@ -26,20 +29,20 @@ const AddChallengeForm: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [challengeDescription, setChallengeDescription] = useState<string>("");
 
-  // Pour l'exemple, nous utilisons l'ID du créateur simulé (à remplacer par l'ID réel depuis votre contexte d'authentification)
+  // Pour l'exemple, on simule l'ID du créateur (remplacez par votre vrai context auth).
   const currentCreatorId = 1;
 
-  // FILTER CHOICE STATES
+  // States liés aux filtres
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 25]);
   const [attributeRanges, setAttributeRanges] = useState<{ [attrId: number]: [number, number] }>({});
 
   useEffect(() => {
-    // Vous pouvez ajouter des logs ou traitements supplémentaires ici
+    // Si besoin de logs
   }, [range]);
 
   useEffect(() => {
-    // Logique pour réinitialiser la range si l'attribut change
+    // Si besoin de réinitialiser quand l'attribut change
   }, [selectedAttribute]);
 
   const renderModes = () => {
@@ -119,7 +122,7 @@ const AddChallengeForm: React.FC = () => {
     const newRange = newValue as [number, number];
     setRange(newRange);
     if (selectedAttribute) {
-      setAttributeRanges(prev => ({
+      setAttributeRanges((prev) => ({
         ...prev,
         [selectedAttribute.id]: newRange,
       }));
@@ -168,44 +171,94 @@ const AddChallengeForm: React.FC = () => {
     }
   };
 
-  // Handler pour sauvegarder le challenge via l'API
+  // Handler principal pour sauvegarder le challenge via l'API
   const handleSaveClick = async () => {
-    // Vérifier que le mode est sélectionné
     if (!selectedMode) {
-      alert("Veuillez sélectionner un mode.");
+      notifyError("Veuillez sélectionner un mode.");
       return;
     }
-    // Vérifier que l'attribut de filtre est sélectionné
     if (!selectedAttribute) {
-      alert("Veuillez sélectionner un filtre d'attribut.");
+      notifyError("Veuillez sélectionner un attribut pour le filtre.");
       return;
     }
-    // Construire l'objet AddChallengeDto
+
+    // Calcul des bornes min / max en fonction du slider
+    let computedMinValue: string;
+    let computedMaxValue: string;
+
+    if (selectedAttribute.type === "number") {
+      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
+      computedMinValue = (attrMin + range[0]).toString().trim();
+      computedMaxValue = (attrMin + range[1]).toString().trim();
+    } else if (selectedAttribute.type === "date") {
+      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
+      computedMinValue = dayOffsetToISODateString(attrMin + range[0]).trim();
+      computedMaxValue = dayOffsetToISODateString(attrMin + range[1]).trim();
+    } else {
+      computedMinValue = mapNumberToLetter(range[0]).trim();
+      computedMaxValue = mapNumberToLetter(range[1]).trim();
+    }
+
+    const trimmedDescription = challengeDescription.trim();
+
+    // Préparation du DTO
     const addChallengeDto = {
-      description: challengeDescription,
+      description: trimmedDescription,
       gameModeId: selectedMode.id,
       attributeFilter: {
         attributeId: selectedAttribute.id,
-        // Pour cet exemple, on utilise les valeurs brutes de l'attribut
-        // Vous pourriez ajuster pour utiliser les valeurs modifiées par le slider si besoin.
-        minValue: selectedAttribute.minValue ?? "",
-        maxValue: selectedAttribute.maxValue ?? ""
+        minValue: computedMinValue,
+        maxValue: computedMaxValue,
       },
-      creatorId: currentCreatorId
+      creatorId: currentCreatorId,
     };
 
     try {
-      const createdChallenge = await createChallenge(addChallengeDto);
-      console.log("Challenge créé avec succès :", createdChallenge);
-      navigate("/challenges", { replace: true });
-    } catch (error) {
-      console.error("Erreur lors de la création du challenge :", error);
-      alert("Erreur lors de la création du challenge.");
+      const createdChallenge: CreatedChallengeVersionDto = await createChallenge(addChallengeDto);
+
+      // ---------------
+      // Dans l'idéal, votre backend renvoie un DTO avec la saison et la date de début.
+      // On suppose ici qu'on peut accéder à `createdChallenge.seasonNumber`, `createdChallenge.seasonStartDate`, etc.
+      // ---------------
+      const seasonNumber = createdChallenge.firstSeasonNumber ?? "inconnue";
+      const seasonStartDate = createdChallenge.startDate ?? null;
+
+      // Exemple simplifié : si vous avez déjà un utilitaire pour formatDate / formatTime, réutilisez-le
+      // ou utilisez dayOffsetToLocalizedDateString en supposant que la date soit un offset, etc.
+      const formattedDate = seasonStartDate
+        ? new Date(seasonStartDate).toLocaleDateString("fr-FR")
+        : "date inconnue";
+      const formattedTime = seasonStartDate
+        ? new Date(seasonStartDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+        : "heure inconnue";
+
+      notifySuccess(
+        `Challenge créé avec succès ! Il sera disponible au début de la saison ${seasonNumber} le ${formattedDate} à ${formattedTime}.`
+      );
+
+      // Redirection après un court délai pour laisser le temps de lire le toast
+      setTimeout(() => {
+        navigate("/challenges");
+      }, 2000);
+    } catch (error: any) {
+      // On teste d’abord le code de statut (409, 400, etc.)
+      if (error.response) {
+        if (error.response.status === 409) {
+          // Conflit => un challenge existe déjà
+          notifyError("Échec : ce challenge existe déjà pour ce filtre/mode.");
+        } else if (error.response.status === 400) {
+          // Mauvaise requête => par exemple, moins de 10 personnes
+          notifyError("Échec : il y a moins de 10 personnes correspondant à ce filtre.");
+        } else {
+          notifyError("Une erreur inattendue est survenue lors de la création du challenge.");
+        }
+      } else {
+        notifyError("Impossible de contacter le serveur. Veuillez réessayer plus tard.");
+      }
     }
   };
 
-  const goToChallengeMenu = (saveChanges: boolean = false) => {
-    // Navigation si besoin
+  const goToChallengeMenu = () => {
     navigate("/challenges", { replace: true });
   };
 
@@ -275,7 +328,9 @@ const AddChallengeForm: React.FC = () => {
                   type={selectedAttribute.type === "date" ? "date" : "text"}
                   value={
                     selectedAttribute.type === "number"
-                      ? ((selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[0]).toString()
+                      ? (
+                          (selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[0]
+                        ).toString()
                       : selectedAttribute.type === "date"
                       ? dayOffsetToISODateString(
                           (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[0]
@@ -291,7 +346,9 @@ const AddChallengeForm: React.FC = () => {
                   type={selectedAttribute.type === "date" ? "date" : "text"}
                   value={
                     selectedAttribute.type === "number"
-                      ? ((selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[1]).toString()
+                      ? (
+                          (selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[1]
+                        ).toString()
                       : selectedAttribute.type === "date"
                       ? dayOffsetToISODateString(
                           (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[1]
@@ -307,6 +364,7 @@ const AddChallengeForm: React.FC = () => {
           )}
         </Box>
       </FormGroup>
+
       {/* Footer Buttons */}
       <Box
         sx={{
@@ -320,7 +378,7 @@ const AddChallengeForm: React.FC = () => {
         <Button
           variant="outlined"
           className="menu nobg"
-          onClick={() => goToChallengeMenu(false)}
+          onClick={() => goToChallengeMenu()}
           sx={{ marginRight: "1vw" }}
         >
           Cancel

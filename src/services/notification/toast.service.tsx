@@ -6,7 +6,7 @@ export const notifySuccess = (message: string, options?: object) => {
         bodyClassName: 'custom-toast-body',
         progressClassName: 'custom-toast-progress',
         position: "bottom-right",
-        autoClose: 2000,
+        autoClose: 4000,
         ...options
     });
 };
