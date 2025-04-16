@@ -8,7 +8,7 @@ import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
-import { generate, register, registerWithGoogle, checkUsernameAvailability } from '../../services/security/Auth.service';
+import { generate, register, registerWithGoogle, checkUsernameAvailability, AuthResponse } from '../../services/security/Auth.service';
 import { useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
@@ -23,8 +23,13 @@ import { notifySuccess } from '../../services/notification/toast.service';
 import { Divider } from '@mui/material';
 import { FooterAuth } from '../../components/layout/components/footer/Footer_auth';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SignUp(): JSX.Element {
+  const navigate = useNavigate();
+  const { theme, changeColor, randomizeColor } = useThemeColorContext();
+  const { login } = useAuth();
+
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -40,8 +45,6 @@ export default function SignUp(): JSX.Element {
   const [passwordStatus, setPasswordStatus] = useState<'initial' | 'valid' | 'invalid' | 'checking'>('initial');
   const [showEmailPasswordFields, setShowEmailPasswordFields] = useState<boolean>(false);
   const [showButtons, setShowButtons] = useState<boolean>(false);
-  const navigate = useNavigate();
-  const { theme, changeColor, randomizeColor } = useThemeColorContext();
 
   React.useEffect(() => {
     if (theme === 'dark') {
@@ -142,10 +145,14 @@ export default function SignUp(): JSX.Element {
     }
 
     try {
-      const apiResponse = await registerWithGoogle(googleResponse);
+      const apiResponse: AuthResponse = await registerWithGoogle(googleResponse);
       console.log("Response back after google: ", apiResponse);
-      localStorage.setItem('token', googleResponse.credential);
-      localStorage.setItem('roles', "ROLE_USER"); // to be fetched from apis
+      login(apiResponse.jwt.bearer, {
+        id: apiResponse.userId,
+        username: apiResponse.username,
+        email: apiResponse.email,
+        roles: apiResponse.roles,
+      });
       notifySuccess("Successfully connected.");
       randomizeColor();
       navigate('/');

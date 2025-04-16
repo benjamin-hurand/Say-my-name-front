@@ -1,5 +1,3 @@
-// QuizDisplay.tsx
-
 import React from 'react';
 import { Button, Box, TextField, Typography, Skeleton } from '@mui/material';
 
@@ -11,7 +9,7 @@ export interface QuizDisplayProps {
   answer: string;
   handleAnswerChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   validateAnswer: () => void;
-  openQuizOptions: () => void;
+  openQuizOptions?: () => void;
   goBackToMenu: () => void;
   isLoading: boolean;
   hasFetched: boolean;
@@ -33,7 +31,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
     <div className="quiz" style={{ padding: '20px', width: '100%', height: '100%' }}>
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         {/* Photo or skeleton */}
-        {isLoading || !hasFetched ? (
+        {(isLoading || !hasFetched) ? (
           <Skeleton
             variant="rectangular"
             width="100%"
@@ -53,7 +51,6 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
             }}
           />
         ) : (
-          // Outer container that preserves the overall "photo" space
           <Box
             sx={{
               height: '56vh',
@@ -62,7 +59,6 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
               justifyContent: 'center',
             }}
           >
-            {/* Inner box wrapping only the text with a semi-transparent background and border */}
             <Box
               sx={{
                 backgroundColor: 'rgba(128, 128, 128, 0.5)',
@@ -78,7 +74,6 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
           </Box>
         )}
 
-
         <TextField
           variant="outlined"
           placeholder="Type your answer here..."
@@ -89,12 +84,25 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
           sx={{ margin: '20px 0', width: '100%' }}
         />
 
-
         {/* Buttons row */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', height: '7vh' }}>
-          <Button variant="outlined" className="menu nobg" onClick={openQuizOptions} sx={{ marginRight: '1vw' }}>
-            Options
-          </Button>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: openQuizOptions ? 'space-between' : 'flex-end',
+            width: '100%',
+            height: '7vh',
+          }}
+        >
+          {openQuizOptions && (
+            <Button
+              variant="outlined"
+              className="menu nobg"
+              onClick={openQuizOptions}
+              sx={{ marginRight: '1vw' }}
+            >
+              Options
+            </Button>
+          )}
           <Button variant="contained" className="menu" onClick={validateAnswer}>
             Submit Answer
           </Button>

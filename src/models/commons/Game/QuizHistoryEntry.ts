@@ -7,4 +7,10 @@ export interface QuizHistoryEntry {
     correct: boolean;
     repetitionData: SpacedRepetitionData;
   }
+
+export interface ChallengeHistoryEntry {
+  questionNumber: number;
+  personId: number;
+  answer: string;
+}
   

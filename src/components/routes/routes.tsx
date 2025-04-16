@@ -6,27 +6,27 @@ import SignIn from "../../scenes/sign-in/SignIn";
 import SignUp from "../../scenes/sign-up/SignUp";
 import Menu from "../../scenes/menu/menu";
 import { Layout } from "../layout/Layout";
-import Quiz from "../../scenes/quiz/quiz";
-import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
 import { QuizOptionsProvider } from "../../contexts/QuizOptionsContext";
 import QuizOptions from "../../scenes/quiz/QuizOptions";
 import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
 import { ChallengesProvider } from "../../contexts/ChallengesContext";
 import ChallengeLayout from "../layout/ChallengeLayout";
 import { TrainingQuiz } from "../../scenes/quiz/TrainingQuiz";
+import GlobalDataLayout from "../layout/GlobalDataLayout";
+import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
+import { ChallengeAttemptProvider } from "../../contexts/ChallengeAttemptContext";
+import ChallengeQuiz from "../../scenes/quiz/ChallengeQuiz";
 
 const router = createBrowserRouter([
   {
     path: "/",
+    element: <GlobalDataLayout />,
     children: [
-      {
-        index: true,
-        // Pour le menu principal, on n'affiche pas de header (ou on l'affiche sans bouton retour)
-        element: (
-          <Layout isMenu={true}>
+      { index: true, element: (
+          <Layout isMenu>
             <ProtectedRoute element={<Menu />} />
           </Layout>
-        ),
+        )
       },
       {
         path: "profile",
@@ -36,8 +36,9 @@ const router = createBrowserRouter([
           </Layout>
         ),
       },
+
+      // ——— Section “Quiz” pédagogique ———
       {
-        // Ici, on enveloppe la section quiz avec le provider et un Outlet, sans Layout fixe
         path: "quiz",
         element: (
           <QuizOptionsProvider>
@@ -63,15 +64,20 @@ const router = createBrowserRouter([
           },
         ],
       },
+
+      // ——— Section “Challenges” (compétition) ———
       {
-        // Envelopper la section challenges avec ChallengesProvider
         path: "challenges",
         element: (
           <ChallengesProvider>
-            <Outlet />
+            {/* Ici on place le provider d’attempt autour de Menu & Quiz */}
+            <ChallengeAttemptProvider>
+              <Outlet />
+            </ChallengeAttemptProvider>
           </ChallengesProvider>
         ),
         children: [
+          // Liste / menu des challenges
           {
             index: true,
             element: (
@@ -80,16 +86,27 @@ const router = createBrowserRouter([
               </ChallengeLayout>
             ),
           },
+          // Création d’un nouveau challenge
           {
             path: "new",
             element: (
-              <Layout headerTitle="Create challenge" onBack="/challenges">
+              <Layout headerTitle="Créer un challenge" onBack="/challenges">
                 <ProtectedRoute element={<AddChallengeForm />} />
               </Layout>
             ),
-          }
+          },
+          // Quiz de l’attempt (sous /challenges/:attemptId)
+          {
+            path: ":attemptId",
+            element: (
+              <ChallengeLayout>
+                <ProtectedRoute element={<ChallengeQuiz />} />
+              </ChallengeLayout>
+            ),
+          },
         ],
       },
+
       {
         path: "persons",
         element: (
@@ -98,18 +115,20 @@ const router = createBrowserRouter([
           </Layout>
         ),
       },
-      {
-        path: "signin",
-        element: <SignIn />,
-      },
-      {
-        path: "signup",
-        element: <SignUp />,
-      },
+
+      // fallback
       {
         path: "*",
         element: <Navigate to="/" replace />,
       },
+    ],
+  },
+  // routes publiques
+  {
+    path: "/",
+    children: [
+      { path: "signin", element: <SignIn /> },
+      { path: "signup", element: <SignUp /> },
     ],
   },
 ]);

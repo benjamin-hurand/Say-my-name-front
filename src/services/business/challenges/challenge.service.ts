@@ -2,11 +2,13 @@ import { ChallengeSeason } from "../../../models/commons/ChallengeSeason";
 import { Challenge } from "../../../models/commons/Game/Challenge";
 import API from "../../api/apiUtils";
 import { AddChallengeDto } from "../../dto/addChallengeDto";
+import { AddChallengeAttemptDto, CreatedChallengeAttemptDto } from "../../dto/ChallengeAttemptDto";
 import { ChallengeCardDto } from "../../dto/ChallengeCardDto";
 import { ChallengeMenuDto } from "../../dto/ChallengeMenuDto";
 import { CreatedChallengeVersionDto } from "../../dto/CreatedChallengeVersionDto";
 
 const endpoint = "/challenges";
+const attemptsEndpoint = "attempts";
 
 export async function fetchCurrentSeason(): Promise<ChallengeSeason> {
     try {
@@ -34,6 +36,43 @@ export async function getChallengesList(challengeMenuDto: ChallengeMenuDto): Pro
     return response.data;
   } catch (error) {
     console.error("Error fetching challenges list:", error);
+    throw error;
+  }
+}
+
+/**
+ * Crée une tentative de challenge côté backend
+ * @param payload { userId, challengeVersionId }
+ * @returns le CreatedChallengeAttemptDto renvoyé par le serveur
+ */
+export async function createChallengeAttempt(
+  payload: AddChallengeAttemptDto
+): Promise<CreatedChallengeAttemptDto> {
+  try {
+    const response = await API.post<CreatedChallengeAttemptDto>(
+      `${endpoint}/${attemptsEndpoint}/create`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating challenge attempt:", error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère une tentative de challenge existante par son ID
+ */
+export async function getChallengeAttempt(
+  attemptId: number
+): Promise<CreatedChallengeAttemptDto> {
+  try {
+    const response = await API.get<CreatedChallengeAttemptDto>(
+      `${endpoint}/${attemptsEndpoint}/${attemptId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching challenge attempt:", error);
     throw error;
   }
 }

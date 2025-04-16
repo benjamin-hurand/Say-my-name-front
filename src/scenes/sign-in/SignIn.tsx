@@ -9,7 +9,7 @@ import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
-import { login, loginWithGoogle } from '../../services/security/Auth.service'; 
+import { AuthResponse, login as loginAPI, loginWithGoogle } from '../../services/security/Auth.service'; 
 import axios from 'axios';
 import { Alert, IconButton } from '@mui/material';
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
@@ -18,9 +18,11 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useState } from 'react';
 import { FooterAuth } from '../../components/layout/components/footer/Footer_auth';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SignIn() {
   const { theme, changeColor, randomizeColor } = useThemeColorContext();
+  const { login } = useAuth();
   const [errorMessage, setErrorMessage] = React.useState('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 	const navigate: NavigateFunction = useNavigate();
@@ -49,13 +51,16 @@ export default function SignIn() {
     }
 
     try {
-      const apiResponse = await loginWithGoogle(googleResponse);
+      const apiResponse: AuthResponse = await loginWithGoogle(googleResponse);
       console.log("Response back after google:", apiResponse);
-      localStorage.setItem('token', apiResponse.jwt.bearer);
-      localStorage.setItem('roles', apiResponse.roles); 
-      localStorage.setItem('email', apiResponse.email); 
-      localStorage.setItem('username', apiResponse.username); 
+      login(apiResponse.jwt.bearer, {
+        id: apiResponse.userId,
+        username: apiResponse.username,
+        email: apiResponse.email,
+        roles: apiResponse.roles
+      });
       notifySuccess('Successfully connected.');
+      console.log('Successfully connected with Google:', apiResponse);
       randomizeColor();
       navigate('/');
     } catch (error) {
@@ -93,12 +98,16 @@ export default function SignIn() {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     try {
-      const response = await login({
+      const response: AuthResponse = await loginAPI({
         identifier: data.get('identifier') as string,
         password: data.get('password') as string,
       });
-      localStorage.setItem('token', response.jwt.bearer);
-      localStorage.setItem('roles', response.roles);
+      login(response.jwt.bearer, {
+        id: response.userId,
+        username: response.username,
+        email: response.email,
+        roles: response.roles,
+      });
       notifySuccess('Successfully connected.');
       randomizeColor();
       navigate('/');

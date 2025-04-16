@@ -22,15 +22,17 @@ import { AttributeCard } from "../../quiz/components/AttributeCard";
 // Import des toasts personnalisés
 import { CreatedChallengeVersionDto } from "../../../services/dto/CreatedChallengeVersionDto";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const AddChallengeForm: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { filters, modes } = useGlobalData();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [challengeDescription, setChallengeDescription] = useState<string>("");
 
   // Pour l'exemple, on simule l'ID du créateur (remplacez par votre vrai context auth).
-  const currentCreatorId = 1;
+  const currentCreatorId: number = user?.id || 0;
 
   // States liés aux filtres
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);

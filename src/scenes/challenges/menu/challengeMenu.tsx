@@ -22,11 +22,14 @@ import { useThemeColorContext } from '../../../contexts/ThemeColorContext';
 import FilterAndSortBar from './components/FilterAndSortBar';
 import { useNavigate } from 'react-router-dom';
 import StatusBubble from './components/StatusBubble';
-import { getChallengesList } from '../../../services/business/challenges/challenge.service';
+import { createChallengeAttempt, getChallengesList } from '../../../services/business/challenges/challenge.service';
 import { ChallengeCardDto } from '../../../services/dto/ChallengeCardDto';
 import { ChallengeMenuDto } from '../../../services/dto/ChallengeMenuDto';
 import { ChallengeFilters, initialFilters } from './components/FilterAndSortBar.types';
 import { format, parseISO } from 'date-fns';
+import { useAuth } from '../../../contexts/AuthContext';
+import { AddChallengeAttemptDto } from '../../../services/dto/ChallengeAttemptDto';
+import { useAttempt } from '../../../contexts/ChallengeAttemptContext';
 
 // Délai avant d’afficher le skeleton
 const MIN_DELAY_BEFORE_SKELETON = 300; // ms
@@ -76,6 +79,8 @@ const initialSorts: any[] = [];
 
 const ChallengeMenu: React.FC = () => {
   const { color } = useThemeColorContext();
+  const { user } = useAuth();
+  const { setCurrentAttempt } = useAttempt();
   const navigate = useNavigate();
 
   // Champ de recherche
@@ -106,7 +111,7 @@ const ChallengeMenu: React.FC = () => {
   const timerHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Valeurs fixes pour cet exemple
-  const userId = 1;
+  const userId = user?.id || 0;
   const seasonStart = new Date().toISOString();
 
   // -----------
@@ -190,10 +195,28 @@ const ChallengeMenu: React.FC = () => {
     setSelectedChallenge(null);
   };
 
-  const handleParticipate = (challenge: ChallengeCardDto) => {
-    console.log('Participer au challenge', challenge);
-    // Navigation / logique de participation
+  const handleParticipate = async (challenge: ChallengeCardDto) => {
+    try {
+      console.log(
+        "Tentative de participation au challenge :",
+        JSON.stringify(challenge)
+      );
+
+      const payload: AddChallengeAttemptDto = {
+        userId: user!.id,
+        challengeVersionId: challenge.version.id,
+      };
+
+      const attempt = await createChallengeAttempt(payload);
+      setCurrentAttempt(attempt);
+
+      // on redirige vers le quiz avec l’ID de la tentative créée
+      navigate(`/challenges/${attempt.id}`);
+    } catch (e) {
+      console.error("Erreur lors de la création de la tentative :", e);
+    }
   };
+  
 
   const handleCreateChallenge = () => {
     navigate('/challenges/new');

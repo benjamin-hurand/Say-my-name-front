@@ -21,11 +21,12 @@ export interface SignupGoogleCredentials {
     select_by?: string;
 }
 
-interface AuthResponse {
+export interface AuthResponse {
     roles: string;
     jwt: {
         bearer: string;
     };
+    userId: number;
     username: string;
     email: string;
 }
@@ -83,6 +84,49 @@ export const loginWithGoogle = async (LoginGoogleDto: CredentialResponse): Promi
         throw error;
     }
 };
+
+export const silentGoogleSignIn = (): Promise<CredentialResponse> => {
+  return new Promise((resolve, reject) => {
+    // Cette implémentation dépendra de la bibliothèque que vous utilisez.
+    // Si vous utilisez @react-oauth/google, vous pouvez
+    // essayer d'utiliser ses hooks ou méthodes en mode "silent".
+    // Voici un pseudo-code :
+    const client = window.google?.accounts.oauth2.initTokenClient({
+      client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+      scope: 'profile email',
+      callback: (response: CredentialResponse) => {
+        if (!response.credential) {
+          reject(new Error('No credential received from Google.'));
+        } else {
+          resolve(response);
+        }
+      }
+    });
+
+    // Demande un jeton sans afficher de popup
+    try {
+      client.requestAccessToken({ prompt: 'none' });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const verifyToken = async (token: string): Promise<boolean> => {
+    try {
+        const response = await API.get<boolean>('/auth/verify-token', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        // Ici, response.data correspond au booléen renvoyé par le backend
+        return response.data;
+    } catch (error) {
+        console.error('Failed to verify token:', error);
+        return false;
+    }
+};
+
 
 export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
     try {

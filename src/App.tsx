@@ -5,26 +5,27 @@ import { router } from "./components/routes/routes";
 import './services/notification/toastifyCustom.css';
 import ParticlesBackground from "./components/layout/ParticleBackground";
 import { GlobalDataProvider } from "./contexts/GlobalDataContext";
+import { AuthProvider } from "./contexts/AuthContext";
 
 function App() {
   return (
     <>
-    <GlobalDataProvider>
-      <ToastContainer />
-      <div style={{
-        maxWidth: '100%', // Ensure width does not exceed the viewport
-        height: '100%',
-        width: '100%',
-        maxHeight: '100vh', // Ensure height does not exceed the viewport
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center', // Center content vertically
-        alignItems: 'center' // Center content horizontally
-      }}>
-        <ParticlesBackground />
-        <RouterProvider router={router} />
-      </div>
-    </GlobalDataProvider>
+    <AuthProvider>
+        <ToastContainer />
+        <div style={{
+          maxWidth: '100%', // Ensure width does not exceed the viewport
+          height: '100%',
+          width: '100%',
+          maxHeight: '100vh', // Ensure height does not exceed the viewport
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center', // Center content vertically
+          alignItems: 'center' // Center content horizontally
+        }}>
+          <ParticlesBackground />
+          <RouterProvider router={router} />
+        </div>
+    </AuthProvider>
     </>
   )
 }
