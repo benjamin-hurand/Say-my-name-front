@@ -1,8 +1,9 @@
 import { ChallengeSeason } from "../../../models/commons/ChallengeSeason";
 import { Challenge } from "../../../models/commons/Game/Challenge";
+import { ChallengeHistoryEntry } from "../../../models/commons/Game/QuizHistoryEntry";
 import API from "../../api/apiUtils";
 import { AddChallengeDto } from "../../dto/addChallengeDto";
-import { AddChallengeAttemptDto, CreatedChallengeAttemptDto } from "../../dto/ChallengeAttemptDto";
+import { AddChallengeAttemptDto, ChallengeEvaluationDto, ChallengeEvaluationRequestDto, CreatedChallengeAttemptDto } from "../../dto/ChallengeAttemptDto";
 import { ChallengeCardDto } from "../../dto/ChallengeCardDto";
 import { ChallengeMenuDto } from "../../dto/ChallengeMenuDto";
 import { CreatedChallengeVersionDto } from "../../dto/CreatedChallengeVersionDto";
@@ -76,3 +77,40 @@ export async function getChallengeAttempt(
     throw error;
   }
 }
+
+export async function startChallengeAttempt(attemptId: number): Promise<void> {
+  try {
+    await API.post<void>(`${endpoint}/${attemptsEndpoint}/${attemptId}/start`);
+  } catch (error) {
+    console.error("Error starting challenge attempt:", error);
+    throw error;
+  }
+}
+
+export async function stopChallengeAttempt(attemptId: number): Promise<void> {
+  try {
+    await API.post<void>(`${endpoint}/${attemptsEndpoint}/${attemptId}/stop`);
+  } catch (error) {
+    console.error("Error stopping challenge attempt:", error);
+    throw error;
+  }
+}
+
+export async function evaluateChallengeAttempt(
+  attemptId: string,
+  payload: ChallengeEvaluationRequestDto
+): Promise<ChallengeEvaluationDto> {
+  try {
+    const response = await API.post<ChallengeEvaluationDto>(
+      `${endpoint}/${attemptsEndpoint}/${attemptId}/evaluate`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error evaluating challenge attempt:", error);
+    throw error;
+  }
+}
+
+
+

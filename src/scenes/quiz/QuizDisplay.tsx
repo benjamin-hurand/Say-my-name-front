@@ -1,3 +1,4 @@
+// src/scenes/quiz/QuizDisplay.tsx
 import React from 'react';
 import { Button, Box, TextField, Typography, Skeleton } from '@mui/material';
 
@@ -24,9 +25,13 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
   handleAnswerChange,
   validateAnswer,
   openQuizOptions,
+  goBackToMenu,
   isLoading,
   hasFetched
 }) => {
+  // Base URL pour assets du dossier public
+  const assetBase = import.meta.env.BASE_URL || '/';
+
   return (
     <div className="quiz" style={{ padding: '20px', width: '100%', height: '100%' }}>
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
@@ -41,7 +46,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
           />
         ) : photoUrl ? (
           <img
-            src={`photos/${photoUrl}`}
+            src={`${assetBase}photos/${photoUrl}`}
             alt="Quiz"
             style={{
               maxWidth: '100%',

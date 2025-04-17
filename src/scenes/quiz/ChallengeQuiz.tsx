@@ -1,89 +1,135 @@
 // src/scenes/quiz/ChallengeQuiz.tsx
-import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { notifyError } from '../../services/notification/toast.service';
-import QuizDisplay from './QuizDisplay';
-import { ChallengeHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
-import { useAttempt } from '../../contexts/ChallengeAttemptContext';
-import { ChallengeQuestionDto } from '../../services/dto/ChallengeAttemptDto';
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useThemeColorContext } from "../../contexts/ThemeColorContext";
+import QuizDisplay from "./QuizDisplay";
+import { useAttempt } from "../../contexts/ChallengeAttemptContext";
+import { startChallengeAttempt, stopChallengeAttempt } from "../../services/business/challenges/challenge.service";
+import { Box, Typography } from "@mui/material";
 
 export const ChallengeQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { color } = useThemeColorContext();
   const { attemptId } = useParams<{ attemptId: string }>();
-  const { attempt, loadAttempt } = useAttempt();
+  const { attempt, loadAttempt, history, addHistoryEntry } = useAttempt();
 
-  // Liste des questions + index courant
-  const [questions, setQuestions] = useState<ChallengeQuestionDto[]>([]);
+  const [questions, setQuestions] = useState(attempt?.challengeEntries || []);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [answer, setAnswer] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [countdownLabel, setCountdownLabel] = useState("3");
+  const [started, setStarted] = useState(false);
 
-  // Historique des réponses
-  const [history, setHistory] = useState<ChallengeHistoryEntry[]>([]);
-  const [answer, setAnswer] = useState<string>('');
-
-  // Charger la tentative si on ne l'a pas encore
+  // Charger ou recharger la tentative
   useEffect(() => {
     const id = Number(attemptId);
     if (!attempt || attempt.id !== id) {
+      setIsLoading(true);
       loadAttempt(id);
     }
   }, [attemptId, attempt, loadAttempt]);
 
-  // Initialiser la liste de questions quand attempt arrive
+  // Initialiser questions + fin du chargement
   useEffect(() => {
     if (attempt) {
       setQuestions(attempt.challengeEntries);
       setCurrentIndex(0);
+      setIsLoading(false);
     }
   }, [attempt]);
 
-  // Question courante (ou undefined si pas encore chargé)
+  // Countdown + démarrage
+  useEffect(() => {
+    if (!isLoading && questions.length > 0 && !started) {
+      const timers = [
+        setTimeout(() => setCountdownLabel("3"), 0),
+        setTimeout(() => setCountdownLabel("2"), 1000),
+        setTimeout(() => setCountdownLabel("1"), 2000),
+        setTimeout(async () => {
+          setCountdownLabel("GO");
+          await startChallengeAttempt(attempt!.id);
+          setStarted(true);
+          setTimeout(() => setCountdownLabel(""), 500);
+        }, 3000),
+      ];
+      return () => timers.forEach(clearTimeout);
+    }
+  }, [isLoading, questions, started, attempt]);
+
   const current = questions[currentIndex];
 
-  // Mise à jour de la saisie
-  const handleAnswerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAnswerChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setAnswer(e.target.value);
-  };
 
-  // Valider la réponse
   const validateAnswer = useCallback(() => {
-    if (!current) return;
-
-    // Ajouter à l'historique
-    setHistory(prev => [
-      ...prev,
-      {
-        questionNumber: prev.length + 1,
-        personId: current.personId,
-        answer
-      }
-    ]);
-
-    // Réinitialiser la saisie
-    setAnswer('');
-
-    // Passer à la question suivante ou terminer
+    if (!started || !current) return;
+    addHistoryEntry({
+      questionNumber: history.length + 1,
+      personId: current.personId,
+      answer,
+    });
+    setAnswer("");
     if (currentIndex + 1 < questions.length) {
-      setCurrentIndex(ci => ci + 1);
+      setCurrentIndex((i) => i + 1);
     } else {
-      // Ici, on peut naviguer vers un résumé
-      navigate(`/challenges/${attempt!.id}/summary`, {
-        state: { history: [...history, { questionNumber: history.length + 1, personId: current.personId, answer }] }
-      });
+      stopChallengeAttempt(attempt!.id)
+        .catch((e) => console.error("Stop API error", e))
+        .finally(() =>
+          navigate(`/challenges/${attempt!.id}/summary`, { replace: true })
+        );
     }
-  }, [answer, current, currentIndex, questions.length, history, navigate, attempt]);
+  }, [
+    answer,
+    current,
+    currentIndex,
+    history.length,
+    questions.length,
+    addHistoryEntry,
+    navigate,
+    started,
+    attempt,
+  ]);
 
-  // Entrée clavier “Enter”
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => e.key === 'Enter' && validateAnswer();
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    const handler = (e: KeyboardEvent) =>
+      e.key === "Enter" && validateAnswer();
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [validateAnswer]);
 
-  // Si on n’a pas encore de question à afficher
-  if (!current) {
-    return <div>Chargement du quiz…</div>;
+  if (isLoading) {
+    return (
+      <QuizDisplay
+        color={color}
+        photoUrl=""
+        initials={null}
+        showInitials={false}
+        answer={answer}
+        handleAnswerChange={handleAnswerChange}
+        validateAnswer={validateAnswer}
+        goBackToMenu={() => navigate("/challenges", { replace: true })}
+        isLoading
+        hasFetched={false}
+      />
+    );
+  }
+
+  if (!started) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Typography variant="h1" sx={{ color, fontSize: "5rem" }}>
+          {countdownLabel}
+        </Typography>
+      </Box>
+    );
   }
 
   return (
@@ -95,11 +141,9 @@ export const ChallengeQuiz: React.FC = () => {
       answer={answer}
       handleAnswerChange={handleAnswerChange}
       validateAnswer={validateAnswer}
-      goBackToMenu={() => navigate('/challenges', { replace: true })}
+      goBackToMenu={() => navigate("/challenges", { replace: true })}
       isLoading={false}
-      hasFetched={true}
+      hasFetched
     />
   );
 };
-
-export default ChallengeQuiz;

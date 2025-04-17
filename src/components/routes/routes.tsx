@@ -15,7 +15,8 @@ import { TrainingQuiz } from "../../scenes/quiz/TrainingQuiz";
 import GlobalDataLayout from "../layout/GlobalDataLayout";
 import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
 import { ChallengeAttemptProvider } from "../../contexts/ChallengeAttemptContext";
-import ChallengeQuiz from "../../scenes/quiz/ChallengeQuiz";
+import { ChallengeQuiz } from "../../scenes/quiz/ChallengeQuiz";
+import ChallengeSummary from "../../scenes/challenges/attempt/ChallengeSummary";
 
 const router = createBrowserRouter([
   {
@@ -101,6 +102,14 @@ const router = createBrowserRouter([
             element: (
               <ChallengeLayout>
                 <ProtectedRoute element={<ChallengeQuiz />} />
+              </ChallengeLayout>
+            ),
+          },
+          {
+            path: ":attemptId/summary",
+            element: (
+              <ChallengeLayout>
+                <ProtectedRoute element={<ChallengeSummary />} />
               </ChallengeLayout>
             ),
           },
