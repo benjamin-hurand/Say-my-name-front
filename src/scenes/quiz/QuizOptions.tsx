@@ -1,5 +1,5 @@
 // QuizOptions.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -46,8 +46,21 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
     availableFilters, selectedFilters, setSelectedFilters, tempSelectedFilters, setTempSelectedFilters,
     availableSorts, selectedSortingMethods, setSelectedSortingMethods, tempSelectedSortingMethods, setTempSelectedSortingMethods,
     selectedRepetitionPattern, setSelectedRepetitionPattern, tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern,
-    selectedHelps, setSelectedHelps, tempSelectedHelps, setTempSelectedHelps
+    selectedHelps, setSelectedHelps, tempSelectedHelps, setTempSelectedHelps, hasCriticalChanges
   } = useQuizOptions();
+
+  useEffect(() => {
+    // Au premier rendu, on aligne tous les ‘temps’ sur les ‘selecteds’
+    setTempSelectedMode(selectedMode);
+    setTempSelectedFilters(selectedFilters);
+    setTempSelectedSortingMethods(selectedSortingMethods);
+    setTempSelectedRepetitionPattern(selectedRepetitionPattern);
+    setTempSelectedHelps({
+      typosFriendly: selectedHelps.typosFriendly,
+      initialGiven:  selectedHelps.initialGiven
+    });
+  }, []);  // <-- vide : ne tourne qu’une seule fois
+  
 
   // MODES
   const renderModes = () => {
@@ -205,14 +218,6 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   };
 
   //GLOBAL SAVE
-  const hasCriticalChanges = useMemo(() => {
-        return (
-          JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
-          JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
-          JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
-        );
-      }, [tempSelectedMode, selectedMode, tempSelectedFilters, selectedFilters, tempSelectedSortingMethods, selectedSortingMethods]);
-      
   const handleSaveClick = () => {
     if (hasCriticalChanges) {
       setOpenConfirmDialog(true);
@@ -222,6 +227,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   };
 
   const handleConfirmSave = () => {
+    console.log('handleConfirmSave called and ', );
     setOpenConfirmDialog(false);
     goToQuiz(true);
   };
@@ -230,7 +236,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
     setOpenConfirmDialog(false);
   };
 
-  const goToQuiz = (saveChanges: boolean = false) => {
+  const goToQuiz = (saveChanges: boolean) => {
     if (saveChanges) {
       setSelectedMode(tempSelectedMode);
       setSelectedFilters(tempSelectedFilters);
@@ -245,7 +251,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         setTempSelectedRepetitionPattern(selectedRepetitionPattern);
         setTempSelectedHelps(selectedHelps);
     }
-    navigate('/quiz' , { replace: true });
+    navigate("/training" , { replace: true });
   }
 
   return (

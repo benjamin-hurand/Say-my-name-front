@@ -54,6 +54,7 @@ export async function createChallengeAttempt(
       `${endpoint}/${attemptsEndpoint}/create`,
       payload
     );
+    console.log("Created challenge attempt:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error creating challenge attempt:", error);
@@ -105,6 +106,7 @@ export async function evaluateChallengeAttempt(
       `${endpoint}/${attemptsEndpoint}/${attemptId}/evaluate`,
       payload
     );
+    console.log("Challenge evaluation response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error evaluating challenge attempt:", error);

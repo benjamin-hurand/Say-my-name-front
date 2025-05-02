@@ -7,14 +7,20 @@ import React, {
   useCallback,
 } from "react";
 import {
+  ChallengeEvaluationDto,
   CreatedChallengeAttemptDto,
 } from "../services/dto/ChallengeAttemptDto";
 import { getChallengeAttempt } from "../services/business/challenges/challenge.service";
 import { ChallengeHistoryEntry } from "../models/commons/Game/QuizHistoryEntry";
+import { ChallengeCardDto } from "../services/dto/ChallengeCardDto";
 
 interface AttemptContextType {
+  challengeCardDto: ChallengeCardDto | null;
+  setChallengeCardDto: React.Dispatch<React.SetStateAction<ChallengeCardDto | null>>;
   attempt: CreatedChallengeAttemptDto | null;
   history: ChallengeHistoryEntry[];
+  evaluationResults: ChallengeEvaluationDto | null;
+  setEvaluationResults: React.Dispatch<React.SetStateAction<ChallengeEvaluationDto | null>>;
   setCurrentAttempt: (attempt: CreatedChallengeAttemptDto) => void;
   loadAttempt: (id: number) => Promise<void>;
   addHistoryEntry: (entry: ChallengeHistoryEntry) => void;
@@ -37,10 +43,16 @@ export const ChallengeAttemptProvider = ({
 }: {
   children: ReactNode;
 }) => {
+  const [challengeCardDto, setChallengeCardDto] = useState<ChallengeCardDto | null>(
+    null
+  );
+  
   const [attempt, setAttempt] = useState<CreatedChallengeAttemptDto | null>(
     null
   );
   const [history, setHistory] = useState<ChallengeHistoryEntry[]>([]);
+
+  const [evaluationResults, setEvaluationResults] = useState<ChallengeEvaluationDto | null>(null);
 
   const loadAttempt = useCallback(async (id: number) => {
     try {
@@ -72,8 +84,12 @@ export const ChallengeAttemptProvider = ({
   return (
     <AttemptContext.Provider
       value={{
+        challengeCardDto,
+        setChallengeCardDto,
         attempt,
         history,
+        evaluationResults,
+        setEvaluationResults,
         setCurrentAttempt,
         loadAttempt,
         addHistoryEntry,

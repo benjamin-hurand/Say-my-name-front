@@ -24,6 +24,7 @@ export interface ChallengeCardDto {
   }
   
   export interface ChallengeGameModeDto {
+    id: number;
     title: string;            // getGameModeTitle()
     description: string;      // getGameModeDescription()
   }

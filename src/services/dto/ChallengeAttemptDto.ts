@@ -24,7 +24,7 @@ export interface ChallengeEvaluationRequestDto {
 export interface CorrectionEntryDto {
   questionNumber: number;
   correctAnswer: string;
-  correct: boolean;
+  isCorrect: boolean;
 }
 
 export interface ChallengeEvaluationDto {

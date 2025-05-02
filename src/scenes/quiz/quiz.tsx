@@ -412,7 +412,7 @@ export const Quiz: React.FC<QuizProps> = () => {
     };
 
     const openQuizOptions = () => {
-      navigate('/quiz/options', { replace: true });
+      navigate('/training/options', { replace: true });
     };
       
     // RETURNING QUIZ TAB

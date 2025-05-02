@@ -17,11 +17,14 @@ import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
 import { ChallengeAttemptProvider } from "../../contexts/ChallengeAttemptContext";
 import { ChallengeQuiz } from "../../scenes/quiz/ChallengeQuiz";
 import ChallengeSummary from "../../scenes/challenges/attempt/ChallengeSummary";
+import { QuizSessionProvider } from "../../contexts/QuizSessionContext";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <GlobalDataLayout />,
+    element: (
+            <GlobalDataLayout />
+        ),
     children: [
       { index: true, element: (
           <Layout isMenu>
@@ -37,92 +40,89 @@ const router = createBrowserRouter([
           </Layout>
         ),
       },
-
-      // ——— Section “Quiz” pédagogique ———
+      // Ajoutons une route pour regrouper les sections training et challenges en un seul contexte QuizSessionProvider
       {
-        path: "quiz",
         element: (
-          <QuizOptionsProvider>
+          <QuizSessionProvider>
             <Outlet />
-          </QuizOptionsProvider>
+          </QuizSessionProvider>
         ),
         children: [
+          // ——— Section "Training" ———
           {
-            index: true,
+            path: "training",
             element: (
-              <Layout headerTitle="Quiz">
-                <ProtectedRoute element={<TrainingQuiz />} />
-              </Layout>
+              <QuizOptionsProvider>
+                <Outlet />
+              </QuizOptionsProvider>
             ),
+            children: [
+              {
+                index: true,
+                element: (
+                  <Layout headerTitle="Training">
+                    <ProtectedRoute element={<TrainingQuiz />} />
+                  </Layout>
+                ),
+              },
+              {
+                path: "options",
+                element: (
+                  <Layout headerTitle="Training Options" onBack="/training">
+                    <ProtectedRoute element={<QuizOptions />} />
+                  </Layout>
+                ),
+              },
+            ],
           },
-          {
-            path: "options",
-            element: (
-              <Layout headerTitle="Quiz Options" onBack="/quiz">
-                <ProtectedRoute element={<QuizOptions />} />
-              </Layout>
-            ),
-          },
-        ],
-      },
 
-      // ——— Section “Challenges” (compétition) ———
-      {
-        path: "challenges",
-        element: (
-          <ChallengesProvider>
-            {/* Ici on place le provider d’attempt autour de Menu & Quiz */}
-            <ChallengeAttemptProvider>
-              <Outlet />
-            </ChallengeAttemptProvider>
-          </ChallengesProvider>
-        ),
-        children: [
-          // Liste / menu des challenges
+          // ——— Section “Challenges” (compétition) ———
           {
-            index: true,
+            path: "challenges",
             element: (
+              <ChallengeAttemptProvider>
+                <Outlet />
+              </ChallengeAttemptProvider>
+            ),
+            children: [
+              // Liste / menu des challenges
+              {
+                index: true,
+                element: (
               <ChallengeLayout>
                 <ProtectedRoute element={<ChallengeMenu />} />
               </ChallengeLayout>
-            ),
-          },
-          // Création d’un nouveau challenge
-          {
-            path: "new",
-            element: (
+                ),
+              },
+              // Création d’un nouveau challenge
+              {
+                path: "new",
+                element: (
               <Layout headerTitle="Créer un challenge" onBack="/challenges">
                 <ProtectedRoute element={<AddChallengeForm />} />
               </Layout>
-            ),
-          },
-          // Quiz de l’attempt (sous /challenges/:attemptId)
-          {
-            path: ":attemptId",
-            element: (
+                ),
+              },
+              // Quiz de l’attempt (sous /challenges/:attemptId)
+              {
+                path: ":attemptId",
+                element: (
               <ChallengeLayout>
                 <ProtectedRoute element={<ChallengeQuiz />} />
               </ChallengeLayout>
-            ),
-          },
-          {
-            path: ":attemptId/summary",
-            element: (
+                ),
+              },
+              {
+                path: ":attemptId/summary",
+                element: (
               <ChallengeLayout>
                 <ProtectedRoute element={<ChallengeSummary />} />
               </ChallengeLayout>
-            ),
+                ),
+              },
+            ],
           },
         ],
-      },
-
-      {
-        path: "persons",
-        element: (
-          <Layout headerTitle="Persons">
-            <ProtectedRoute element={<PersonsTable />} />
-          </Layout>
-        ),
       },
 
       // fallback

@@ -1,4 +1,3 @@
-// src/scenes/challenges/summary/ChallengeSummary.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -16,27 +15,38 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useAttempt } from "../../../contexts/ChallengeAttemptContext";
 import { useThemeColorContext } from "../../../contexts/ThemeColorContext";
+import { useQuizSession } from "../../../contexts/QuizSessionContext";
 import { evaluateChallengeAttempt } from "../../../services/business/challenges/challenge.service";
 import {
-  ChallengeEvaluationDto,
   ChallengeEvaluationRequestDto,
+  ChallengeQuestionDto,
   CorrectionEntryDto,
 } from "../../../services/dto/ChallengeAttemptDto";
+import { ChallengeHistoryEntry, QuizHistoryEntry } from "../../../models/commons/Game/QuizHistoryEntry";
+import { QuizEntryWithRepetition } from "../../../models/commons/Game/QuizEntry";
+import { repetitionPatterns } from "../../../models/commons/Game/GameOptions/GameRepetitionPattern.model";
+import { GameMode } from "../../../models/commons/Game/GameMode/GameMode.model";
+import { useGlobalData } from "../../../contexts/GlobalDataContext";
+import { notifyError } from "../../../services/notification/toast.service";
+import { Attribute } from "../../../models/commons/Attribute";
+import { GameSortBy } from "../../../models/commons/Game/GameOptions/GameSortBy.model";
+import { GameFilter } from "../../../models/commons/Game/GameOptions/GameFilter.model";
 
 const ChallengeSummary: React.FC = () => {
   const navigate = useNavigate();
   const { color } = useThemeColorContext();
   const { attemptId } = useParams<{ attemptId: string }>();
-  const { attempt, history, resetHistory } = useAttempt();
+  const { attempt, history, resetHistory, evaluationResults, setEvaluationResults, challengeCardDto } = useAttempt();
+  const { setQuizList, setQuizHistory, setReviewList, setSessionOptions, setUncheckedNewSession } = useQuizSession();
+  const { filters, modes, sorts } = useGlobalData();
 
-  const [data, setData] = useState<ChallengeEvaluationDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Nouveau : on capture la history ici avant de la vider
-  const [userHistory, setUserHistory] = useState<typeof history>([]);
+  const [challHistory, setChallHistory] = useState<ChallengeHistoryEntry[]>([]);
 
   useEffect(() => {
     if (!attemptId || !attempt) return;
@@ -45,13 +55,95 @@ const ChallengeSummary: React.FC = () => {
 
     evaluateChallengeAttempt(attemptId, payload)
       .then((dto) => {
-        setData(dto);
-        setUserHistory(history);  // on copie la history actuelle
-        resetHistory();          // puis on la vide pour la prochaine session
+        console.log("ChallengeEvaluationDto", dto);
+        setEvaluationResults(dto);
+        console.log("history", history);
+        setChallHistory(history);
+        resetHistory();
       })
       .catch(() => setError("Impossible de récupérer la correction."))
       .finally(() => setLoading(false));
   }, [attemptId, attempt]);
+
+  const handleStartTraining = () => {
+    if (!evaluationResults || !attempt) return;
+
+    // Convert summary entries into QuizEntryWithRepetition format
+    // Convert summary entries into QuizEntryWithRepetition format with SpacedRepetitionData
+    const reviewEntries: QuizEntryWithRepetition[] =
+      evaluationResults.entries.map((e: CorrectionEntryDto) => {
+        const questionDto: ChallengeQuestionDto = attempt.challengeEntries[e.questionNumber - 1];
+        return {
+          ...questionDto,
+          repetitionData: {
+            totalRepetitionCount: 1,
+            correctRepetitionCount: e.isCorrect ? 1 : 0,
+            easinessFactor: repetitionPatterns.optimal.initialEasinessFactor,
+            interval: repetitionPatterns.optimal.initialInterval,
+          },
+        } as QuizEntryWithRepetition;
+      });
+
+        // Build QuizHistoryEntry list from ChallengeHistoryEntry
+    const historyEntries: QuizHistoryEntry[] = challHistory.map((h) => {
+      const questionDto = attempt.challengeEntries[h.questionNumber - 1];
+      const seData = reviewEntries.find((rq) => rq.personId === h.personId)?.repetitionData;
+      return {
+        photoUrl: questionDto.photoUrl,
+        personId: h.personId,
+        initials: "Coming soon",
+        isCorrect: evaluationResults.entries.find((e) => e.questionNumber === h.questionNumber)?.isCorrect || false,
+        repetitionData: seData || {
+          totalRepetitionCount: 1,
+          correctRepetitionCount: evaluationResults.entries.find((e) => e.questionNumber === h.questionNumber)?.isCorrect ? 1 : 0,
+          easinessFactor: repetitionPatterns.never.initialEasinessFactor,
+          interval: repetitionPatterns.never.initialInterval,
+        },
+      };
+    });
+
+    // Update quiz session context
+    setReviewList(reviewEntries);
+    setUncheckedNewSession(true);
+    setQuizList(reviewEntries);
+    
+    // Verification usuelle
+    if(challengeCardDto === undefined || challengeCardDto === null) {
+      setError("Challenge introuvable.");
+      notifyError("Challenge introuvable.");
+      return;
+    }
+    // Trouver le mode de jeu correspondant au challenge terminé: 
+    const mode: GameMode | undefined = modes.find(
+      (m) => m.id === challengeCardDto.challenge.gameMode.id
+    );
+    if (!mode) {
+      setError("Mode de jeu du challenge introuvable.");
+      notifyError("Mode de jeu du challenge introuvable.");
+      return;
+    }
+
+    // Trouver le filtre correspondant au challenge terminé:
+    const filterAttribute: Attribute | undefined = filters.find(
+      (f) => f.id === challengeCardDto.challenge.filter.attributeId
+    );
+    if (!filterAttribute) {
+      setError("Filtre du challenge introuvable.");
+      notifyError("Filtre du challenge introuvable.");
+      return;
+    }
+    const gameFilter: GameFilter = { id: 0, attribute: filterAttribute, minValue: challengeCardDto.challenge.filter.minValue, maxValue: challengeCardDto.challenge.filter.maxValue };
+
+    setSessionOptions({
+      mode: mode,
+      filters: [gameFilter],
+      sorts: [],
+      repetitionPattern: repetitionPatterns.optimal,
+      helps: { typoFriendly: true },
+    });
+
+    navigate("/training");
+  };
 
   if (loading) {
     return (
@@ -79,12 +171,11 @@ const ChallengeSummary: React.FC = () => {
     );
   }
 
-  if (!data || !attempt) return null;
+  if (!evaluationResults || !attempt) return null;
 
-  // Fusion front/back : on utilise maintenant `userHistory`
-  const results = data.entries.map((e: CorrectionEntryDto) => {
+  const results = evaluationResults.entries.map((e: CorrectionEntryDto) => {
     const questionDto = attempt.challengeEntries[e.questionNumber - 1];
-    const userEntry = userHistory.find(
+    const userEntry = challHistory.find(
       (h) => h.questionNumber === e.questionNumber
     );
 
@@ -93,7 +184,7 @@ const ChallengeSummary: React.FC = () => {
       photoUrl: questionDto.photoUrl,
       userAnswer: userEntry?.answer || "—",
       correctAnswer: e.correctAnswer || "—",
-      isCorrect: e.correct,
+      isCorrect: e.isCorrect,
     };
   });
 
@@ -103,7 +194,7 @@ const ChallengeSummary: React.FC = () => {
         Récapitulatif du Challenge
       </Typography>
       <Typography variant="h6" sx={{ mb: 3 }}>
-        Score : {data.totalCorrect} / {attempt.challengeEntries.length}
+        Score : {evaluationResults.totalCorrect} / {attempt.challengeEntries.length}
       </Typography>
 
       <TableContainer
@@ -164,12 +255,33 @@ const ChallengeSummary: React.FC = () => {
       </TableContainer>
 
       <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Button
-          variant="outlined"
-          onClick={() => navigate(`/challenges/${attempt.id}`, { replace: true })}
-        >
-          Revoir le quiz
-        </Button>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<LeaderboardIcon />}
+            sx={{
+              color: "#0ff",
+              borderColor: "#0ff",
+              boxShadow: "0 0 5px #0ff, 0 0 20px #0ff",
+              "&:hover": { boxShadow: "0 0 10px #0ff, 0 0 30px #0ff" },
+            }}
+          >
+            Leaderboard
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PlayArrowIcon />}
+            onClick={handleStartTraining}
+            sx={{
+              color: "#f0f",
+              borderColor: "#f0f",
+              boxShadow: "0 0 5px #f0f, 0 0 20px #f0f",
+              "&:hover": { boxShadow: "0 0 10px #f0f, 0 0 30px #f0f" },
+            }}
+          >
+            Entraînement
+          </Button>
+        </Box>
         <Button variant="contained" onClick={() => navigate("/", { replace: true })}>
           Retour au menu
         </Button>

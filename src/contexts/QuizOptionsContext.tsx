@@ -7,6 +7,10 @@ import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
 import { useGlobalData } from './GlobalDataContext';
 
 interface QuizOptionsContextType {
+  // Critical changes
+  hasCriticalChanges: boolean;
+  hasUncheckedCriticalChanges: boolean;
+  setHasUncheckedCriticalChanges: React.Dispatch<React.SetStateAction<boolean>>;
   // Modes
   modes: GameMode[];
   tempSelectedMode: GameMode | null;
@@ -111,6 +115,33 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   // For edit modals
   const [editingFilter, setEditingFilter] = useState<GameFilter | undefined>(undefined);
   const [editingSort, setEditingSort] = useState<GameSortBy | undefined>(undefined);
+
+  // Critical changes
+  const hasCriticalChanges: boolean = useMemo(() => {
+    return (
+      JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
+      JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
+      JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
+    );
+  }, [
+    tempSelectedMode,
+    selectedMode,
+    tempSelectedFilters,
+    selectedFilters,
+    tempSelectedSortingMethods,
+    selectedSortingMethods,
+  ]);
+
+  // → State “sticky” qui passe à true une fois que hasCriticalChanges devient true
+  const [hasUncheckedCriticalChanges, setHasUncheckedCriticalChanges] = useState(false);
+
+  // → Dès qu’on détecte une première fois un changement, on colle le flag à true
+  useEffect(() => {
+    if (hasCriticalChanges) {
+      setHasUncheckedCriticalChanges(true);
+    }
+  }, [hasCriticalChanges]);
+
   
   // Fetch des données lors du montage du provider
   useEffect(() => {
@@ -122,6 +153,9 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
     <QuizOptionsContext.Provider
       value={{
         modes,
+        hasCriticalChanges,
+        hasUncheckedCriticalChanges,
+        setHasUncheckedCriticalChanges,
         tempSelectedMode,
         setTempSelectedMode,
         selectedMode,

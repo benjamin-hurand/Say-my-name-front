@@ -80,7 +80,7 @@ const initialSorts: any[] = [];
 const ChallengeMenu: React.FC = () => {
   const { color } = useThemeColorContext();
   const { user } = useAuth();
-  const { setCurrentAttempt } = useAttempt();
+  const { setCurrentAttempt, setChallengeCardDto } = useAttempt();
   const navigate = useNavigate();
 
   // Champ de recherche
@@ -168,7 +168,7 @@ const ChallengeMenu: React.FC = () => {
         sorts,
       };
 
-      const challenges = await getChallengesList(challengeMenuDto);
+      const challenges: ChallengeCardDto[] = await getChallengesList(challengeMenuDto);
       setChallengeList(challenges);
     } catch (error) {
       console.error("Error fetching challenges list:", error);
@@ -208,6 +208,7 @@ const ChallengeMenu: React.FC = () => {
       };
 
       const attempt = await createChallengeAttempt(payload);
+      setChallengeCardDto(challenge);
       setCurrentAttempt(attempt);
 
       // on redirige vers le quiz avec l’ID de la tentative créée
