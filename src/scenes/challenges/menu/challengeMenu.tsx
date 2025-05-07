@@ -169,6 +169,7 @@ const ChallengeMenu: React.FC = () => {
       };
 
       const challenges: ChallengeCardDto[] = await getChallengesList(challengeMenuDto);
+      console.log("Liste des challenges récupérée :", challenges);
       setChallengeList(challenges);
     } catch (error) {
       console.error("Error fetching challenges list:", error);
@@ -212,7 +213,7 @@ const ChallengeMenu: React.FC = () => {
       setCurrentAttempt(attempt);
 
       // on redirige vers le quiz avec l’ID de la tentative créée
-      navigate(`/challenges/${attempt.id}`);
+      navigate(`/challenges/quiz`);
     } catch (e) {
       console.error("Erreur lors de la création de la tentative :", e);
     }
@@ -225,6 +226,10 @@ const ChallengeMenu: React.FC = () => {
 
   // Tooltip pour la performance
   const getStatusTooltip = (challenge: ChallengeCardDto): string => {
+    if (challenge.challenge.creationDate > seasonStart) {
+      return "Nouveau challenge ! Débute saison prochaine.";
+    }
+
     if (challenge.attempt.bestQuestionScore === null) {
       return "Vous n'avez jamais tenté ce challenge";
     }

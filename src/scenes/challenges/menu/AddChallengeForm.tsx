@@ -23,11 +23,14 @@ import { AttributeCard } from "../../quiz/components/AttributeCard";
 import { CreatedChallengeVersionDto } from "../../../services/dto/CreatedChallengeVersionDto";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useQuizSession } from "../../../contexts/QuizSessionContext";
+import { GameFilter } from "../../../models/commons/Game/GameOptions/GameFilter.model";
 
 const AddChallengeForm: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { filters, modes } = useGlobalData();
+  const { sessionOptions } = useQuizSession();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [challengeDescription, setChallengeDescription] = useState<string>("");
 
@@ -40,8 +43,61 @@ const AddChallengeForm: React.FC = () => {
   const [attributeRanges, setAttributeRanges] = useState<{ [attrId: number]: [number, number] }>({});
 
   useEffect(() => {
-    // Si besoin de logs
-  }, [range]);
+    if (!sessionOptions) return;
+
+    const firstFilter: GameFilter = sessionOptions.filters[0];
+    if (!firstFilter) {
+      notifyError("Aucun filtre trouvé");
+      return;
+    }
+
+    // 1) Mode
+    setSelectedMode(sessionOptions.mode);
+
+    // 2) Attribut + plage par défaut = filtre courant
+    const attr: Attribute = firstFilter.attribute;
+    if (!attr) {
+      notifyError("Aucun attribut trouvé pour le filtre");
+      return;
+    }
+    setSelectedAttribute(attr);
+
+    // on calcule la plage selon le type
+    let initialRange: [number, number] = [0, 0];
+
+    if (attr.type === 'number') {
+      const attrMin = attr.minValue ? parseInt(attr.minValue, 10) : 0;
+      const minVal = firstFilter.minValue ? parseInt(firstFilter.minValue, 10) : attrMin;
+      const maxVal = firstFilter.maxValue ? parseInt(firstFilter.maxValue, 10) : attrMin;
+      initialRange = [minVal - attrMin, maxVal - attrMin];
+
+    } else if (attr.type === 'date') {
+      const attrMinOffset = attr.minValue ? dateStringToDayOffset(attr.minValue) : 0;
+      const minOffset = firstFilter.minValue ? dateStringToDayOffset(firstFilter.minValue) : attrMinOffset;
+      const maxOffset = firstFilter.maxValue ? dateStringToDayOffset(firstFilter.maxValue) : attrMinOffset;
+      initialRange = [minOffset - attrMinOffset, maxOffset - attrMinOffset];
+
+    } else {
+      // type texte → A→0, B→1, etc.
+      const minIdx = mapLetterToNumber(firstFilter.minValue || 'A');
+      const maxIdx = mapLetterToNumber(firstFilter.maxValue || 'Z');
+      initialRange = [minIdx, maxIdx];
+    }
+
+    setRange(initialRange);
+    setAttributeRanges(prev => ({
+      ...prev,
+      [attr.id]: initialRange
+    }));
+
+  }, [
+    sessionOptions, 
+    setSelectedMode, 
+    setSelectedAttribute, 
+    setRange, 
+    setAttributeRanges
+  ]);
+
 
   useEffect(() => {
     // Si besoin de réinitialiser quand l'attribut change

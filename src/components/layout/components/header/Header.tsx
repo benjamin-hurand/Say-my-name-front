@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, IconButton, Typography, Tooltip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import "../../layout.css";
 
 interface HeaderProps {
@@ -14,9 +14,15 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ color, title, tooltip, onBack }) => {
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const onBackState = typeof state?.onBack === "string"
+    ? state.onBack
+    : undefined;
 
   const handleBack = () => {
-    if (onBack) {
+    if (onBackState) {
+      navigate(onBackState, { replace: true });
+    } else if (onBack) {
       navigate(onBack, { replace: true });
     } else {
       navigate(-1);

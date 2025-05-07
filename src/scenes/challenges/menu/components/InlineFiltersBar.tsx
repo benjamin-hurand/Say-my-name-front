@@ -13,8 +13,8 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import CloseIcon from '@mui/icons-material/Close';
 import { ChallengeFilters } from './FilterAndSortBar.types';
 import { useGlobalData } from '../../../../contexts/GlobalDataContext';
-import { useChallenges } from '../../../../contexts/ChallengesContext';
 import { Attribute } from '../../../../models/commons/Attribute';
+import { getUserPerformances, UserPerformanceDto } from '../../../../services/business/challenges/userPerformance.service';
 
 type FilterCategory =
   | 'mode'
@@ -80,7 +80,9 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
   onBack,
 }) => {
   const { modes, filters } = useGlobalData();
-  const { performances } = useChallenges();
+  
+  const [performances, setPerformances] = useState<UserPerformanceDto[]>([]);
+  
   // On utilise un state local pour gérer les filtres en cours de modification
   const [localFilters, setLocalFilters] = useState<ChallengeFilters>(initialFilters);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
@@ -90,6 +92,17 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
   // Pour la gestion du panel (filtre d'attribut)
   const [activePanelAttribute, setActivePanelAttribute] = useState<Attribute | null>(null);
   const [panelRange, setPanelRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
+
+  useEffect(() => {
+      (async () => {
+        try {
+          const fetched = await getUserPerformances();
+          setPerformances(fetched);
+        } catch (error) {
+          console.error("Erreur récupération des performances :", error);
+        }
+      })();
+    }, []);
 
   useEffect(() => {
     setLocalFilters(initialFilters);

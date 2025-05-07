@@ -17,6 +17,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, isMenu = false, headerTitle, headerTooltip, onBack }) => {
   const { color } = useThemeColorContext();
   const navigate = useNavigate();
+  
 
   const handleHomeClick = () => {
     navigate('/', { replace: true });

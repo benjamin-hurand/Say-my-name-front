@@ -14,6 +14,7 @@ import { useQuizOptions } from '../../contexts/QuizOptionsContext';
 import { useQuizSession } from '../../contexts/QuizSessionContext';
 import { normalizeText } from '../../services/business/utils/NormalizedAnswer';
 import { QuizHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
+import { set } from 'date-fns';
 
 interface QuizProps {}
 
@@ -47,11 +48,15 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
   const [answer, setAnswer] = useState<string>('');
 
   const {
+    modes,
+    filters,
+    availableFilters,
     selectedMode,
     setSelectedMode,
     selectedFilters,
     setSelectedFilters,
     selectedSortingMethods,
+    setSelectedSortingMethods,
     selectedRepetitionPattern,
     setSelectedRepetitionPattern,
     selectedHelps,
@@ -63,8 +68,8 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
   const [currentRepetitionData, setCurrentRepetitionData] = useState<SpacedRepetitionData>({
     totalRepetitionCount: 0,
     correctRepetitionCount: 0,
-    easinessFactor: repetitionPatterns.never.initialEasinessFactor,
-    interval: repetitionPatterns.never.initialInterval
+    easinessFactor: repetitionPatterns.optimal.initialEasinessFactor,
+    interval: repetitionPatterns.optimal.initialInterval
   });
 
   // Handle repetition pattern changes
@@ -115,15 +120,22 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
 
   // Fetch and session-init logic
   const fetchList = useCallback(async () => {
-    if (!selectedMode) return;
+    console.log('TrainingQuiz: fetchList', selectedMode, selectedFilters, selectedSortingMethods);
     setIsLoading(true);
+    if (!selectedMode) {
+      setSelectedMode(modes[0]);
+      setSelectedRepetitionPattern(repetitionPatterns.optimal);
+      setSelectedHelps({ initialGiven: true, typosFriendly: true });
+      setSelectedFilters([]);
+      setSelectedSortingMethods([]);
+    };
     try {
       const options: GameOptions = {
         id: Date.now(),
-        gameMode: selectedMode,
-        filters: selectedFilters,
-        sortBy: selectedSortingMethods,
-        repetitionPattern: selectedRepetitionPattern,
+        gameMode: selectedMode ?? modes[0],
+        filters: selectedFilters ?? [],
+        sortBy: selectedSortingMethods ?? [],
+        repetitionPattern: selectedRepetitionPattern ?? repetitionPatterns.optimal,
         initialGiven: selectedHelps.initialGiven,
         typosFriendly: selectedHelps.typosFriendly
       };
@@ -146,15 +158,13 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
         setQuizList(enriched);
         setBackupQuizList(enriched);
 
-        if (!sessionOptions) {
-          setSessionOptions({
-            mode: selectedMode,
-            filters: selectedFilters,
-            sorts: selectedSortingMethods,
-            repetitionPattern: selectedRepetitionPattern,
-            helps: { typoFriendly: selectedHelps.typosFriendly, initialGiven: selectedHelps.initialGiven }
-          });
-        }
+        setSessionOptions({
+          mode: selectedMode,
+          filters: selectedFilters,
+          sorts: selectedSortingMethods,
+          repetitionPattern: selectedRepetitionPattern,
+          helps: { typosFriendly: selectedHelps.typosFriendly, initialGiven: selectedHelps.initialGiven }
+        });
       }
     } catch (error) {
       notifyError('Erreur lors du chargement du quiz : ' + error);
@@ -164,9 +174,11 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
     }
   }, [selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
 
-  // Handle reviewList (challenge)
+  // Handle INIT (from challenge: reviewList / from menu: fetchList / from options: hasUncheckedCriticalChanges)
   useEffect(() => {
+    console.log('TrainingQuiz: init');
     if (reviewList.length > 0 && sessionOptions && uncheckedNewSession) {
+      console.log('reviewList');
       setSelectedRepetitionPattern(repetitionPatterns.optimal);
       setSelectedMode(sessionOptions.mode);
       setSelectedFilters(sessionOptions.filters);
@@ -188,13 +200,24 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
 
       setHasFetched(true);
       setIsLoading(false);
+    } else if (hasUncheckedCriticalChanges) {
+      setHasUncheckedCriticalChanges(false);
+      fetchList();
     } else if (!quizList || quizList.length === 0) {
+      if (quizHistory.length > 0) {
+        console.log('quizHistory no fetchlist');
+        setHasFetched(true);
+        setIsLoading(false);
+        return;
+      }
+      console.log('nolist normal fetchlist');
       fetchList();
     } else {
+      console.log('nolist no fetchlist');
       setHasFetched(true);
       setIsLoading(false);
     }
-  }, [reviewList]);
+  }, []);
 
   // Update current question
   useEffect(() => {
@@ -309,6 +332,25 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
       goBackToMenu={goBackToMenu}
       isLoading={isLoading}
       hasFetched={hasFetched}
+      onRetry={() => {
+        fetchList();
+      }}
+      onCreateChallenge={() => {
+        // Naviguer vers la création de challenge, par ex.
+        // To do : passer le gamemode et les filtres en context session
+        console.log('selectedFilters', selectedFilters);
+        setSessionOptions({
+          mode: selectedMode,
+          filters: selectedFilters,
+          sorts: selectedSortingMethods,
+          repetitionPattern: selectedRepetitionPattern,
+          helps: { typosFriendly: selectedHelps.typosFriendly, initialGiven: selectedHelps.initialGiven }
+        });
+        navigate("/challenges/new", {
+          state: { onBack: "/training" }
+        });
+      }}
+      hasHistory={quizHistory.length > 0}
     />
   );
 };

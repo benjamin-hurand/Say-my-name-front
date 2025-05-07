@@ -5,7 +5,7 @@ import { getGameModes } from '../services/business/gamemodes/gameMode.service';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
 import { fetchCurrentSeason } from '../services/business/challenges/challenge.service';
 
-interface WeekPeriod {
+interface SeasonPeriod {
   start: Date;
   end: Date;
 }
@@ -14,7 +14,7 @@ interface GlobalDataContextType {
   filters: Attribute[];
   sorts: Attribute[];
   modes: GameMode[];
-  currentWeek: WeekPeriod;
+  seasonPeriod: SeasonPeriod;
   competitiveSeason: number;
 }
 
@@ -24,7 +24,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   const [filters, setFilters] = useState<Attribute[]>([]);
   const [sorts, setSorts] = useState<Attribute[]>([]);
   const [modes, setModes] = useState<GameMode[]>([]);
-  const [currentWeek, setCurrentWeek] = useState<WeekPeriod>({ start: new Date(), end: new Date() });
+  const [seasonPeriod, setSeasonPeriod] = useState<SeasonPeriod>({ start: new Date(), end: new Date() });
   const [competitiveSeason, setCompetitiveSeason] = useState<number>(0);
 
   // Calcul de la semaine en cours (lundi à dimanche)
@@ -37,7 +37,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
     monday.setDate(today.getDate() + diffToMonday);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
-    setCurrentWeek({ start: monday, end: sunday });
+    setSeasonPeriod({ start: monday, end: sunday });
   }, []);
 
   // Fetch des filtres
@@ -91,7 +91,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <GlobalDataContext.Provider value={{ filters, sorts, modes, currentWeek, competitiveSeason }}>
+    <GlobalDataContext.Provider value={{ filters, sorts, modes, seasonPeriod, competitiveSeason }}>
       {children}
     </GlobalDataContext.Provider>
   );

@@ -7,7 +7,7 @@ const ProtectedRoute = ({ element }: { element: React.JSX.Element }) => {
     
     // When mounted, console log the authentication status
     React.useEffect(() => {
-        console.log("ProtectedRoute mounted. Authentication status:", isAuthenticated);
+        // console.log("ProtectedRoute mounted. Authentication status:", isAuthenticated);
     }, [isAuthenticated]);
 
     return isAuthenticated ? element : <Navigate to="/signin" />;

@@ -1,44 +1,67 @@
-// src/scenes/quiz/ChallengeQuiz.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useThemeColorContext } from "../../contexts/ThemeColorContext";
 import QuizDisplay from "./QuizDisplay";
 import { useAttempt } from "../../contexts/ChallengeAttemptContext";
-import { startChallengeAttempt, stopChallengeAttempt } from "../../services/business/challenges/challenge.service";
+import { startChallengeAttempt, stopChallengeAttempt, verifyUserCanAttempt } from "../../services/business/challenges/challenge.service";
 import { Box, Typography } from "@mui/material";
+import { notifyError } from "../../services/notification/toast.service";
+import { ChallengeAlreadyStartedError, AttemptNotFoundError } from "../../errors/ApiErrors";
+import { useAuth } from "../../contexts/AuthContext";
 
 export const ChallengeQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { color } = useThemeColorContext();
-  const { attemptId } = useParams<{ attemptId: string }>();
   const { attempt, loadAttempt, history, addHistoryEntry } = useAttempt();
+  const { user } = useAuth()
 
-  const [questions, setQuestions] = useState(attempt?.challengeEntries || []);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [countdownLabel, setCountdownLabel] = useState("3");
-  const [started, setStarted] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [answer, setAnswer] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [countdownLabel, setCountdownLabel] = useState<string>("3");
+  const [started, setStarted] = useState<boolean>(false);
+  const [elapsed, setElapsed] = useState<number>(0);
 
-  // Charger ou recharger la tentative
+  const progress = questions.length
+    ? (history.length / questions.length) * 100
+    : 0;
+
+  // 1️⃣ Charger la tentative
   useEffect(() => {
-    const id = Number(attemptId);
-    if (!attempt || attempt.id !== id) {
-      setIsLoading(true);
-      loadAttempt(id);
+    if (!attempt) {
+      notifyError("Tututut ! Rien à voir ici !");
+      navigate("/challenges", { replace: true });
+
+    } else {
+      console.log("tentative ok !", attempt);
+      setIsLoading(false);
     }
-  }, [attemptId, attempt, loadAttempt]);
+  }, [attempt, loadAttempt, navigate]);
 
-  // Initialiser questions + fin du chargement
+  // 2️⃣ Initialiser questions et sessionStorage quand la tentative est chargée
   useEffect(() => {
-    if (attempt) {
+    if (!attempt || !user) return;
+    console.log("init attempt");
+
+    const init = async () => {
+      // ❌ Ne pas continuer si ce n’est pas votre user
+      if (attempt.userId !== user.id) {
+        notifyError("Tentative introuvable ou non autorisée.");
+        navigate("/challenges", { replace: true });
+        return;
+      }
+
+      // ✅ Tout est ok : on initialise le quiz
       setQuestions(attempt.challengeEntries);
       setCurrentIndex(0);
       setIsLoading(false);
-    }
-  }, [attempt]);
+    };
 
-  // Countdown + démarrage
+    init();
+  }, [attempt, user, navigate]);
+  
+  // 3️⃣ Countdown
   useEffect(() => {
     if (!isLoading && questions.length > 0 && !started) {
       const timers = [
@@ -47,14 +70,48 @@ export const ChallengeQuiz: React.FC = () => {
         setTimeout(() => setCountdownLabel("1"), 2000),
         setTimeout(async () => {
           setCountdownLabel("GO");
-          await startChallengeAttempt(attempt!.id);
-          setStarted(true);
-          setTimeout(() => setCountdownLabel(""), 500);
+          try {
+            await startChallengeAttempt(attempt!.id);
+            setStarted(true);
+            setTimeout(() => setCountdownLabel(""), 500);
+          } catch (err) {
+            console.error("Erreur démarrage attempt:", err);
+            if (err instanceof ChallengeAlreadyStartedError) {
+              notifyError("Ce challenge a déjà été démarré.");
+            } else if (err instanceof AttemptNotFoundError) {
+              notifyError("Tentative introuvable.");
+            } else {
+              console.error("Erreur démarrage attempt:", err);
+              notifyError("Erreur inattendue, retour au menu.");
+            }
+            navigate("/challenges", { replace: true });
+          }
         }, 3000),
       ];
       return () => timers.forEach(clearTimeout);
     }
   }, [isLoading, questions, started, attempt]);
+
+  // 4️⃣ Chrono
+  useEffect(() => {
+    if (started) {
+      const intervalId = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+      return () => clearInterval(intervalId);
+    }
+  }, [started]);
+
+  // 5️⃣ Before unload
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!attempt) return; // Si pas d’attempt, l'autre useEffect nav vers le menu
+      e.preventDefault(); // Empêche le message de confirmation de s'afficher
+      // navigator.sendBeacon garantit l’envoi même si la page se ferme.
+      const url = `/api/attempts/${attempt.id}/abandon`;
+      navigator.sendBeacon(url);
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [attempt?.id]);
 
   const current = questions[currentIndex];
 
@@ -75,7 +132,7 @@ export const ChallengeQuiz: React.FC = () => {
       stopChallengeAttempt(attempt!.id)
         .catch((e) => console.error("Stop API error", e))
         .finally(() =>
-          navigate(`/challenges/${attempt!.id}/summary`, { replace: true })
+          navigate(`/challenges/summary`, { replace: true })
         );
     }
   }, [
@@ -91,8 +148,7 @@ export const ChallengeQuiz: React.FC = () => {
   ]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) =>
-      e.key === "Enter" && validateAnswer();
+    const handler = (e: KeyboardEvent) => e.key === "Enter" && validateAnswer();
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [validateAnswer]);
@@ -144,6 +200,8 @@ export const ChallengeQuiz: React.FC = () => {
       goBackToMenu={() => navigate("/challenges", { replace: true })}
       isLoading={false}
       hasFetched
+      elapsed={elapsed}
+      progress={progress}
     />
   );
 };

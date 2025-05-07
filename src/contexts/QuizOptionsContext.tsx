@@ -88,7 +88,7 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
     }, [sorts, tempSelectedSortingMethods]);
   
   // Repetition options
-  const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.never);
+  const [selectedRepetitionPattern, setSelectedRepetitionPattern] = useState<GameRepetitionPattern>(repetitionPatterns.optimal);
   
   const [tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern] = useState<GameRepetitionPattern>({
     patternName: 'never',
@@ -104,12 +104,12 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   
   // Helps
   const [selectedHelps, setSelectedHelps] = useState<{ [key: string]: boolean }>({
-    typosFriendly: false,
-    initialGiven: false,
+    typosFriendly: true,
+    initialGiven: true,
   });
   const [tempSelectedHelps, setTempSelectedHelps] = useState<{ [key: string]: boolean }>({
-    typosFriendly: false,
-    initialGiven: false,
+    typosFriendly: true,
+    initialGiven: true,
   });
   
   // For edit modals

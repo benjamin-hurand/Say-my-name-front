@@ -89,7 +89,7 @@ const router = createBrowserRouter([
               {
                 index: true,
                 element: (
-              <ChallengeLayout>
+              <ChallengeLayout onBack="/">
                 <ProtectedRoute element={<ChallengeMenu />} />
               </ChallengeLayout>
                 ),
@@ -105,17 +105,17 @@ const router = createBrowserRouter([
               },
               // Quiz de l’attempt (sous /challenges/:attemptId)
               {
-                path: ":attemptId",
+                path: "quiz",
                 element: (
-              <ChallengeLayout>
+              <ChallengeLayout onBack="/challenges">
                 <ProtectedRoute element={<ChallengeQuiz />} />
               </ChallengeLayout>
                 ),
               },
               {
-                path: ":attemptId/summary",
+                path: "summary/:attemptId?",
                 element: (
-              <ChallengeLayout>
+              <ChallengeLayout onBack="/challenges">
                 <ProtectedRoute element={<ChallengeSummary />} />
               </ChallengeLayout>
                 ),
