@@ -163,7 +163,6 @@ export const ChallengeQuiz: React.FC = () => {
         answer={answer}
         handleAnswerChange={handleAnswerChange}
         validateAnswer={validateAnswer}
-        goBackToMenu={() => navigate("/challenges", { replace: true })}
         isLoading
         hasFetched={false}
       />
@@ -197,7 +196,6 @@ export const ChallengeQuiz: React.FC = () => {
       answer={answer}
       handleAnswerChange={handleAnswerChange}
       validateAnswer={validateAnswer}
-      goBackToMenu={() => navigate("/challenges", { replace: true })}
       isLoading={false}
       hasFetched
       elapsed={elapsed}

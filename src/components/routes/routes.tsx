@@ -1,29 +1,32 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
-import ProtectedRoute from "./ProtectedRoute";
+import { ChallengeAttemptProvider } from "../../contexts/ChallengeAttemptContext";
+import { CourseProvider } from "../../contexts/CoursesContext";
+import { QuizOptionsProvider } from "../../contexts/QuizOptionsContext";
+import { QuizSessionProvider } from "../../contexts/QuizSessionContext";
+import ChallengeSummary from "../../scenes/challenges/attempt/ChallengeSummary";
+import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
+import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
+import CreateCourse from "../../scenes/courses/CreateCourse";
+import Menu from "../../scenes/menu/menu";
 import { Profile } from "../../scenes/profile/profile";
-import { PersonsTable } from "../persons/personsTable";
+import { ChallengeQuiz } from "../../scenes/quiz/ChallengeQuiz";
+import ProgressionQuiz from "../../scenes/quiz/ProgressionQuiz";
+import QuizOptions from "../../scenes/quiz/QuizOptions";
+import { TrainingQuiz } from "../../scenes/quiz/TrainingQuiz";
 import SignIn from "../../scenes/sign-in/SignIn";
 import SignUp from "../../scenes/sign-up/SignUp";
-import Menu from "../../scenes/menu/menu";
-import { Layout } from "../layout/Layout";
-import { QuizOptionsProvider } from "../../contexts/QuizOptionsContext";
-import QuizOptions from "../../scenes/quiz/QuizOptions";
-import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
-import { ChallengesProvider } from "../../contexts/ChallengesContext";
 import ChallengeLayout from "../layout/ChallengeLayout";
-import { TrainingQuiz } from "../../scenes/quiz/TrainingQuiz";
 import GlobalDataLayout from "../layout/GlobalDataLayout";
-import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
-import { ChallengeAttemptProvider } from "../../contexts/ChallengeAttemptContext";
-import { ChallengeQuiz } from "../../scenes/quiz/ChallengeQuiz";
-import ChallengeSummary from "../../scenes/challenges/attempt/ChallengeSummary";
-import { QuizSessionProvider } from "../../contexts/QuizSessionContext";
+import { Layout } from "../layout/Layout";
+import ProtectedRoute from "./ProtectedRoute";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: (
+          <CourseProvider>
             <GlobalDataLayout />
+          </CourseProvider>
         ),
     children: [
       { index: true, element: (
@@ -122,6 +125,33 @@ const router = createBrowserRouter([
               },
             ],
           },
+          // --- Section "Mes cours" ---
+          {
+            path: "course",
+            element: (
+                  <ProtectedRoute element={<Outlet />} />
+            ),
+            children: [
+              // quiz en cours
+              {
+                index: true,
+                element: (
+                  <Layout headerTitle="Course">
+                    <ProtectedRoute element={<ProgressionQuiz />} />
+                  </Layout>
+                ),
+              },
+              // création d'un nouveau cours
+              {
+                path: "new",
+                element: (
+                  <Layout headerTitle="Start Course">
+                    <ProtectedRoute element={<CreateCourse />} />
+                  </Layout>
+                ),
+              },
+            ],
+          },
         ],
       },
 
@@ -143,3 +173,4 @@ const router = createBrowserRouter([
 ]);
 
 export { router };
+

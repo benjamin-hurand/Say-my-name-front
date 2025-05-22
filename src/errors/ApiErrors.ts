@@ -19,7 +19,7 @@ export class ApiError extends Error {
     }
   }
   
-  /** Tentative déjà démarrée (HTTP 409 sur /start) */
+  /** Tentative déjà démarrée (HTTP 409 sur /continue) */
   export class ChallengeAlreadyStartedError extends ApiError {
     constructor(attemptId?: number | string) {
       super(`Attempt already started${attemptId !== undefined ? `: ${attemptId}` : ''}`);

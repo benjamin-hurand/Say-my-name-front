@@ -1,25 +1,25 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
-import { repetitionPatterns, SpacedRepetitionData } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
-import { GameOptions } from '../../models/commons/Game/GameOptions/GameOptions.model';
-import { getQuizList } from '../../services/business/quiz/quiz.service';
-import { QuizEntry, QuizEntryWithRepetition } from '../../models/commons/Game/QuizEntry';
-import { getPersonAttributesById } from '../../services/business/persons/person.service';
-import QuizDisplay from './QuizDisplay';
-import { ReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDto';
-import { toReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDtoMapper';
 import { useQuizOptions } from '../../contexts/QuizOptionsContext';
 import { useQuizSession } from '../../contexts/QuizSessionContext';
-import { normalizeText } from '../../services/business/utils/NormalizedAnswer';
+import { useThemeColorContext } from '../../contexts/ThemeColorContext';
+import { GameOptions } from '../../models/commons/Game/GameOptions/GameOptions.model';
+import { repetitionPatterns, SpacedRepetitionData } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
+import { QuizEntry, QuizEntryWithRepetition } from '../../models/commons/Game/QuizEntry';
 import { QuizHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
-import { set } from 'date-fns';
+import { PersonAttribute, ResultAttr } from '../../models/commons/PersonAttribute';
+import { getPersonAttributesById } from '../../services/business/persons/person.service';
+import { getQuizList } from '../../services/business/quiz/quiz.service';
+import { normalizeText } from '../../services/business/utils/NormalizedAnswer';
+import { ReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDto';
+import { toReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDtoMapper';
+import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
+import QuizDisplay from './QuizDisplay';
 
 interface QuizProps {}
 
 // Nombre maximal de bonnes répétitions avant suppression
-const MAX_CORRECT_REPETITIONS = 3;
+const MAX_CORRECT_REPETITIONS = 2;
 
 export const TrainingQuiz: React.FC<QuizProps> = () => {
   const navigate = useNavigate();
@@ -33,7 +33,6 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
     reviewList,
     sessionOptions,
     setSessionOptions,
-    resetSession,
     uncheckedNewSession,
     setUncheckedNewSession
   } = useQuizSession();
@@ -46,6 +45,13 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
   const [personId, setPersonId] = useState<number | null>(null);
   const [initials, setInitials] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string>('');
+  const [helpUsed, setHelpUsed] = useState<boolean>(false);
+
+  // en haut du component
+  const [isResultMode, setIsResultMode] = useState(false)
+  const [resultMessage, setResultMessage] = useState<string>('')
+  const [resultAttrs, setResultAttrs] = useState<ResultAttr[]>([])
+
 
   const {
     modes,
@@ -221,10 +227,12 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
 
   // Update current question
   useEffect(() => {
+    if (isResultMode) return;
     if (!quizList || quizList.length === 0) {
       setPhotoUrl(null);
       setPersonId(null);
       setInitials(null);
+      setHelpUsed(false);
       setCurrentRepetitionData({
         totalRepetitionCount: 0,
         correctRepetitionCount: 0,
@@ -234,67 +242,142 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
       setAnswer('');
       return;
     }
-    console.log('Updating current question...', JSON.stringify(quizList));
     const current = quizList[0];
     setPhotoUrl(current.photoUrl);
     setPersonId(current.personId);
     setInitials(current.initials);
+    setHelpUsed(false);
     setCurrentRepetitionData(current.repetitionData);
     setAnswer('');
-  }, [quizList]);
+  }, [quizList, isResultMode]);
 
   // Handle answer validation
   const validateAnswer = useCallback(async () => {
-    if (!photoUrl || !personId || !selectedMode) {
+    // 0. Pré-conditions
+    if (!photoUrl || personId == null || !selectedMode) {
       notifyError('No photo or mode defined');
       return;
     }
+
     try {
+      // 1. Charger les attributs de la personne et normaliser la réponse
       const personAttrs = await getPersonAttributesById(personId);
       const typos = selectedHelps.typosFriendly;
-      const normAnswer = answer.split(' ').map(p => normalizeText(p, typos)).sort();
+      const normAnswer = answer
+        .split(' ')
+        .map(p => normalizeText(p, typos))
+        .filter(p => p)    // on enlève les chaînes vides
+        .sort();
+
+      // 2. Déterminer quels attributs étaient ciblés par le quiz
+      const targetIds = selectedMode.attributes.map(a => a.attribute.id);
+
+      // 3. Calculer le résultat global (match AND vs OR)
       const correctVals = personAttrs
-        .filter(pa => selectedMode.attributes.some(a => a.attribute.id === pa.attribute.id))
+        .filter(pa => targetIds.includes(pa.attribute.id))
         .map(pa => pa.value);
-      const normCorrect = correctVals.map(v => v.split(' ').map(p => normalizeText(p, typos))).flat().sort();
+      const normCorrect = correctVals
+        .map(v => v.split(' ').map(p => normalizeText(p, typos)))
+        .flat()
+        .sort();
 
       const match = selectedMode.operator === 'AND'
         ? JSON.stringify(normAnswer) === JSON.stringify(normCorrect)
         : normAnswer.some(p => normCorrect.includes(p));
 
+      // 4. Mettre à jour les données de répétition (Spaced Repetition)
       const quality = match ? 5 : 0;
-      const updated = updateRepetitionData(currentRepetitionData, quality);
+      const updatedRep = updateRepetitionData(currentRepetitionData, quality);
 
+      // 5. Enregistrer dans l'historique
       setQuizHistory(prev => {
         const exists = prev.find(e => e.personId === personId);
-        if (!exists) return [...prev, { photoUrl, personId, initials: initials!, isCorrect: match, repetitionData: updated }];
-        return prev.map(e => e.personId === personId ? { ...e, repetitionData: updated, isCorrect: match } : e);
+        const entry = {
+          photoUrl,
+          personId,
+          initials: initials!,
+          isCorrect: match,
+          repetitionData: updatedRep
+        } as QuizHistoryEntry;
+
+        return exists
+          ? prev.map(e => e.personId === personId ? { ...e, ...entry } : e)
+          : [...prev, entry];
       });
 
-      if (updated.correctRepetitionCount < MAX_CORRECT_REPETITIONS && ((match && updated.totalRepetitionCount > 1) || !match) && updated.interval !== -1) {
-        setQuizList(prev => {
-          const currentQ = prev[0];
-          const rest = prev.slice(1);
-          const idx = updated.interval < rest.length ? updated.interval : rest.length;
-          rest.splice(idx, 0, { ...currentQ, repetitionData: updated });
+      // 6. Réinjecter ou retirer de la file selon spaced repetition
+      setQuizList(prev => {
+        const [currentQ, ...rest] = prev;
+        if (
+          updatedRep.correctRepetitionCount < MAX_CORRECT_REPETITIONS &&
+          ((match && updatedRep.totalRepetitionCount > 1) || !match) &&
+          updatedRep.interval !== -1
+        ) {
+          // Réinsertion à l'index défini par l'intervalle
+          const idx = Math.min(updatedRep.interval, rest.length);
+          rest.splice(idx, 0, { ...currentQ, repetitionData: updatedRep });
           return rest;
-        });
-      } else {
-        setQuizList(prev => prev.slice(1));
-      }
+        } else {
+          // On enlève simplement l'élément courant
+          return rest;
+        }
+      });
 
-      match ? notifySuccess('Bien joué') : notifyWarning(`Erreur, réponse: ${correctVals.join(' ')} vs ${answer}`);
-    } catch (err) {
+      // 7. Préparer le message de résultat
+      setResultMessage(
+        match
+          ? (helpUsed
+              ? 'Et sans aide ?😉'
+              : 'BRAVO !')
+          : 'Oops ! 💪'
+      );
+
+      // 8. Construire la liste complète des attributs pour l'affichage
+      const allAttrs: ResultAttr[] = personAttrs.map(pa => {
+        const isTarget = targetIds.includes(pa.attribute.id);
+        let isCorrect = true;
+
+        if (isTarget) {
+          // Normaliser chaque sous-partie de la valeur
+          const normValParts = pa.value
+            .split(' ')
+            .map(p => normalizeText(p, typos));
+
+          // AND = toutes les parties doivent être présentes, OR = au moins une
+          isCorrect = selectedMode.operator === 'AND'
+            ? normValParts.every(p => normAnswer.includes(p))
+            : normValParts.some(p => normAnswer.includes(p));
+        }
+
+        return {
+          attribute: pa.attribute,
+          value: pa.value,
+          isTarget,
+          isCorrect
+        };
+      });
+
+      setResultAttrs(allAttrs);
+
+      // 9. Passer en mode résultat (flip + affichage)
+      setIsResultMode(true);
+    }
+    catch (err) {
       notifyError('Error validating answer: ' + err);
     }
-  }, [answer, photoUrl, personId, selectedMode, selectedHelps, currentRepetitionData, quizList]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') validateAnswer(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [validateAnswer]);
-
+  }, [
+    answer,
+    photoUrl,
+    personId,
+    selectedMode,
+    selectedHelps,
+    currentRepetitionData,
+    helpUsed,
+    updateRepetitionData,
+    setQuizHistory,
+    setQuizList
+  ]);
+  
   function updateRepetitionData(
     data: SpacedRepetitionData | null,
     quality: number
@@ -316,22 +399,60 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
     return { totalRepetitionCount: newTotal, correctRepetitionCount: newCorrect, easinessFactor: newEz, interval: newInterval };
   }
 
-  const goBackToMenu = () => navigate('/', { replace: true });
+  const handleNext = useCallback(() => {
+    setResultAttrs([]);
+    setResultMessage('');
+    setIsResultMode(false);
+  }, []);
+
+
   const openQuizOptions = () => navigate('/training/options', { replace: true });
 
   return (
     <QuizDisplay
+      // 0. Theme
       color={color}
+      
+      // 1. Progress
+      //TODO elapsed, progress
+      
+      // 2. Photo
       photoUrl={photoUrl}
+      hasFetched={hasFetched}
+      isLoading={isLoading}
+
+      // 3. Badges
+      // TODO: poolBadge, difficultyBadge
+
+      // 4. Help
+      useHelp={async () => {
+              if (personId == null) return [];
+              setHelpUsed(true);
+              console.log('helpused');
+              const attrs: PersonAttribute[] =
+                await getPersonAttributesById(personId);
+              return attrs
+            }}
+
+      // 5. Initials
       initials={initials}
       showInitials={selectedHelps.initialGiven}
+
+      // 6. User Answer
       answer={answer}
       handleAnswerChange={e => setAnswer(e.target.value)}
       validateAnswer={validateAnswer}
+
+      // 7. Results
+      isResultMode={isResultMode}
+      resultMessage={resultMessage}
+      resultAttributes={resultAttrs}
+      onNext={handleNext}
+      
+      // 8. Options
       openQuizOptions={openQuizOptions}
-      goBackToMenu={goBackToMenu}
-      isLoading={isLoading}
-      hasFetched={hasFetched}
+
+      // 9. End Of Quiz
       onRetry={() => {
         fetchList();
       }}
@@ -351,6 +472,12 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
         });
       }}
       hasHistory={quizHistory.length > 0}
+      fromChallenge={!!reviewList}
+      goBackToChallenge={() => {
+        if (!!reviewList) {
+          navigate(`/challenges`)
+        }
+      }}
     />
   );
 };

@@ -4,6 +4,8 @@ import { getFilters, getSorts } from '../services/business/attributes/attribute.
 import { getGameModes } from '../services/business/gamemodes/gameMode.service';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
 import { fetchCurrentSeason } from '../services/business/challenges/challenge.service';
+import { getPopulationList } from '../services/business/courses/population.service';
+import { PopulationDto } from '../services/dto/courses/PopulationDto';
 
 interface SeasonPeriod {
   start: Date;
@@ -16,6 +18,7 @@ interface GlobalDataContextType {
   modes: GameMode[];
   seasonPeriod: SeasonPeriod;
   competitiveSeason: number;
+  populations: PopulationDto[];
 }
 
 const GlobalDataContext = createContext<GlobalDataContextType | undefined>(undefined);
@@ -26,6 +29,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   const [modes, setModes] = useState<GameMode[]>([]);
   const [seasonPeriod, setSeasonPeriod] = useState<SeasonPeriod>({ start: new Date(), end: new Date() });
   const [competitiveSeason, setCompetitiveSeason] = useState<number>(0);
+  const [populations, setPopulations] = useState<PopulationDto[]>([]);
 
   // Calcul de la semaine en cours (lundi à dimanche)
   useEffect(() => {
@@ -90,8 +94,22 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, []);
 
+  // Récupérer les populations depuis l'API
+  useEffect(() => {
+    (async () => {
+      try {
+        const populations = await getPopulationList();
+        if (populations) {
+          setPopulations(populations);
+        }
+      } catch (error) {
+        console.error("Error fetching current season", error);
+      }
+    })();
+  }, []);
+
   return (
-    <GlobalDataContext.Provider value={{ filters, sorts, modes, seasonPeriod, competitiveSeason }}>
+    <GlobalDataContext.Provider value={{ filters, sorts, modes, seasonPeriod, competitiveSeason, populations }}>
       {children}
     </GlobalDataContext.Provider>
   );

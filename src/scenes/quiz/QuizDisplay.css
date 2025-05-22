@@ -1,0 +1,37 @@
+/* src/components/QuizDisplay.css */
+
+/* fade enter/exit (inchangé) */
+.fade-enter {
+  opacity: 0;
+}
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease-in-out;
+}
+.fade-exit {
+  opacity: 1;
+}
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+}
+
+/* shake pour le TextField (inchangé) */
+@keyframes shake-field {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.textField-shake {
+  animation: shake-field 0.4s ease-in-out;
+}
+
+/* shake pour la Chip “Aide” */
+@keyframes shake-chip {
+  0%, 100% { transform: translateX(-50%); }
+  20%, 60% { transform: translateX(calc(-50% + 4px)); }
+  40%, 80% { transform: translateX(calc(-50% - 4px)); }
+}
+.chip-shake {
+  animation: shake-chip 0.3s ease-in-out;
+}
