@@ -163,7 +163,7 @@ const darkTheme = (color: string) => createTheme({
             styleOverrides: {
                 root: {
                     // Ensuring icons are white in dark mode
-                    color: '#FFFFFF',
+                    color: 'inherit',
                 },
                 menu: {
                     color: undefined, 
@@ -318,7 +318,7 @@ const lightTheme = (color: string) => createTheme({
             styleOverrides: {
                 root: {
                     // Ensuring icons are black in light mode
-                    color: '#000000',
+                    color: 'inherit', // Inherit color from parent
                 },
                 menu: {
                     color: undefined,                

@@ -8,7 +8,7 @@ import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
 import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
 import CreateCourse from "../../scenes/courses/CreateCourse";
 import Menu from "../../scenes/menu/menu";
-import { Profile } from "../../scenes/profile/profile";
+import ProfilePage from "../../scenes/profile/profile";
 import { ChallengeQuiz } from "../../scenes/quiz/ChallengeQuiz";
 import ProgressionQuiz from "../../scenes/quiz/ProgressionQuiz";
 import QuizOptions from "../../scenes/quiz/QuizOptions";
@@ -39,7 +39,7 @@ const router = createBrowserRouter([
         path: "profile",
         element: (
           <Layout headerTitle="Profile">
-            <ProtectedRoute element={<Profile />} />
+            <ProtectedRoute element={<ProfilePage />} />
           </Layout>
         ),
       },

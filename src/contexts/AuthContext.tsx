@@ -1,12 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { loginWithGoogle, silentGoogleSignIn, verifyToken as verifyTokenApi } from "../services/security/Auth.service";
-
-interface User {
-  id: number;
-  email: string;
-  username: string;
-  roles: string;
-}
+import { User } from "../models/commons/User";
+import { CredentialResponse } from "@react-oauth/google";
 
 interface AuthContextProps {
   user: User | null;
@@ -58,16 +53,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // On suppose ici que vous avez configuré Google Identity Services
       // et que vous disposez d'une fonction utilitaire pour tenter une reconnexion silencieuse.
       // Par exemple, en utilisant « prompt: 'none' » ou le One Tap de Google.
-      const googleResponse = await silentGoogleSignIn();
+      const googleResponse: CredentialResponse = await silentGoogleSignIn();
       if (googleResponse?.credential) {
         // On utilise ici votre service existant (loginWithGoogle) pour récupérer les infos utilisateur
         const apiResponse = await loginWithGoogle(googleResponse);
         // Stockage du token et des infos utilisateur dans le context et le localStorage
-        login(apiResponse.jwt.bearer, {
+        login(apiResponse.bearerToken, {
           id: apiResponse.userId, // en fonction de la réponse de votre API
+          username: apiResponse.username,
           email: apiResponse.email,
           roles: apiResponse.roles,
-          username: apiResponse.username,
+          srsAlgorithm: apiResponse.srsAlgorithm, // Assurez-vous que votre API renvoie cette info
         });
         return true;
       }

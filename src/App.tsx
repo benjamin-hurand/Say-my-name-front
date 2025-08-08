@@ -6,11 +6,13 @@ import './services/notification/toastifyCustom.css';
 import ParticlesBackground from "./components/layout/ParticleBackground";
 import { GlobalDataProvider } from "./contexts/GlobalDataContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ProfileProvider } from "./contexts/ProfileContext";
 
 function App() {
   return (
     <>
     <AuthProvider>
+      <ProfileProvider>
         <ToastContainer />
         <div style={{
           maxWidth: '100%', // Ensure width does not exceed the viewport
@@ -25,6 +27,7 @@ function App() {
           <ParticlesBackground />
           <RouterProvider router={router} />
         </div>
+        </ProfileProvider>
     </AuthProvider>
     </>
   )

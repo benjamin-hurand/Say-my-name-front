@@ -48,6 +48,9 @@ interface QuizOptionsContextType {
       secondInterval: number;
     }>
   >;
+  // Progress
+  saveProgress: boolean;
+  setSaveProgress: React.Dispatch<React.SetStateAction<boolean>>;
   // Helps and other options
   selectedHelps: { [key: string]: boolean };
   setSelectedHelps: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
@@ -101,6 +104,9 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
     initialInterval: 1,
     secondInterval: 6,
   });
+
+  // Enregistrement de la progression ou non
+  const [saveProgress, setSaveProgress] = useState<boolean>(true);
   
   // Helps
   const [selectedHelps, setSelectedHelps] = useState<{ [key: string]: boolean }>({
@@ -178,6 +184,8 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
         setTempSelectedRepetitionPattern,
         repeatSettings,
         setRepeatSettings,
+        saveProgress,
+        setSaveProgress,
         selectedHelps,
         setSelectedHelps,
         tempSelectedHelps,

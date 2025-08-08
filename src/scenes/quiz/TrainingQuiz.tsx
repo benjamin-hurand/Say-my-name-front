@@ -15,6 +15,8 @@ import { ReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDto'
 import { toReducedGameOptionsDto } from '../../services/dto/ReducedGameOptionsDtoMapper';
 import { notifyError, notifySuccess, notifyWarning } from '../../services/notification/toast.service';
 import QuizDisplay from './QuizDisplay';
+import { submitResults } from '../../services/business/quiz/knowledge.service';
+import { KnowledgeResultDto } from '../../services/dto/KnowledgeResultDto';
 
 interface QuizProps {}
 
@@ -65,6 +67,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
     setSelectedSortingMethods,
     selectedRepetitionPattern,
     setSelectedRepetitionPattern,
+    saveProgress,
     selectedHelps,
     setSelectedHelps,
     setHasUncheckedCriticalChanges,
@@ -285,8 +288,12 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
         ? JSON.stringify(normAnswer) === JSON.stringify(normCorrect)
         : normAnswer.some(p => normCorrect.includes(p));
 
+      // 4. Déterminer le résultat effectif pour le SRS
+      const effectiveMatch = helpUsed ? false : match;
+
+
       // 4. Mettre à jour les données de répétition (Spaced Repetition)
-      const quality = match ? 5 : 0;
+      const quality = effectiveMatch ? 5 : 0;
       const updatedRep = updateRepetitionData(currentRepetitionData, quality);
 
       // 5. Enregistrer dans l'historique
@@ -296,7 +303,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
           photoUrl,
           personId,
           initials: initials!,
-          isCorrect: match,
+          isCorrect: effectiveMatch,
           repetitionData: updatedRep
         } as QuizHistoryEntry;
 
@@ -304,13 +311,14 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
           ? prev.map(e => e.personId === personId ? { ...e, ...entry } : e)
           : [...prev, entry];
       });
+      
 
       // 6. Réinjecter ou retirer de la file selon spaced repetition
       setQuizList(prev => {
         const [currentQ, ...rest] = prev;
         if (
           updatedRep.correctRepetitionCount < MAX_CORRECT_REPETITIONS &&
-          ((match && updatedRep.totalRepetitionCount > 1) || !match) &&
+          ((effectiveMatch && updatedRep.totalRepetitionCount > 1) || !effectiveMatch) &&
           updatedRep.interval !== -1
         ) {
           // Réinsertion à l'index défini par l'intervalle
@@ -357,10 +365,27 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
         };
       });
 
+
+      // 9. Affichage des résultats
+      setIsResultMode(true);
       setResultAttrs(allAttrs);
 
-      // 9. Passer en mode résultat (flip + affichage)
-      setIsResultMode(true);
+      // 10. Sauvegarde serveur si demandé
+      if (saveProgress) {
+        try {
+          const payload: KnowledgeResultDto = {
+            gameModeId: selectedMode!.id,
+            personId: personId!,
+            isCorrect: match,
+            helpUsed
+          };
+          await submitResults([payload]);
+        } catch (err) {
+          console.error('Erreur sauvegarde progression:', err);
+          notifyError('Impossible d’enregistrer votre progression.');
+        }
+      }
+
     }
     catch (err) {
       notifyError('Error validating answer: ' + err);

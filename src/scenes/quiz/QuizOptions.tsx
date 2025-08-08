@@ -14,6 +14,8 @@ import {
   DialogContentText,
   Tooltip,
   Chip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { AddSortModal } from './components/AddSortModal';
@@ -46,6 +48,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
     availableFilters, selectedFilters, setSelectedFilters, tempSelectedFilters, setTempSelectedFilters,
     availableSorts, selectedSortingMethods, setSelectedSortingMethods, tempSelectedSortingMethods, setTempSelectedSortingMethods,
     selectedRepetitionPattern, setSelectedRepetitionPattern, tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern,
+    saveProgress, setSaveProgress,
     selectedHelps, setSelectedHelps, tempSelectedHelps, setTempSelectedHelps, hasCriticalChanges
   } = useQuizOptions();
 
@@ -386,6 +389,29 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         </Divider>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {renderRepetitionOptions()}
+        </Box>
+
+        <Divider sx={{ marginTop: 2, marginBottom: 1 }}>
+          <Typography variant="h6">Sauvegarde de la progression</Typography>
+        </Divider>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            marginTop: '8px',
+          }}
+        >
+          <OptionCard
+            option="Enregistrer la progression"
+            isSelected={saveProgress}
+            onSelect={() => setSaveProgress(true)}
+          />
+          <OptionCard
+            option="Ne pas enregistrer"
+            isSelected={!saveProgress}
+            onSelect={() => setSaveProgress(false)}
+          />
         </Box>
 
         {/* Helps */}

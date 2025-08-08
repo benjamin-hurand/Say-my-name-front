@@ -1,7 +1,8 @@
 import { PersonAttribute } from "./PersonAttribute";
+import { Photo } from "./Photo";
 
-export interface Person {
+export interface Profile {
     id: number;
-    photoUrl: string;
+    photo: Photo | null;
     attributes: PersonAttribute[]
 }

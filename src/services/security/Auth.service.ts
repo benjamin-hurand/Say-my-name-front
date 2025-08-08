@@ -1,6 +1,7 @@
 import axios from 'axios';
 import API from '../api/apiUtils';
 import { CredentialResponse } from '@react-oauth/google';
+import { SrsAlgorithm } from '../../models/commons/User';
 
 interface LoginCredentials {
     identifier: string;
@@ -22,13 +23,12 @@ export interface SignupGoogleCredentials {
 }
 
 export interface AuthResponse {
-    roles: string;
-    jwt: {
-        bearer: string;
-    };
+    bearerToken: string;
     userId: number;
     username: string;
     email: string;
+    roles: string;
+    srsAlgorithm: SrsAlgorithm;
 }
 
 // interface UserDetails {
