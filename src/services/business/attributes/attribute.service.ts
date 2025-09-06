@@ -24,14 +24,3 @@ export async function getFilters(): Promise<Attribute[]> {
         throw error; // You may want to handle this differently depending on your app's design
     }
 }
-
-export async function getSorts(): Promise<Attribute[]> {
-    try {
-        const response = await API.get<Attribute[]>(`${endpoint}/sorts`);
-        // console.log("voicii sorts:" + JSON.stringify(response.data));
-        return response.data;
-    } catch (error) {
-        console.error('Failed to get sorts:', error);
-        throw error; // You may want to handle this differently depending on your app's design
-    }
-}

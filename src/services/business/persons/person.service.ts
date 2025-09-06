@@ -1,5 +1,4 @@
-import { Person } from "../../../models/commons/Person";
-import { PersonAttribute } from "../../../models/commons/PersonAttribute";
+import { PersonAttributeLite } from "../../../models/commons/PersonAttribute";
 import API from "../../api/apiUtils";
 
 const ENDPOINT = "/persons";
@@ -10,9 +9,9 @@ const ENDPOINT = "/persons";
  * @returns Promise<PersonAttribute[]>
  * @throws Erreur si l'appel API échoue
  */
-export async function getPersonAttributesById(personId: number): Promise<PersonAttribute[]> {
+export async function getPersonAttributesById(personId: number): Promise<PersonAttributeLite[]> {
   try {
-    const response = await API.get<PersonAttribute[]>(
+    const response = await API.get<PersonAttributeLite[]>(
       `${ENDPOINT}/${personId}/attributes`
     );
     return response.data;

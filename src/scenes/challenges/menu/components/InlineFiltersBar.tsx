@@ -249,13 +249,13 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
             onChange={(e) => setPanelRange({ ...panelRange, min: e.target.value })}
             size="small"
             type={
-              activePanelAttribute.type === 'number'
+              activePanelAttribute.type === 'NUMBER'
                 ? 'number'
-                : activePanelAttribute.type === 'date'
+                : activePanelAttribute.type === 'DATE'
                 ? 'date'
                 : 'text'
             }
-            InputLabelProps={activePanelAttribute.type === 'date' ? { shrink: true } : {}}
+            InputLabelProps={activePanelAttribute.type === 'DATE' ? { shrink: true } : {}}
           />
           <TextField
             label="Max"
@@ -263,13 +263,13 @@ const InlineFiltersBar: React.FC<InlineFiltersBarProps> = ({
             onChange={(e) => setPanelRange({ ...panelRange, max: e.target.value })}
             size="small"
             type={
-              activePanelAttribute.type === 'number'
+              activePanelAttribute.type === 'NUMBER'
                 ? 'number'
-                : activePanelAttribute.type === 'date'
+                : activePanelAttribute.type === 'DATE'
                 ? 'date'
                 : 'text'
             }
-            InputLabelProps={activePanelAttribute.type === 'date' ? { shrink: true } : {}}
+            InputLabelProps={activePanelAttribute.type === 'DATE' ? { shrink: true } : {}}
           />
           <Chip
             label="OK"

@@ -1,8 +1,8 @@
-import { PersonAttribute } from "./PersonAttribute";
+import { PersonAttributeFull } from "./PersonAttribute";
 import { Photo } from "./Photo";
 
 export interface Profile {
     id: number;
-    photo: Photo | null;
-    attributes: PersonAttribute[]
+    photos: Photo[];
+    attributes: PersonAttributeFull[];
 }

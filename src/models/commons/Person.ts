@@ -1,7 +1,0 @@
-import { PersonAttribute } from "./PersonAttribute";
-
-export interface Person {
-    id: number;
-    photoUrl: string;
-    attributes: PersonAttribute[]
-}

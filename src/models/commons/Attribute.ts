@@ -1,13 +1,24 @@
-export type AttributeType = 'text' | 'number' | 'date' | 'datetime' | 'boolean' | 'enum' | 'url' | 'email';
+export type EditPolicy = 'FREE' | 'RESTRICTED';
+
+export type AttributeType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'DATE'
+  | 'DATETIME'
+  | 'BOOLEAN'
+  | 'URL'
+  | 'EMAIL';
 
 export interface Attribute {
   id: number;
   name: string;
-  unique: boolean;
+  maxValues: number;
   filter: boolean;
   sort: boolean;
   initializable: boolean;
+  required: boolean;
   type: AttributeType;
-  minValue: string;
-  maxValue: string;
+  minValue: string | null;
+  maxValue: string | null;
+  editPolicy: EditPolicy;
 }

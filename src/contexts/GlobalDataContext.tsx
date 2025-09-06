@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Attribute } from '../models/commons/Attribute';
-import { getFilters, getSorts } from '../services/business/attributes/attribute.service';
+import { getAttributes, getFilters } from '../services/business/attributes/attribute.service';
 import { getGameModes } from '../services/business/gamemodes/gameMode.service';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
 import { fetchCurrentSeason } from '../services/business/challenges/challenge.service';
@@ -13,6 +13,7 @@ interface SeasonPeriod {
 }
 
 interface GlobalDataContextType {
+  attributes: Attribute[];
   filters: Attribute[];
   sorts: Attribute[];
   modes: GameMode[];
@@ -24,6 +25,7 @@ interface GlobalDataContextType {
 const GlobalDataContext = createContext<GlobalDataContextType | undefined>(undefined);
 
 export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [filters, setFilters] = useState<Attribute[]>([]);
   const [sorts, setSorts] = useState<Attribute[]>([]);
   const [modes, setModes] = useState<GameMode[]>([]);
@@ -44,29 +46,30 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
     setSeasonPeriod({ start: monday, end: sunday });
   }, []);
 
-  // Fetch des filtres
+  // Fetch all attributes + derive sorts
   useEffect(() => {
     (async () => {
       try {
-        const fetchedFilters: Attribute[] = await getFilters();
-        setFilters(fetchedFilters);
+        const allAttributes = await getAttributes();
+        setAttributes(allAttributes);
+        setSorts(allAttributes.filter(attr => attr.sort));
       } catch (error) {
-        console.error('Error fetching filters:', error);
+        console.error("Error fetching attributes:", error);
       }
     })();
   }, []);
 
-  // Fetch des tris
+  // Fetch filters (with min/max from backend)
   useEffect(() => {
     (async () => {
       try {
-        const fetchedSorts: Attribute[] = await getSorts();
-        setSorts(fetchedSorts);
+        setFilters(await getFilters());
       } catch (error) {
-        console.error('Error fetching sorts:', error);
+        console.error("Error fetching filters:", error);
       }
     })();
   }, []);
+
 
   // Fetch des modes de jeu
   useEffect(() => {
@@ -109,7 +112,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <GlobalDataContext.Provider value={{ filters, sorts, modes, seasonPeriod, competitiveSeason, populations }}>
+    <GlobalDataContext.Provider value={{ attributes, filters, sorts, modes, seasonPeriod, competitiveSeason, populations }}>
       {children}
     </GlobalDataContext.Provider>
   );

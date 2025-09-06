@@ -1,8 +1,8 @@
 // services/business/profile/profile.service.ts
 
 import API from "../../api/apiUtils";
-import { PersonAttribute } from "../../../models/commons/PersonAttribute";
 import { ProfileResponseDto } from "../../dto/ProfileResponseDto";
+import { AttributeChanges } from "../../../models/commons/Profile/AttributesChanges";
 
 const PROFILE_ENDPOINT = "/profile";
 
@@ -12,35 +12,19 @@ export async function getProfile(): Promise<ProfileResponseDto> {
   return res.data;
 }
 
-/** Met à jour uniquement la photo */
-export async function updatePhoto(form: FormData): Promise<ProfileResponseDto> {
-  const res = await API.patch<ProfileResponseDto>(
-    `${PROFILE_ENDPOINT}/photo`,
-    form,
-    { headers: { "Content-Type": "multipart/form-data" } }
-  );
-  return res.data;
-}
-
-/** Met à jour un ou plusieurs attributs */
-export async function updateAttributes(
-  attributes: Pick<PersonAttribute, "id" | "value">[]
-): Promise<ProfileResponseDto> {
-  const res = await API.patch<ProfileResponseDto>(
-    `${PROFILE_ENDPOINT}/attributes`,
-    { attributes }
-  );
-  return res.data;
-}
-
-/** Met à jour le username et/ou l’email */
-export async function updateAccount(
-  username: string,
-  email: string
-): Promise<ProfileResponseDto> {
-  const res = await API.patch<ProfileResponseDto>(
-    PROFILE_ENDPOINT,
-    { username, email }
-  );
-  return res.data;
+/**
+ * Écritures canonique (bulk) des changements multi-valeurs pour un attribut donné.
+ * - Le back déduit la Person depuis l'utilisateur courant.
+ * - Aucune tentative de fallback (polyfill) : l’endpoint bulk est la source de vérité.
+ *
+ * @param _personId (obsolète / ignoré) conservé pour compat éventuelle
+ * @param attributeId identifiant de l’attribut ciblé
+ * @param changes { create: [{value}], update: [{id,value}], delete: [{id}] }
+ */
+export async function saveAttributeChanges(
+  _personId: number, // non utilisé (le back déduit depuis le principal)
+  attributeId: number,
+  changes: AttributeChanges
+): Promise<void> {
+  await API.post(`${PROFILE_ENDPOINT}/attributes/${attributeId}/bulk`, changes);
 }

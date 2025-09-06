@@ -272,7 +272,7 @@ const ChallengeSummary: React.FC = () => {
                 <TableCell>{r.questionNumber}</TableCell>
                 <TableCell>
                   <Avatar
-                    src={`/photos/${r.photoUrl}`}
+                    src={r.photoUrl}
                     alt={`Q${r.questionNumber}`}
                     variant="rounded"
                     sx={{ width: 80, height: 80 }}

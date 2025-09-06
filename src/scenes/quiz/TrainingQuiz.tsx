@@ -7,7 +7,7 @@ import { GameOptions } from '../../models/commons/Game/GameOptions/GameOptions.m
 import { repetitionPatterns, SpacedRepetitionData } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { QuizEntry, QuizEntryWithRepetition } from '../../models/commons/Game/QuizEntry';
 import { QuizHistoryEntry } from '../../models/commons/Game/QuizHistoryEntry';
-import { PersonAttribute, ResultAttr } from '../../models/commons/PersonAttribute';
+import { PersonAttributeLite, ResultAttr } from '../../models/commons/PersonAttribute';
 import { getPersonAttributesById } from '../../services/business/persons/person.service';
 import { getQuizList } from '../../services/business/quiz/quiz.service';
 import { normalizeText } from '../../services/business/utils/NormalizedAnswer';
@@ -454,7 +454,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
               if (personId == null) return [];
               setHelpUsed(true);
               console.log('helpused');
-              const attrs: PersonAttribute[] =
+              const attrs: PersonAttributeLite[] =
                 await getPersonAttributesById(personId);
               return attrs
             }}

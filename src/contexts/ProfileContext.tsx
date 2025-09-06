@@ -11,14 +11,16 @@ interface ProfileContextProps {
   loading: boolean;
   error: Error | null;
   refreshProfile: () => Promise<void>;
+  setProfile: React.Dispatch<React.SetStateAction<Profile | null>>;
 }
 
 const ProfileContext = createContext<ProfileContextProps>({
   user: null,
   profile: null,
-  loading: false,
+  loading: true,
   error: null,
   refreshProfile: async () => {},
+  setProfile: () => {},
 });
 
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -28,32 +30,27 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [error, setError] = useState<Error | null>(null);
 
   const fetchProfile = async () => {
-    if (!token || !user) {
+    if (!token || !isAuthenticated) {
       setProfile(null);
+      setLoading(false);
       return;
     }
-    setLoading(true);
+    setLoading(true);                                      // <- remet à true avant chaque fetch
     try {
-      const profile: ProfileResponseDto = await getProfile();
-      setProfile(profile.person);
+      const res: ProfileResponseDto = await getProfile();
+      setProfile(res.person);
+      console.log("Fetched profile:", res.person);
       setError(null);
     } catch (err) {
-      // En cas d'erreur API (token invalide, pas de profil, etc.)
       setProfile(null);
       setError(err as Error);
-      // Optionnel : logout() si err indique un problème d'authent
-      // if ((err as any).response?.status === 401) logout();
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-    }
+    fetchProfile();
   }, [token, isAuthenticated, user]);
 
   const refreshProfile = async () => {
@@ -61,7 +58,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   return (
-    <ProfileContext.Provider value={{ user, profile, loading, error, refreshProfile }}>
+    <ProfileContext.Provider value={{ user, profile, loading, error, refreshProfile, setProfile }}>
       {children}
     </ProfileContext.Provider>
   );

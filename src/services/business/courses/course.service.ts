@@ -1,6 +1,6 @@
 // src/services/courseService.ts
 import { QuizEntry } from "../../../models/commons/Game/QuizEntry";
-import { PersonAttribute } from "../../../models/commons/PersonAttribute";
+import { PersonAttributeLite } from "../../../models/commons/PersonAttribute";
 import API from "../../api/apiUtils";
 import { CourseAnswerAndNextQuestionDto } from "../../dto/courses/CourseAnswerAndNextQuestionDto";
 import { CourseAnswerDto } from "../../dto/courses/CourseAnswerDto";
@@ -99,9 +99,9 @@ export async function answerCourse(
 export async function useHelp(
   courseId: number,
   questionId: number
-): Promise<PersonAttribute[]> {
+): Promise<PersonAttributeLite[]> {
   try {
-        const response = await API.post<PersonAttribute[]>(`${endpoint}/${courseId}/questions/${questionId}/help`);
+        const response = await API.post<PersonAttributeLite[]>(`${endpoint}/${courseId}/questions/${questionId}/help`);
         return response.data;
     } catch (error) {
         console.error('Failed to get help containing person attributes with courseId ' + courseId + ' and questionId ' + questionId +' :', error);

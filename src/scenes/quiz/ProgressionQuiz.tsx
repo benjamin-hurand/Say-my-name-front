@@ -16,7 +16,7 @@ import { CourseAnswerAndNextQuestionDto } from '../../services/dto/courses/Cours
 import { CourseAnswerDto } from '../../services/dto/courses/CourseAnswerDto'
 import { CourseQuestionDto } from '../../services/dto/courses/CourseQuestionDto'
 import { notifyError, notifySuccess } from '../../services/notification/toast.service'
-import { PersonAttribute, ResultAttr } from '../../models/commons/PersonAttribute'
+import { PersonAttributeLite, ResultAttr } from '../../models/commons/PersonAttribute'
 import { QuizEntry, QuizEntryWithRepetition } from '../../models/commons/Game/QuizEntry'
 import { useQuizSession } from '../../contexts/QuizSessionContext'
 import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model'
@@ -294,7 +294,7 @@ export const ProgressionQuiz: React.FC = () => {
     // Help
     useHelp={async () => {
       if (!currentQuestion) return []
-      const attrs: PersonAttribute[] = await useHelp(selectedCourse!.id, currentQuestion.id)
+      const attrs: PersonAttributeLite[] = await useHelp(selectedCourse!.id, currentQuestion.id)
       return attrs
     }}
 

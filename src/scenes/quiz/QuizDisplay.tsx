@@ -23,7 +23,7 @@ import {
   Typography
 } from '@mui/material'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { PersonAttribute, ResultAttr } from '../../models/commons/PersonAttribute'
+import { PersonAttributeLite, ResultAttr } from '../../models/commons/PersonAttribute'
 import { DifficultyLevel, PoolType } from '../../services/dto/courses/CourseQuestionDto'
 import { isReadable } from 'stream'
 
@@ -45,7 +45,7 @@ export interface QuizDisplayProps {
   difficultyBadge?: DifficultyLevel
 
   // 4. Help
-  useHelp?: () => Promise<PersonAttribute[]>
+  useHelp?: () => Promise<PersonAttributeLite[]>
 
   // 5. Initials
   initials: string | null
@@ -146,9 +146,8 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
 }) => {
   const inputRef = useRef<HTMLInputElement>(null)
   
-  const assetBase = import.meta.env.BASE_URL || '/'
   const [isFlipped, setIsFlipped] = useState<boolean>(false)
-  const [helpAttributes, setHelpAttributes] = useState<PersonAttribute[] | null>(null)
+  const [helpAttributes, setHelpAttributes] = useState<PersonAttributeLite[] | null>(null)
   const [attributesLoading, setAttributesLoading] = useState<boolean>(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [isImportant, setIsImportant] = useState<boolean>(false)
@@ -469,7 +468,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
                     >
                       <Box
                         component="img"
-                        src={`${assetBase}photos/${photoUrl}`}
+                        src={photoUrl}
                         alt="Personne à identifier"
                         sx={{
                           width:'100%', height:'100%',
@@ -594,7 +593,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
                     <Box
                       sx={{
                         position:'absolute', inset:0,
-                        backgroundImage:`url(${assetBase}photos/${photoUrl})`,
+                        backgroundImage:`url(${photoUrl})`,
                         backgroundSize:'cover',
                         backgroundPosition:'center',
                         filter:'brightness(20%)'
