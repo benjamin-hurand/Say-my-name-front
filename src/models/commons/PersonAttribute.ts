@@ -18,6 +18,11 @@ export interface PersonAttributeFull {
   pendingDelete: boolean;
 }
 
+export interface AttributeValuesResponseDto {
+  attributeId: number;
+  values: PersonAttributeFull[];
+}
+
 export type PersonAttributeStatus = "ACTIVE" | "FUTURE" | "PENDING_DELETE" | "EXPIRED";
 
 export function computeStatus(pa: Pick<PersonAttributeFull, "validFrom" | "validTo" | "pendingDelete">): PersonAttributeStatus {

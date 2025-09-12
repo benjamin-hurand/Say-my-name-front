@@ -1,4 +1,5 @@
 import { Profile } from "../../models/commons/Profile";
+import { ChangeRequestSummary } from "../../models/commons/Profile/ChangeRequest";
 
 /**
  * DTO de la réponse du profil de l'utilisateur connecté.
@@ -7,4 +8,5 @@ import { Profile } from "../../models/commons/Profile";
  */
 export interface ProfileResponseDto {
   person: Profile | null;
+  changeRequests: ChangeRequestSummary[];
 }

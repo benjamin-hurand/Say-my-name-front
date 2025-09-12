@@ -3,17 +3,11 @@ import { Stack, Divider } from "@mui/material";
 import AttributeRow, { RowStatus } from "./rows/AttributeRow";
 import { Attribute } from "../../../../models/commons/Attribute";
 import { PersonAttributeFull } from "../../../../models/commons/PersonAttribute";
-
-type ChangeRequestLocal = {
-  id: number;
-  action: "UPDATE" | "DELETE" | "CREATE";
-  attributeId: number;
-  personAttributeId?: number | null;
-};
+import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 
 type Props = {
   allAttributes: Attribute[];
-  profileAttributes: PersonAttributeFull[]; // ⬅️ full du back
+  profileAttributes: PersonAttributeFull[];
 
   editingKey: string | null;
   statusByKey: Record<string, RowStatus>;
@@ -25,30 +19,10 @@ type Props = {
   canDelete: (attrDef: Attribute, currentCount: number) => boolean;
   formatDisplayValue: (type: string | null | undefined, value: string) => string;
 
-  pendingByKey: Record<string, ChangeRequestLocal>;
-  onCancelChangeRequest: (key: string) => void;
-
   onStartEdit: (rowKey: string, attributeId: number, paId: number | null, currentValue: string) => void;
-  /** Ancienne sauvegarde "manuelle" au niveau valeur unique — plus utilisée avec le composant unifié */
-  onManualSave: (rowKey: string, attributeId: number, paId: number | null) => void;
   onCancelEdit: () => void;
 
-  /** Ancien blur par ligne unique — non utilisé par AttributeRow (pas d'auto-save au blur) */
-  onBlurRow: (rowKey: string, attributeId: number, paId: number | null, originalValue: string) => void;
-
-  onDeleteValue: (paId: number) => void;
-
-  onOpenMenu: (
-    e: React.MouseEvent<HTMLElement>,
-    key: string,
-    attr: Attribute,
-    paId: number | null,
-    currentValue: string,
-    canRequestUpdate: boolean,
-    canRequestDelete: boolean,
-    canRequestCreate?: boolean,
-    rowValues?: { id: number; value: string }[]
-  ) => void;
+  onOpenChangeRequest: (attr: Attribute, rowValues: { id: number; value: string }[]) => void;
 
   /** Sauvegarde agrégée au niveau ligne (diff added/updated/deleted) */
   onRowSave: (payload: {
@@ -61,6 +35,10 @@ type Props = {
 
   inlineEditOnChipClickInEditMode?: boolean;
   hasUnsavedChangesByAttrId?: Record<number, boolean>;
+
+  // NEW: enveloppes CR complètes + callback pour ouvrir une CR existante
+  changeRequests: ChangeRequestSummary[];
+  onOpenExistingChangeRequest: (crId: number) => void;
 };
 
 const AttributesList: React.FC<Props> = ({
@@ -74,22 +52,19 @@ const AttributesList: React.FC<Props> = ({
   canEdit,
   canDelete,
   formatDisplayValue,
-  pendingByKey,
-  onCancelChangeRequest,
   onStartEdit,
-  onManualSave, // non utilisé ici (conservé pour compat)
   onCancelEdit,
-  onBlurRow,   // non utilisé ici (conservé pour compat)
-  onDeleteValue,
-  onOpenMenu,
+  onOpenChangeRequest,
   onRowSave,
   onRowCancel,
   inlineEditOnChipClickInEditMode,
   hasUnsavedChangesByAttrId,
+  // NEW
+  changeRequests,
+  onOpenExistingChangeRequest,
 }) => {
   return (
     <Stack spacing={2} divider={<Divider light />}>
-
       {allAttributes.map((attrDef) => {
         // Toutes les PA (full) pour cet attribut
         const userAttrsFull: PersonAttributeFull[] = profileAttributes.filter(
@@ -116,9 +91,6 @@ const AttributesList: React.FC<Props> = ({
         const allowEditRow = canEdit(attrDef);
         const allowDeleteRow = canDelete(attrDef, count);
 
-        // NB: pendingByKey contient possiblement des entrées pour pa-<id> et add-<attrId>
-        // AttributeRow se charge d’afficher l’état agrégé via statusSlot
-
         return (
           <AttributeRow
             key={`attr-${attrDef.id}`}
@@ -135,19 +107,20 @@ const AttributesList: React.FC<Props> = ({
             allowEdit={allowEditRow}
             allowDelete={allowDeleteRow}
             allowAdd={allowAdd}
-            pendingByKey={pendingByKey}
             formatDisplayValue={formatDisplayValue}
             onStartEdit={onStartEdit}
             onCancelEdit={onCancelEdit}
-            onOpenMenu={onOpenMenu}
+            onOpenChangeRequest={onOpenChangeRequest}
             onRowSave={onRowSave}
             onRowCancel={onRowCancel}
             inlineEditOnChipClickInEditMode={inlineEditOnChipClickInEditMode}
             hasUnsavedChanges={hasUnsavedChangesByAttrId?.[attrDef.id]}
+            // NEW
+            changeRequests={changeRequests}
+            onOpenExistingChangeRequest={onOpenExistingChangeRequest}
           />
         );
       })}
-
     </Stack>
   );
 };

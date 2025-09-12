@@ -1,4 +1,3 @@
-// src/scenes/profile/components/attributes/inputs/TypedValueInput.tsx
 import React from "react";
 import {
   Box,
@@ -9,6 +8,8 @@ import {
   SelectChangeEvent,
   TextField,
   Typography,
+  FormControl,
+  FormHelperText,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
@@ -42,53 +43,62 @@ type Props = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_RE = /^https?:\/\/.+/i;
 
-function getTypeValidation(type: AttributeType, value: string) {
+function computeValidation(type: AttributeType, value: string) {
   const v = (value ?? "").trim();
+
+  // On NE gère pas "requis" ici : seulement la validité si non vide.
   switch (type) {
     case "TEXT":
-      return { error: false, helper: "" };
+      return { invalid: false, helper: "" };
+
     case "NUMBER": {
-      if (v === "") return { error: true, helper: "Nombre requis" };
-      const n = Number(v);
+      if (v === "") return { invalid: false, helper: "" };
+      const n = Number(v.replace(",", ".")); // tolère la virgule
       return Number.isNaN(n)
-        ? { error: true, helper: "Entrez un nombre valide" }
-        : { error: false, helper: "" };
+        ? { invalid: true, helper: "Entrez un nombre valide" }
+        : { invalid: false, helper: "" };
     }
+
     case "DATE": {
-      if (v === "") return { error: true, helper: "Date requise" };
+      if (v === "") return { invalid: false, helper: "" };
       const ok = dayjs(v).isValid();
       return ok
-        ? { error: false, helper: "" }
-        : { error: true, helper: "Format invalide (YYYY-MM-DD)" };
+        ? { invalid: false, helper: "" }
+        : { invalid: true, helper: "Format invalide (YYYY-MM-DD)" };
     }
+
     case "DATETIME": {
-      if (v === "") return { error: true, helper: "Date/heure requise" };
+      if (v === "") return { invalid: false, helper: "" };
       const ok = dayjs(v).isValid();
       return ok
-        ? { error: false, helper: "" }
-        : { error: true, helper: "Format invalide (ISO 8601)" };
+        ? { invalid: false, helper: "" }
+        : { invalid: true, helper: "Format invalide (ISO 8601)" };
     }
+
     case "BOOLEAN": {
-      if (v === "") return { error: true, helper: "Choix requis" };
+      if (v === "") return { invalid: false, helper: "" };
       const ok = v === "true" || v === "false";
       return ok
-        ? { error: false, helper: "" }
-        : { error: true, helper: "Valeur booléenne requise" };
+        ? { invalid: false, helper: "" }
+        : { invalid: true, helper: "Valeur booléenne requise" };
     }
+
     case "URL": {
-      if (v === "") return { error: true, helper: "URL requise" };
+      if (v === "") return { invalid: false, helper: "" };
       return URL_RE.test(v)
-        ? { error: false, helper: "" }
-        : { error: true, helper: "URL invalide (http(s)://...)" };
+        ? { invalid: false, helper: "" }
+        : { invalid: true, helper: "URL invalide (http(s)://...)" };
     }
+
     case "EMAIL": {
-      if (v === "") return { error: true, helper: "Email requis" };
+      if (v === "") return { invalid: false, helper: "" };
       return EMAIL_RE.test(v)
-        ? { error: false, helper: "" }
-        : { error: true, helper: "Email invalide" };
+        ? { invalid: false, helper: "" }
+        : { invalid: true, helper: "Email invalide" };
     }
+
     default:
-      return { error: false, helper: "" };
+      return { invalid: false, helper: "" };
   }
 }
 
@@ -110,21 +120,37 @@ const EndAdornment: React.FC<{
     )}
     <IconButton
       size="small"
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => {
+        // important : ne pas laisser filer au listener global (capture)
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       disabled={disableSave}
-      onClick={onSave}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSave();
+      }}
     >
       <SaveIcon fontSize="inherit" />
     </IconButton>
     <IconButton
       size="small"
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onCancel}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel();
+      }}
     >
       <CloseIcon fontSize="inherit" />
     </IconButton>
   </>
 );
+
+// ancre l'input en haut de la ligne (évite le "sursaut" du centrage vertical)
+const anchorTopSx = { alignSelf: "flex-start" } as const;
 
 const TypedValueInput: React.FC<Props> = ({
   label,
@@ -137,102 +163,139 @@ const TypedValueInput: React.FC<Props> = ({
   onBlur,
   inputRef,
 }) => {
-  const { error, helper } = getTypeValidation(type, value);
-  const disableSave = error || status === "saving";
+  // On n'affiche l'erreur qu'après interaction
+  const [touched, setTouched] = React.useState(false);
+
+  // reset quand on change de type / de ref (nouvelle édition)
+  React.useEffect(() => {
+    setTouched(false);
+  }, [type, inputRef]);
+
+  const onUserChange = (v: string) => {
+    if (!touched) setTouched(true);
+    onChange(v);
+  };
+
+  const { invalid, helper } = computeValidation(type, value);
+  const showError = touched && invalid;
+
+  // On bloque "save" seulement si invalide (après interaction) ou si saving
+  const disableSave = showError || status === "saving";
 
   const trySave = () => {
     if (!disableSave) onSave();
   };
 
   const tryBlur = () => {
-    if (!error) onBlur?.();
+    if (!touched) setTouched(true);
+    onBlur?.();
   };
 
   // DATE
   if (type === "DATE") {
     return (
-      <DatePicker
-        label={label}
-        value={value ? dayjs(value) : null}
-        onChange={(nv) => onChange(nv?.toISOString() || "")}
-        onAccept={tryBlur}
-        onClose={tryBlur}
-        slotProps={{
-          textField: {
-            size: "small",
-            sx: { minWidth: 180 },
-            inputRef,
-            helperText: helper,
-            error,
-            InputProps: {
-              endAdornment: (
-                <EndAdornment
-                  status={status}
-                  disableSave={disableSave}
-                  onSave={trySave}
-                  onCancel={onCancel}
-                />
-              ),
+      <Box sx={{ display: "inline-flex", flexDirection: "column", ...anchorTopSx }}>
+        <DatePicker
+          label={label}
+          value={value ? dayjs(value) : null}
+          onChange={(nv) => onUserChange(nv?.toISOString() || "")}
+          onAccept={tryBlur}
+          onClose={tryBlur}
+          slotProps={{
+            textField: {
+              size: "small",
+              sx: { minWidth: 180 },
+              inputRef,
+              // pas de helperText ici → pas d'espace tant qu'il n'y a pas d'erreur
+              InputProps: {
+                endAdornment: (
+                  <EndAdornment
+                    status={status}
+                    disableSave={disableSave}
+                    onSave={trySave}
+                    onCancel={onCancel}
+                  />
+                ),
+              },
             },
-          },
-        }}
-      />
+          }}
+        />
+        {showError && (
+          <FormHelperText error sx={{ m: 0, mt: 0.25 }}>
+            {helper}
+          </FormHelperText>
+        )}
+      </Box>
     );
   }
 
   // DATETIME
   if (type === "DATETIME") {
     return (
-      <DateTimePicker
-        label={label}
-        value={value ? dayjs(value) : null}
-        onChange={(nv) => onChange(nv?.toISOString() || "")}
-        onAccept={tryBlur}
-        onClose={tryBlur}
-        slotProps={{
-          textField: {
-            size: "small",
-            sx: { minWidth: 220 },
-            inputRef,
-            helperText: helper,
-            error,
-            InputProps: {
-              endAdornment: (
-                <EndAdornment
-                  status={status}
-                  disableSave={disableSave}
-                  onSave={trySave}
-                  onCancel={onCancel}
-                />
-              ),
+      <Box sx={{ display: "inline-flex", flexDirection: "column", ...anchorTopSx }}>
+        <DateTimePicker
+          label={label}
+          value={value ? dayjs(value) : null}
+          onChange={(nv) => onUserChange(nv?.toISOString() || "")}
+          onAccept={tryBlur}
+          onClose={tryBlur}
+          slotProps={{
+            textField: {
+              size: "small",
+              sx: { minWidth: 220 },
+              inputRef,
+              // pas de helperText ici
+              InputProps: {
+                endAdornment: (
+                  <EndAdornment
+                    status={status}
+                    disableSave={disableSave}
+                    onSave={trySave}
+                    onCancel={onCancel}
+                  />
+                ),
+              },
             },
-          },
-        }}
-      />
+          }}
+        />
+        {showError && (
+          <FormHelperText error sx={{ m: 0, mt: 0.25 }}>
+            {helper}
+          </FormHelperText>
+        )}
+      </Box>
     );
   }
 
   // BOOLEAN
   if (type === "BOOLEAN") {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <FormControl size="small" sx={{ minWidth: 120, ...anchorTopSx }} error={showError}>
         <Select
-          size="small"
           value={value === "true" ? "true" : value === "false" ? "false" : ""}
-          onChange={(e: SelectChangeEvent) => onChange(e.target.value as string)}
+          onChange={(e: SelectChangeEvent) => {
+            if (!touched) setTouched(true);
+            onChange(e.target.value as string);
+          }}
           onBlur={tryBlur}
-          sx={{ minWidth: 120 }}
         >
           <MenuItem value="true">Oui</MenuItem>
           <MenuItem value="false">Non</MenuItem>
         </Select>
-        <EndAdornment
-          status={status}
-          disableSave={disableSave}
-          onSave={trySave}
-          onCancel={onCancel}
-        />
-      </Box>
+
+        {showError && (
+          <FormHelperText sx={{ m: 0, mt: 0.25 }}>{helper}</FormHelperText>
+        )}
+
+        <Box sx={{ mt: 0.5, ml: 0.5 }}>
+          <EndAdornment
+            status={status}
+            disableSave={disableSave}
+            onSave={trySave}
+            onCancel={onCancel}
+          />
+        </Box>
+      </FormControl>
     );
   }
 
@@ -251,29 +314,34 @@ const TypedValueInput: React.FC<Props> = ({
   };
 
   return (
-    <TextField
-      type={inputType}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      size="small"
-      autoFocus
-      inputRef={inputRef}
-      onKeyDown={onKeyDown}
-      onBlur={tryBlur}
-      sx={{ minWidth: 200 }}
-      error={error}
-      helperText={helper}
-      InputProps={{
-        endAdornment: (
-          <EndAdornment
-            status={status}
-            disableSave={disableSave}
-            onSave={trySave}
-            onCancel={onCancel}
-          />
-        ),
-      }}
-    />
+    <Box sx={{ display: "inline-flex", flexDirection: "column", ...anchorTopSx }}>
+      <TextField
+        type={inputType}
+        value={value}
+        onChange={(e) => onUserChange(e.target.value)}
+        size="small"
+        autoFocus
+        inputRef={inputRef}
+        onKeyDown={onKeyDown}
+        onBlur={tryBlur}
+        sx={{ minWidth: 200 }}
+        InputProps={{
+          endAdornment: (
+            <EndAdornment
+              status={status}
+              disableSave={disableSave}
+              onSave={trySave}
+              onCancel={onCancel}
+            />
+          ),
+        }}
+      />
+      {showError && (
+        <FormHelperText error sx={{ m: 0, mt: 0.25 }}>
+          {helper}
+        </FormHelperText>
+      )}
+    </Box>
   );
 };
 

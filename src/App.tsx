@@ -1,12 +1,11 @@
-import {RouterProvider} from "react-router-dom";
+import { RouterProvider } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { router } from "./components/routes/routes";
-import './services/notification/toastifyCustom.css';
 import ParticlesBackground from "./components/layout/ParticleBackground";
-import { GlobalDataProvider } from "./contexts/GlobalDataContext";
+import { router } from "./components/routes/routes";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProfileProvider } from "./contexts/ProfileContext";
+import './services/notification/toastifyCustom.css';
 
 function App() {
   return (

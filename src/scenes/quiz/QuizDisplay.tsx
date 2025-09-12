@@ -789,6 +789,7 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
         <TextField
           inputRef={inputRef}
           variant="outlined"
+          color="accent"
           placeholder="Tapez votre réponse ici…"
           className={shake ? 'textField-shake' : undefined}
           label={showInitials&&initials?`Initiales : ${initials}`:''}

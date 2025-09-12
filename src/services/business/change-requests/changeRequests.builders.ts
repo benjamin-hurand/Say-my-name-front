@@ -1,13 +1,13 @@
 // src/services/business/change-requests/changeRequests.builders.ts
 
-import { SubmitChangeRequestRequest } from "../../dto/ChangeRequestsDto";
+import { SubmitChangeRequestDto } from "../../dto/ChangeRequestsDto";
 
 export function buildCreateRequest(
   personId: number,
   attributeId: number,
   proposedValue: string,
   reason: string
-): SubmitChangeRequestRequest {
+): SubmitChangeRequestDto {
   return { personId, attributeId, action: "CREATE", proposedValue, reason };
 }
 
@@ -17,7 +17,7 @@ export function buildUpdateRequest(
   personAttributeId: number,
   proposedValue: string,
   reason: string
-): SubmitChangeRequestRequest {
+): SubmitChangeRequestDto {
   return {
     personId,
     attributeId,
@@ -33,6 +33,6 @@ export function buildDeleteRequest(
   attributeId: number,
   personAttributeId: number,
   reason: string
-): SubmitChangeRequestRequest {
+): SubmitChangeRequestDto {
   return { personId, attributeId, personAttributeId, action: "DELETE", reason };
 }

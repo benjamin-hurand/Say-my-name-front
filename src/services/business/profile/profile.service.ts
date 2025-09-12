@@ -3,6 +3,7 @@
 import API from "../../api/apiUtils";
 import { ProfileResponseDto } from "../../dto/ProfileResponseDto";
 import { AttributeChanges } from "../../../models/commons/Profile/AttributesChanges";
+import { AttributeValuesResponseDto } from "../../../models/commons/PersonAttribute";
 
 const PROFILE_ENDPOINT = "/profile";
 
@@ -13,18 +14,17 @@ export async function getProfile(): Promise<ProfileResponseDto> {
 }
 
 /**
- * Écritures canonique (bulk) des changements multi-valeurs pour un attribut donné.
- * - Le back déduit la Person depuis l'utilisateur courant.
- * - Aucune tentative de fallback (polyfill) : l’endpoint bulk est la source de vérité.
- *
- * @param _personId (obsolète / ignoré) conservé pour compat éventuelle
- * @param attributeId identifiant de l’attribut ciblé
- * @param changes { create: [{value}], update: [{id,value}], delete: [{id}] }
+ * Écritures canoniques (bulk) + renvoie l'état normalisé de l'attribut ciblé.
+ * Le back déduit la Person depuis l'utilisateur courant.
  */
 export async function saveAttributeChanges(
-  _personId: number, // non utilisé (le back déduit depuis le principal)
+  _personId: number, // ignoré
   attributeId: number,
   changes: AttributeChanges
-): Promise<void> {
-  await API.post(`${PROFILE_ENDPOINT}/attributes/${attributeId}/bulk`, changes);
+): Promise<AttributeValuesResponseDto> {
+  const { data } = await API.post<AttributeValuesResponseDto>(
+    `${PROFILE_ENDPOINT}/attributes/${attributeId}/bulk`,
+    changes
+  );
+  return data;
 }

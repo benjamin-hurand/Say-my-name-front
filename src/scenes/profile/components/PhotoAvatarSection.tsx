@@ -31,11 +31,9 @@ import Cropper from "react-easy-crop";
 import { useProfile } from "../../../contexts/ProfileContext";
 import { Photo } from "../../../models/commons/Photo";
 import { submitPhotoForApproval } from "../../../services/business/photos/photo.service";
-import {
-  notifyError,
-  notifySuccess,
-} from "../../../services/notification/toast.service";
+import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 import getCroppedImg from "../../../utils/getCroppedImg";
+import { getApiErrorMessage } from "../../../utils/apiError"; // ⬅️ NEW
 
 const MIN_UPLOAD_SIZE = 1024 * 1; // 1 KB
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 5; // 5 MB
@@ -75,20 +73,24 @@ const PhotoAvatarSection: React.FC = () => {
   const handleMenuClose = () => setAnchorEl(null);
 
   // --- Dropzone ---
-  const onDropAccepted = useCallback((accepted: File[]) => {
-    const file = accepted[0];
-    if (!file) return;
-    setRawFile(file);
-    setErrorMsg(null);
+  const onDropAccepted = useCallback(
+    (accepted: File[]) => {
+      const file = accepted[0];
+      if (!file) return;
+      setRawFile(file);
+      setErrorMsg(null);
 
-    // si une photo PENDING existe déjà, on peut choisir de demander la confirmation
-    const alreadyPending = profile?.photos?.find((p) => p.status === "PENDING");
-    if (alreadyPending) {
-      setPendingPhoto(alreadyPending);
-      setConfirmReplaceOpen(true);
-    }
-    setCropModalOpen(true);
-  }, [profile?.photos]);
+      // si une photo PENDING existe déjà, on demande confirmation
+      const alreadyPending = profile?.photos?.find((p) => p.status === "PENDING");
+      if (alreadyPending) {
+        setPendingPhoto(alreadyPending);
+        setConfirmReplaceOpen(true);
+      }
+      // on ouvre le cropper ; l'annulation fermera et resettera l'input
+      setCropModalOpen(true);
+    },
+    [profile?.photos]
+  );
 
   const onDropRejected = useCallback((rejections: any[]) => {
     if (!rejections || rejections.length === 0) {
@@ -111,17 +113,16 @@ const PhotoAvatarSection: React.FC = () => {
     notifyError(reasons.join(" • "));
   }, []);
 
-  const { getRootProps, getInputProps, open: openDropzone, inputRef } =
-    useDropzone({
-      onDropAccepted,
-      onDropRejected,
-      accept: { "image/*": [] },
-      maxFiles: 1,
-      noClick: true,
-      noKeyboard: true,
-      minSize: MIN_UPLOAD_SIZE,
-      maxSize: MAX_UPLOAD_SIZE,
-    });
+  const { getRootProps, getInputProps, open: openDropzone, inputRef } = useDropzone({
+    onDropAccepted,
+    onDropRejected,
+    accept: { "image/*": [] },
+    maxFiles: 1,
+    noClick: true,
+    noKeyboard: true,
+    minSize: MIN_UPLOAD_SIZE,
+    maxSize: MAX_UPLOAD_SIZE,
+  });
 
   // création/cleanup d'un unique Object URL à partir du fichier brut
   useEffect(() => {
@@ -147,32 +148,30 @@ const PhotoAvatarSection: React.FC = () => {
     setCroppedAreaPixels(pixels);
   }, []);
 
-  // Envoi + mise à jour locale optimiste (remplacement PENDING si présent)
+  // === Optimistic submit : envoi + mise à jour locale (remplace/ajoute la PENDING)
   const handleCropSave = async () => {
     if (!rawFile || !croppedAreaPixels || !imageUrl || !profile) return;
     setUploading(true);
     try {
+      // 1) crée l'image recadrée côté client
       const blob = await getCroppedImg(imageUrl, croppedAreaPixels, rotation);
       const mime = (blob as any).type || rawFile.type || "image/jpeg";
-      const fileToSend = new File(
-        [blob],
-        rawFile.name || `photo-${Date.now()}.jpg`,
-        { type: mime }
-      );
+      const fileToSend = new File([blob], rawFile.name || `photo-${Date.now()}.jpg`, { type: mime });
 
+      // 2) envoie au back — retourne la nouvelle Photo (status = PENDING)
       const newPhoto = await submitPhotoForApproval(profile.id, fileToSend);
 
+      // 3) patch local ciblé : remplace la PENDING existante ou ajoute la nouvelle
       setProfile((prev) => {
         if (!prev) return prev;
         const alreadyPending = prev.photos.find((p) => p.status === "PENDING");
         const updatedPhotos = alreadyPending
           ? prev.photos.map((p) => (p.status === "PENDING" ? newPhoto : p))
           : [...prev.photos, newPhoto];
-
         return { ...prev, photos: updatedPhotos };
       });
 
-      // reset UI
+      // 4) reset UI
       setCropModalOpen(false);
       setRawFile(null);
       setZoom(1);
@@ -182,8 +181,7 @@ const PhotoAvatarSection: React.FC = () => {
 
       notifySuccess("Photo soumise à vérification !");
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || "Erreur lors de la soumission de la photo.";
+      const msg = getApiErrorMessage(err, "Erreur lors de la soumission de la photo."); // ⬅️ NEW
       setErrorMsg(msg);
       notifyError(msg);
     } finally {
@@ -191,52 +189,10 @@ const PhotoAvatarSection: React.FC = () => {
     }
   };
 
-  // Variante: envoi + refreshProfile (si tu veux forcer la synchro serveur)
-  const doSubmitPhoto = async () => {
-    if (!rawFile || !croppedAreaPixels || !imageUrl || !profile) return;
-    setUploading(true);
-    try {
-      const blob = await getCroppedImg(imageUrl, croppedAreaPixels, rotation);
-      const mime = (blob as any).type || rawFile.type || "image/jpeg";
-      const fileToSend = new File(
-        [blob],
-        rawFile.name || `photo-${Date.now()}.jpg`,
-        { type: mime }
-      );
-
-      await submitPhotoForApproval(profile.id, fileToSend);
-      await refreshProfile();
-
-      setCropModalOpen(false);
-      setRawFile(null);
-      setZoom(1);
-      setRotation(0);
-      setConfirmReplaceOpen(false);
-      setPendingPhoto(null);
-
-      notifySuccess("Mise à jour photo soumise à vérification !");
-    } catch (e: any) {
-      console.error(e);
-      notifyError(
-        e?.response?.data?.message || "Erreur lors de la soumission de la photo."
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // --- Loading / profil indisponible : on garde une UX locale pour l'avatar
+  // --- Loading / profil indisponible : UX locale
   if (loading) {
     return (
-      <Container
-        maxWidth="sm"
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          py: 4,
-        }}
-      >
+      <Container maxWidth="sm" sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 4 }}>
         <CircularProgress />
       </Container>
     );
@@ -245,9 +201,7 @@ const PhotoAvatarSection: React.FC = () => {
   if (!profile) {
     return (
       <Container maxWidth="sm" sx={{ py: 2 }}>
-        <Typography color="text.secondary">
-          Profil indisponible pour l’instant.
-        </Typography>
+        <Typography color="text.secondary">Profil indisponible pour l’instant.</Typography>
         <Box sx={{ mt: 2, textAlign: "right" }}>
           <Button variant="contained" onClick={refreshProfile}>
             Réessayer
@@ -270,11 +224,7 @@ const PhotoAvatarSection: React.FC = () => {
       >
         <input {...getInputProps()} />
         <Box sx={{ position: "relative", width: 120, height: 120 }}>
-          <Avatar
-            alt={`Avatar de ${username}`}
-            src={profileCurrentPhotoUrl}
-            sx={{ width: "100%", height: "100%" }}
-          />
+          <Avatar alt={`Avatar de ${username}`} src={profileCurrentPhotoUrl} sx={{ width: "100%", height: "100%" }} />
           <Tooltip title="Changer la photo">
             <IconButton
               size="small"
@@ -290,11 +240,7 @@ const PhotoAvatarSection: React.FC = () => {
                 "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
               }}
             >
-              {uploading ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                <PhotoCameraIcon sx={{ color: "#fff" }} />
-              )}
+              {uploading ? <CircularProgress size={20} color="inherit" /> : <PhotoCameraIcon sx={{ color: "#fff" }} />}
             </IconButton>
           </Tooltip>
           <Tooltip title="Voir en grand">
@@ -319,25 +265,12 @@ const PhotoAvatarSection: React.FC = () => {
       </Box>
 
       {/* Lightbox Preview Photo */}
-      <Dialog
-        open={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ m: 0, p: 2, position: "relative" }}>
-          <IconButton
-            aria-label="actions"
-            onClick={handleMenuOpen}
-            sx={{ position: "absolute", right: 40, top: 8 }}
-          >
+          <IconButton aria-label="actions" onClick={handleMenuOpen} sx={{ position: "absolute", right: 40, top: 8 }}>
             <MoreVertIcon />
           </IconButton>
-          <IconButton
-            aria-label="close"
-            onClick={() => setLightboxOpen(false)}
-            sx={{ position: "absolute", right: 8, top: 8 }}
-          >
+          <IconButton aria-label="close" onClick={() => setLightboxOpen(false)} sx={{ position: "absolute", right: 8, top: 8 }}>
             <CloseIcon />
           </IconButton>
           <Menu anchorEl={anchorEl} open={openMenu} onClose={handleMenuClose}>
@@ -356,11 +289,7 @@ const PhotoAvatarSection: React.FC = () => {
             component="img"
             src={profileCurrentPhotoUrl}
             alt={`Avatar de ${username}`}
-            sx={{
-              maxWidth: "100%",
-              maxHeight: "calc(70vh - 100px)",
-              objectFit: "contain",
-            }}
+            sx={{ maxWidth: "100%", maxHeight: "calc(70vh - 100px)", objectFit: "contain" }}
           />
         </DialogContent>
         <DialogActions sx={{ justifyContent: "flex-end", px: 3, py: 2 }}>
@@ -371,23 +300,11 @@ const PhotoAvatarSection: React.FC = () => {
       </Dialog>
 
       {/* Crop Modal Photo */}
-      <Dialog
-        open={cropModalOpen}
-        onClose={() => setCropModalOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={cropModalOpen} onClose={() => setCropModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Recadrer votre photo</DialogTitle>
         <DialogContent>
           {rawFile && (
-            <Box
-              sx={{
-                position: "relative",
-                width: "100%",
-                height: 300,
-                bgcolor: "#000",
-              }}
-            >
+            <Box sx={{ position: "relative", width: "100%", height: 300, bgcolor: "#000" }}>
               <Cropper
                 image={imageUrl || undefined}
                 crop={crop}
@@ -403,13 +320,7 @@ const PhotoAvatarSection: React.FC = () => {
           )}
           <Box sx={{ mt: 2 }}>
             <Typography gutterBottom>Zoom</Typography>
-            <Slider
-              value={zoom}
-              min={1}
-              max={3}
-              step={0.1}
-              onChange={(_, v) => setZoom(v as number)}
-            />
+            <Slider value={zoom} min={1} max={3} step={0.1} onChange={(_, v) => setZoom(v as number)} />
             <Typography gutterBottom>Rotation</Typography>
             <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
               <IconButton onClick={() => setRotation((r) => r - 90)}>
@@ -442,35 +353,42 @@ const PhotoAvatarSection: React.FC = () => {
       </Dialog>
 
       {/* Dialog remplacement photo */}
-      <Dialog
-        open={confirmReplaceOpen}
-        onClose={() => setConfirmReplaceOpen(false)}
-      >
+      <Dialog open={confirmReplaceOpen} onClose={() => setConfirmReplaceOpen(false)}>
         <DialogTitle>Remplacer la photo en attente</DialogTitle>
         <DialogContent>
-          <Typography>
-            Une photo est déjà en attente de validation. Voulez-vous la
-            remplacer ?
-          </Typography>
+          <Typography>Une photo est déjà en attente de validation. Voulez-vous la remplacer ?</Typography>
 
           {pendingPhoto && (
             <img
               src={pendingPhoto.url}
               alt="Photo en attente"
-              style={{
-                maxWidth: "100%",
-                marginTop: 16,
-                borderRadius: 8,
-                border: "1px solid #ddd",
-              }}
+              style={{ maxWidth: "100%", marginTop: 16, borderRadius: 8, border: "1px solid #ddd" }}
             />
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmReplaceOpen(false)} color="inherit">
+          <Button
+            onClick={() => {
+              // Annuler complètement : ferme la confirmation + le cropper et reset le fichier
+              setConfirmReplaceOpen(false);
+              setCropModalOpen(false);
+              setRawFile(null);
+              setImageUrl(null);
+              setCroppedAreaPixels(null);
+              setErrorMsg(null);
+            }}
+            color="inherit"
+          >
             Annuler
           </Button>
-          <Button onClick={doSubmitPhoto} color="error" variant="contained">
+          <Button
+            onClick={() => {
+              // Continuer : on ferme juste la confirmation et on laisse l'utilisateur recadrer puis "Valider"
+              setConfirmReplaceOpen(false);
+            }}
+            color="error"
+            variant="contained"
+          >
             Remplacer
           </Button>
         </DialogActions>

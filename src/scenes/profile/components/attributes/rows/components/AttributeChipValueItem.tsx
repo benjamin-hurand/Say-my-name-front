@@ -1,11 +1,14 @@
 import React from "react";
 import { Box, Chip, Tooltip, Typography } from "@mui/material";
 import HourglassTopOutlinedIcon from "@mui/icons-material/HourglassTopOutlined";
+import UndoOutlinedIcon from "@mui/icons-material/UndoOutlined";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import dayjs from "dayjs";
+import { alpha } from "@mui/material/styles";
 import { Attribute } from "../../../../../../models/commons/Attribute";
 import { isFuture, PersonAttributeFull } from "../../../../../../models/commons/PersonAttribute";
 import TypedValueInput from "../../inputs/TypedValueInput";
-
 
 /** Gardé local ici pour éviter un 3ᵉ fichier "types". */
 export type RowStatus = "idle" | "saving" | "success" | "error";
@@ -25,6 +28,13 @@ export type ChipValueItemProps = {
   allowDelete: boolean;
   inlineEditOnChipClickInEditMode: boolean;
 
+  /** Marqueur de changement (utilisé dans le compositeur) : create/update ; delete géré via ghost list */
+  changeMarker?: "create" | "update" | null;
+  /** Rend la chip “fantôme” (suppression) : barrée, désaturée */
+  ghost?: boolean;
+  /** Callback pour annuler une suppression (utilisé pour les chips ghost) */
+  onUndoDelete?: (paId: number) => void;
+
   onStartEdit: (rowKey: string, attributeId: number, paId: number | null, currentValue: string) => void;
   onCancelEdit: () => void;
   onChangeAttrValue: (v: string) => void;
@@ -43,6 +53,9 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
   formatDisplayValue,
   allowDelete,
   inlineEditOnChipClickInEditMode,
+  changeMarker = null,
+  ghost = false,
+  onUndoDelete,
   onStartEdit,
   onCancelEdit,
   onChangeAttrValue,
@@ -105,16 +118,43 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
         wordBreak: "break-word",
         overflowWrap: "anywhere",
         lineHeight: 1.25,
+        textDecoration: ghost ? "line-through" : "none",
+        color: ghost ? "text.secondary" : undefined,
       }}
     >
       {display || "—"}
     </Box>
   );
 
+  const futureInfoText =
+    isFutureChip(pa) && pa.validFrom
+      ? `Actif le ${dayjs(pa.validFrom).format("DD/MM/YYYY HH:mm")}`
+      : isFutureChip(pa)
+      ? "Actif ultérieurement"
+      : "";
+
+  const markerInfoText =
+    changeMarker === "create" ? "Ajout" : changeMarker === "update" ? "Modifié" : "";
+
   const tooltipTitle = (
     <Box sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 480 }}>
       {isTruncated ? (display || "—") : null}
-      {rowEditMode && inlineEditOnChipClickInEditMode && (
+
+      {/* En vue : affiche l'info future */}
+      {!rowEditMode && futureInfoText && (
+        <Typography variant="caption" sx={{ display: "block", opacity: 0.8, mt: 0.5 }}>
+          {futureInfoText}
+        </Typography>
+      )}
+
+      {/* En compositeur/édition de ligne : si marqué create/update, ajoute la légende */}
+      {rowEditMode && markerInfoText && (
+        <Typography variant="caption" sx={{ display: "block", opacity: 0.8, mt: 0.5 }}>
+          {markerInfoText}
+        </Typography>
+      )}
+
+      {rowEditMode && inlineEditOnChipClickInEditMode && !ghost && (
         <Typography variant="caption" sx={{ display: "block", opacity: 0.7, mt: 0.5 }}>
           Cliquer pour modifier
         </Typography>
@@ -122,87 +162,132 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
     </Box>
   );
 
-  const chipVisual = (
-    <Box sx={{ position: "relative", display: "inline-flex" }}>
-      <Chip
-        className={rowEditMode ? "attr-chip--edit" : "attr-chip"}
-        label={clampedLabel}
-        variant="outlined"
-        onClick={
-          rowEditMode && inlineEditOnChipClickInEditMode
-            ? () => onStartEdit(chipKey, attrDef.id, pa.id, raw)
-            : undefined
-        }
-        onDelete={rowEditMode && allowDelete ? () => onLocalDelete(pa.id) : undefined}
-        sx={{
-          borderStyle: "solid",
-          borderWidth: 1,
-          "& .MuiChip-label": {
-            px: 2,
-            py: isMultiline ? 0.9 : 0.4,
-          },
-          maxWidth: { xs: "100%", sm: 360, md: 420 },
-          alignSelf: "flex-start",
-        }}
-        aria-label={`${attrDef.name} : ${display || "vide"}`}
-      />
+  /** Leading icon selon contexte :
+   *  - vue (rowEditMode=false) : sablier si futur
+   *  - compositeur/édition : + ou ✏ si changeMarker défini
+   */
+  const leadingIcon = !ghost
+    ? !rowEditMode && isFutureChip(pa)
+      ? <HourglassTopOutlinedIcon fontSize="small" />
+      : changeMarker === "create"
+      ? <AddRoundedIcon fontSize="small" />
+      : changeMarker === "update"
+      ? <EditOutlinedIcon fontSize="small" />
+      : undefined
+    : undefined;
 
-      {isFutureChip(pa) && (
-        <Tooltip
-          title={
-            pa.validFrom
-              ? `Disponible à partir du ${dayjs(pa.validFrom).format("DD/MM/YYYY HH:mm")}`
-              : "À venir"
-          }
-          arrow
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              top: -4,
-              right: -4,
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              display: "grid",
-              placeItems: "center",
-              backdropFilter: "blur(2px)",
-              backgroundColor: "rgba(255,255,255,0.15)",
-              border: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <HourglassTopOutlinedIcon sx={{ fontSize: 10, opacity: 0.8 }} />
-          </Box>
-        </Tooltip>
-      )}
-    </Box>
-  );
+  /** Teinte de bordure selon changeMarker (compositeur) */
+  const borderTint = (t: any) => {
+    if (ghost) return t.palette.divider;
+    if (changeMarker === "create") return alpha(t.palette.success.main, 0.7);
+    if (changeMarker === "update") return alpha(t.palette.info.main, 0.7);
+    return undefined;
+    // en vue standard, on reste sur la bordure par défaut
+  };
 
-  const showTooltip = isTruncated || (rowEditMode && inlineEditOnChipClickInEditMode);
+  const showTooltip =
+    isTruncated ||
+    (!rowEditMode && !!futureInfoText) ||
+    (rowEditMode && (inlineEditOnChipClickInEditMode || !!markerInfoText) && !ghost);
 
   return (
-    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.25 }}>
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.25, overflow: "visible" }}>
       {isFieldEditing ? (
-        <TypedValueInput
-          label={attrDef.name}
-          type={attrDef.type as any}
-          value={attrValue}
-          status={status}
-          inputRef={inputRef}
-          onChange={onChangeAttrValue}
-          onSave={() => onLocalUpdate(pa.id, attrValue)}
-          onCancel={onCancelEdit}
-          onBlur={() => {
-            /* no auto-save */
-          }}
-        />
+        <Box>
+          <TypedValueInput
+            label={attrDef.name}
+            type={attrDef.type as any}
+            value={attrValue}
+            status={status}
+            inputRef={inputRef}
+            onChange={onChangeAttrValue}
+            onSave={() => onLocalUpdate(pa.id, attrValue)}
+            onCancel={onCancelEdit}
+            onBlur={() => {
+              /* no auto-save */
+            }}
+          />
+          {/* Helper 'future' en édition */}
+          {isFutureChip(pa) && (
+            <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "text.secondary" }}>
+              {futureInfoText || "Actif ultérieurement"}
+            </Typography>
+          )}
+        </Box>
       ) : showTooltip ? (
         <Tooltip title={tooltipTitle} arrow>
-          {chipVisual}
+          <Box sx={{ display: "inline-flex" }}>
+            <Chip
+              className={rowEditMode ? "attr-chip--edit" : "attr-chip"}
+              icon={leadingIcon}
+              label={clampedLabel}
+              variant="outlined"
+              onClick={
+                rowEditMode && inlineEditOnChipClickInEditMode && !ghost
+                  ? () => onStartEdit(chipKey, attrDef.id, pa.id, raw)
+                  : undefined
+              }
+              onDelete={
+                ghost
+                  ? (onUndoDelete ? () => onUndoDelete(pa.id) : undefined)
+                  : rowEditMode && allowDelete
+                  ? () => onLocalDelete(pa.id)
+                  : undefined
+              }
+              deleteIcon={ghost ? <UndoOutlinedIcon fontSize="small" /> : undefined}
+              sx={{
+                borderStyle: "solid",
+                borderWidth: 1,
+                borderColor: (t) => borderTint(t) ?? (ghost ? t.palette.divider : undefined),
+                opacity: ghost ? 0.75 : 1,
+                "& .MuiChip-label": {
+                  px: 2,
+                  py: isMultiline ? 0.9 : 0.4,
+                },
+                maxWidth: { xs: "100%", sm: 360, md: 420 },
+                alignSelf: "flex-start",
+              }}
+              aria-label={`${attrDef.name} : ${display || "vide"}${
+                futureInfoText && !rowEditMode ? ` (${futureInfoText})` : ""
+              }${markerInfoText && rowEditMode ? ` (${markerInfoText})` : ""}`}
+            />
+          </Box>
         </Tooltip>
       ) : (
-        chipVisual
+        <Chip
+          className={rowEditMode ? "attr-chip--edit" : "attr-chip"}
+          icon={leadingIcon}
+          label={clampedLabel}
+          variant="outlined"
+          onClick={
+            rowEditMode && inlineEditOnChipClickInEditMode && !ghost
+              ? () => onStartEdit(chipKey, attrDef.id, pa.id, raw)
+              : undefined
+          }
+          onDelete={
+            ghost
+              ? (onUndoDelete ? () => onUndoDelete(pa.id) : undefined)
+              : rowEditMode && allowDelete
+              ? () => onLocalDelete(pa.id)
+              : undefined
+          }
+          deleteIcon={ghost ? <UndoOutlinedIcon fontSize="small" /> : undefined}
+          sx={{
+            borderStyle: "solid",
+            borderWidth: 1,
+            borderColor: (t) => borderTint(t) ?? (ghost ? t.palette.divider : undefined),
+            opacity: ghost ? 0.75 : 1,
+            "& .MuiChip-label": {
+              px: 2,
+              py: isMultiline ? 0.9 : 0.4,
+            },
+            maxWidth: { xs: "100%", sm: 360, md: 420 },
+            alignSelf: "flex-start",
+          }}
+          aria-label={`${attrDef.name} : ${display || "vide"}${
+            futureInfoText && !rowEditMode ? ` (${futureInfoText})` : ""
+          }${markerInfoText && rowEditMode ? ` (${markerInfoText})` : ""}`}
+        />
       )}
     </Box>
   );
