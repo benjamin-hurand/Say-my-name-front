@@ -19,6 +19,8 @@ import ChallengeLayout from "../layout/ChallengeLayout";
 import GlobalDataLayout from "../layout/GlobalDataLayout";
 import { Layout } from "../layout/Layout";
 import ProtectedRoute from "./ProtectedRoute";
+import ForgotPasswordPage from "../../scenes/sign-in/ForgotPasswordPage";
+import ResetPasswordPage from "../../scenes/sign-in/ResetPasswordPage";
 
 const router = createBrowserRouter([
   {
@@ -168,6 +170,8 @@ const router = createBrowserRouter([
     children: [
       { path: "signin", element: <SignIn /> },
       { path: "signup", element: <SignUp /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ResetPasswordPage /> },
     ],
   },
 ]);

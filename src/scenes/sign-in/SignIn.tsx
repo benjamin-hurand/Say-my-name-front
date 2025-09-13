@@ -226,6 +226,12 @@ export default function SignIn() {
           />
           <Grid container sx={{ mt: 2 }}>
             <Grid item xs>
+              <a
+                onClick={() => navigate("/forgot-password")}
+                style={{ textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                Forgot password?
+              </a>
             </Grid>
             <Grid item>
               <a

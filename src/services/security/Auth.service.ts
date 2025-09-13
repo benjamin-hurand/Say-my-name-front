@@ -147,3 +147,19 @@ export const generate = async (lang: string): Promise<string> => {
         throw error;
     }
 }
+
+// === Forgot / Reset Password ===
+export const requestPasswordReset = async (email: string): Promise<void> => {
+  await API.post('/auth/forgot-password', { email });
+};
+
+export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+  await API.post('/auth/reset-password', { token, newPassword });
+};
+
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<void> => {
+  await API.post('/auth/change-password', { currentPassword, newPassword });
+};
