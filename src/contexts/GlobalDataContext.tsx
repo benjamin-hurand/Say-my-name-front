@@ -36,8 +36,7 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
   // Calcul de la semaine en cours (lundi à dimanche)
   useEffect(() => {
     const today = new Date();
-    const day = today.getDay();
-    // En JavaScript, 0 = dimanche, 1 = lundi, etc.
+    const day = today.getDay(); // 0=dim, 1=lun...
     const diffToMonday = day === 0 ? -6 : 1 - day;
     const monday = new Date(today);
     monday.setDate(today.getDate() + diffToMonday);
@@ -46,32 +45,32 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
     setSeasonPeriod({ start: monday, end: sunday });
   }, []);
 
-  // Fetch all attributes + derive sorts
+  // 1) Tous les attributs avec options ENUM (pas besoin des stats ici)
   useEffect(() => {
     (async () => {
       try {
-        const allAttributes = await getAttributes();
+        const allAttributes = await getAttributes({ options: true });
         setAttributes(allAttributes);
-        setSorts(allAttributes.filter(attr => attr.sort));
+        setSorts(allAttributes.filter(attr => Boolean(attr.sort)));
       } catch (error) {
         console.error("Error fetching attributes:", error);
       }
     })();
   }, []);
 
-  // Fetch filters (with min/max from backend)
+  // 2) Filtres avec stats observées + options ENUM (expand=stats,options)
   useEffect(() => {
     (async () => {
       try {
-        setFilters(await getFilters());
+        const filt = await getFilters({ stats: true, options: true });
+        setFilters(filt);
       } catch (error) {
         console.error("Error fetching filters:", error);
       }
     })();
   }, []);
 
-
-  // Fetch des modes de jeu
+  // Modes de jeu
   useEffect(() => {
     (async () => {
       try {
@@ -83,12 +82,12 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, []);
 
-  // Récupérer la saison actuelle depuis l'API
+  // Saison actuelle
   useEffect(() => {
     (async () => {
       try {
         const season = await fetchCurrentSeason();
-        if (season && season.seasonNumber) {
+        if (season?.seasonNumber) {
           setCompetitiveSeason(season.seasonNumber);
         }
       } catch (error) {
@@ -97,22 +96,24 @@ export const GlobalDataProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, []);
 
-  // Récupérer les populations depuis l'API
+  // Populations
   useEffect(() => {
     (async () => {
       try {
-        const populations = await getPopulationList();
-        if (populations) {
-          setPopulations(populations);
+        const pops = await getPopulationList();
+        if (pops) {
+          setPopulations(pops);
         }
       } catch (error) {
-        console.error("Error fetching current season", error);
+        console.error("Error fetching populations", error);
       }
     })();
   }, []);
 
   return (
-    <GlobalDataContext.Provider value={{ attributes, filters, sorts, modes, seasonPeriod, competitiveSeason, populations }}>
+    <GlobalDataContext.Provider
+      value={{ attributes, filters, sorts, modes, seasonPeriod, competitiveSeason, populations }}
+    >
       {children}
     </GlobalDataContext.Provider>
   );

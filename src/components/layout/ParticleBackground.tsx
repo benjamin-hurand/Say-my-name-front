@@ -1,15 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+// src/components/layout/ParticleBackground.tsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Particles from "@tsparticles/react";
 import { initParticlesEngine } from "@tsparticles/react";
-import { ISourceOptions } from "@tsparticles/engine";
+import type { ISourceOptions, Container } from "@tsparticles/engine";
 import { loadSlim } from "@tsparticles/slim";
 import { useThemeColorContext } from "../../contexts/ThemeColorContext";
+import { useParticles } from "../../contexts/ParticlesContext";
 
 const ParticlesBackground: React.FC = () => {
   const { color } = useThemeColorContext();
+  const { enabled, count, speed, frozen } = useParticles();
   const [init, setInit] = useState(false);
+  const containerRef = useRef<Container | null>(null);
 
-  // Initialise le moteur une seule fois AVANT de rendre <Particles />
   useEffect(() => {
     let mounted = true;
     initParticlesEngine(async (engine) => {
@@ -17,29 +20,24 @@ const ParticlesBackground: React.FC = () => {
     }).then(() => {
       if (mounted) setInit(true);
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
+  // Responsive
+  const mobileCount = useMemo(() => Math.max(0, Math.round(count * 0.55)), [count]);
+
+  // 👉 FIX: on fige via les options (move.enable = !frozen), sans pause impérative
   const options: ISourceOptions = useMemo(
     () => ({
-      // Laisse tsParticles occuper tout l'écran proprement, sous le contenu
       fullScreen: { enable: true, zIndex: 0 },
-
       pauseOnBlur: true,
-      background: {
-        color: { value: "transparent" }
-      },
+      background: { color: { value: "transparent" } },
       detectRetina: false,
 
       particles: {
         number: {
-          value: 180,
-          density: {
-            enable: true,
-            area: 800 // zone de densité "classique"
-          }
+          value: count,
+          density: { enable: true, area: 800 }
         },
         color: { value: color },
 
@@ -52,11 +50,9 @@ const ParticlesBackground: React.FC = () => {
         },
 
         move: {
-          enable: true,
-          speed: 1,
-          // v3: utiliser 'none' string ou enum, les deux passent
+          enable: true,      // ← ICI: on coupe le mouvement si frozen
+          speed: frozen ? 0 : speed,         // ← ta vitesse habituelle quand pas gelé
           direction: "none",
-          // v3: outModes (et plus outMode)
           outModes: { default: "bounce" }
         },
 
@@ -64,23 +60,31 @@ const ParticlesBackground: React.FC = () => {
         opacity: { value: 0.3 }
       },
 
-      // Bonus: limite le nombre sur petits écrans
       responsive: [
         {
           maxWidth: 768,
           options: {
             particles: {
-              number: { value: 100 }
+              number: { value: mobileCount }
             }
           }
         }
       ]
     }),
-    [color]
+    [color, count, speed, mobileCount, frozen] // ← inclure frozen
   );
 
-  if (!init) return null; // attend l'init moteur pour éviter l'écran blanc silencieux
-  return <Particles id="tsparticles" options={options} />;
+  if (!init || !enabled) return null;
+
+  return (
+    <Particles
+      id="tsparticles"
+      options={options}
+      particlesLoaded={async (container) => {
+        containerRef.current = container ?? null;
+      }}
+    />
+  );
 };
 
 export default ParticlesBackground;

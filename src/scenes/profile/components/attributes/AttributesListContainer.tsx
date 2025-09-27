@@ -1,4 +1,6 @@
 import dayjs from "dayjs";
+import "dayjs/locale/fr";          // << ajoute cette ligne
+dayjs.locale("fr");
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { useGlobalData } from "../../../../contexts/GlobalDataContext";
@@ -27,16 +29,6 @@ const AttributesListContainer: React.FC = () => {
   // Hook overlay optimiste
   const { profileAttributes, applyOptimisticDelta, replaceAttrValues, revertAttrOverride } =
     useOptimisticPersonAttributes(allAttributes, rawAttributes);
-
-  // Index pratique: paId -> attributeId (toujours utile pour certaines déductions côté UI)
-  const paIdToAttrId = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const pa of rawAttributes) {
-      const aid = pa.attribute?.id;
-      if (aid != null) map.set(pa.id, aid);
-    }
-    return map;
-  }, [rawAttributes]);
 
   // --- Modale “Créer une demande …”
   const [crModalOpen, setCrModalOpen] = useState(false);
@@ -228,13 +220,16 @@ const AttributesListContainer: React.FC = () => {
   const formatDisplayValue = (type: string | null | undefined, value: string) => {
     if (!value) return "";
     const t = (type ?? "").toString().toUpperCase();
+    const d = dayjs(value);
+    if (!d.isValid()) return value;
+
     if (t === "DATE") {
-      const d = dayjs(value);
-      return d.isValid() ? d.format("YYYY-MM-DD") : value;
+      // 26/09/1999
+      return d.format("DD/MM/YYYY");
     }
     if (t === "DATETIME") {
-      const d = dayjs(value);
-      return d.isValid() ? d.format("YYYY-MM-DD HH:mm") : value;
+      // 26/09/1999 13:45 (24h)
+      return d.format("DD/MM/YYYY HH:mm");
     }
     if (t === "BOOLEAN") {
       return value === "true" ? "Oui" : value === "false" ? "Non" : value;

@@ -1,23 +1,108 @@
 import React, { ChangeEvent, useEffect, useState } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Chip,
-  Box,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Box,
 } from '@mui/material';
 import { Attribute } from '../../../models/commons/Attribute';
 import { GameFilter } from '../../../models/commons/Game/GameOptions/GameFilter.model';
 import { StyledSlider } from './StyledSlider';
 import { AttributeCard } from './AttributeCard';
-import { dateStringToDayOffset, mapLetterToNumber, createNumericMarks, createDateMarks, alphabet, mapNumberToLetter, dayOffsetToISODateString, dayOffsetToLocalizedDateString } from './FilterChoiceUtils';
+import {
+  dateStringToDayOffset, mapLetterToNumber, createNumericMarks, createDateMarks, alphabet,
+  mapNumberToLetter, dayOffsetToISODateString, dayOffsetToLocalizedDateString
+} from './FilterChoiceUtils';
+
+/** ---------- Helpers de borne effective ---------- */
+/** Renvoie la borne “effective” min/max sous forme de string (ISO pour DATE/DATETIME) */
+function getEffectiveRangeStrings(attr: Attribute, preferStats = true): { minStr: string | null; maxStr: string | null } {
+  const rule = attr.constraint?.range;
+  const stats = attr.stats;
+
+  if (preferStats) {
+    const minStr = (stats?.observedMin ?? rule?.min) ?? null;
+    const maxStr = (stats?.observedMax ?? rule?.max) ?? null;
+    return { minStr, maxStr };
+  } else {
+    const minStr = (rule?.min ?? stats?.observedMin) ?? null;
+    const maxStr = (rule?.max ?? stats?.observedMax) ?? null;
+    return { minStr, maxStr };
+  }
+}
+
+
+function parseNumberOrNull(s: string | null | undefined): number | null {
+  if (s == null) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toDateISO(s: string | null | undefined): string | null {
+  if (!s) return null;
+  // On accepte “YYYY-MM-DD” ou “YYYY-MM-DDTHH:mm:ss” -> on prend la partie date
+  return s.length >= 10 ? s.substring(0, 10) : null;
+}
+
+/** Renvoie les bornes en unités “slider” :
+ * - NUMBER -> nombres
+ * - DATE/DATETIME -> offsets en jours
+ * - TEXT -> indices alphabet (A..Z)
+ */
+function getAttributeDomain(attr: Attribute): { attrMin: number; attrMax: number } {
+  if (attr.type === 'NUMBER') {
+    const { minStr, maxStr } = getEffectiveRangeStrings(attr);
+    const min = parseNumberOrNull(minStr) ?? 0;
+    const max = parseNumberOrNull(maxStr) ?? (min + 100);
+    return { attrMin: min, attrMax: Math.max(min, max) };
+  }
+
+  if (attr.type === 'DATE' || attr.type === 'DATETIME') {
+    const { minStr, maxStr } = getEffectiveRangeStrings(attr);
+    const isoMin = toDateISO(minStr);
+    const isoMax = toDateISO(maxStr);
+    const min = isoMin ? dateStringToDayOffset(isoMin) : 0;
+    const max = isoMax ? dateStringToDayOffset(isoMax) : (min + 100);
+    return { attrMin: min, attrMax: Math.max(min, max) };
+  }
+
+  // TEXT / autres : A..Z
+  return { attrMin: 0, attrMax: 25 };
+}
+
+/** Convertit une valeur absolue (dans l’unité du type) en string à stocker dans GameFilter */
+function formatAbsoluteValueForFilter(attr: Attribute, absVal: number): string {
+  if (attr.type === 'NUMBER') return String(absVal);
+  if (attr.type === 'DATE' || attr.type === 'DATETIME') return dayOffsetToISODateString(absVal);
+  // TEXT
+  return mapNumberToLetter(absVal);
+}
+
+/** Met à jour l’affichage du label du slider */
+function formatSliderLabel(attr: Attribute, baseMin: number, offsetVal: number): string {
+  if (attr.type === 'NUMBER') return String(baseMin + offsetVal);
+  if (attr.type === 'DATE' || attr.type === 'DATETIME') {
+    return dayOffsetToLocalizedDateString(baseMin + offsetVal);
+  }
+  return mapNumberToLetter(offsetVal);
+}
+
+/** Parse la saisie “Min/Max” utilisateur vers offset */
+function parseUserInputToOffset(attr: Attribute, baseMin: number, input: string): number {
+  if (attr.type === 'NUMBER') {
+    const n = Number(input);
+    return Number.isFinite(n) ? (n - baseMin) : 0;
+  }
+  if (attr.type === 'DATE' || attr.type === 'DATETIME') {
+    const day = dateStringToDayOffset(toDateISO(input) ?? '');
+    return day - baseMin;
+  }
+  // TEXT
+  const idx = mapLetterToNumber(input);
+  return (idx >= 0 && idx <= 25) ? idx : 0;
+}
+/** ---------- Fin helpers ---------- */
 
 interface AddFilterModalProps {
   open: boolean;
-  // Array of FilterAttribute which includes an Attribute and an "available" flag.
   attributes: Attribute[];
   onSave: (filter: GameFilter) => void;
   onClose: () => void;
@@ -34,94 +119,37 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
   handleDeleteFilter,
 }) => {
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
-  // The slider's internal range is stored in "offset" units.
+  // range stocke l’offset par rapport à attrMin calculé
   const [range, setRange] = useState<[number, number]>([0, 25]);
   const [attributeRanges, setAttributeRanges] = useState<{ [attrId: number]: [number, number] }>({});
 
-  // When editing an existing filter, initialize with its attribute and computed range.
+  // Pré-sélection si on édite un filtre
   useEffect(() => {
     if (initialFilter) {
       setSelectedAttribute(initialFilter.attribute);
-      switch (initialFilter.attribute.type) {
-        case 'number': {
-          const attrMin = initialFilter.attribute.minValue
-            ? parseInt(initialFilter.attribute.minValue, 10)
-            : 0;
-          const minVal = initialFilter.minValue
-            ? parseInt(initialFilter.minValue, 10)
-            : attrMin;
-          const maxVal = initialFilter.maxValue
-            ? parseInt(initialFilter.maxValue, 10)
-            : attrMin + 100;
-          setRange([minVal - attrMin, maxVal - attrMin]);
-          break;
-        }
-        case 'date': {
-          const attrMin = initialFilter.attribute.minValue
-            ? dateStringToDayOffset(initialFilter.attribute.minValue)
-            : 0;
-          const minDay = initialFilter.minValue
-            ? dateStringToDayOffset(initialFilter.minValue)
-            : attrMin;
-          const maxDay = initialFilter.maxValue
-            ? dateStringToDayOffset(initialFilter.maxValue)
-            : attrMin + 100;
-          setRange([minDay - attrMin, maxDay - attrMin]);
-          break;
-        }
-        case 'datetime': {
-          // Treat datetime similarly to date (using only the date part)
-          const attrMin = initialFilter.attribute.minValue
-            ? dateStringToDayOffset(initialFilter.attribute.minValue.substring(0, 10))
-            : 0;
-          const minDay = initialFilter.minValue
-            ? dateStringToDayOffset(initialFilter.minValue.substring(0, 10))
-            : attrMin;
-          const maxDay = initialFilter.maxValue
-            ? dateStringToDayOffset(initialFilter.maxValue.substring(0, 10))
-            : attrMin + 100;
-          setRange([minDay - attrMin, maxDay - attrMin]);
-          break;
-        }
-        case 'boolean': {
-          // Convert 'true'/'false' to numbers (true = 1, false = 0)
-          const boolToNumber = (val: string) =>
-            val.toLowerCase() === 'true' ? 1 : 0;
-          const minBool = initialFilter.minValue
-            ? boolToNumber(initialFilter.minValue)
-            : 0;
-          const maxBool = initialFilter.maxValue
-            ? boolToNumber(initialFilter.maxValue)
-            : 1;
-          setRange([minBool, maxBool]);
-          break;
-        }
-        case 'text':
-        default: {
-          // For text attributes, assume filter values are letters (A-Z)
-          const minLetter = initialFilter.minValue ? initialFilter.minValue : 'A';
-          const maxLetter = initialFilter.maxValue ? initialFilter.maxValue : 'Z';
-          setRange([mapLetterToNumber(minLetter), mapLetterToNumber(maxLetter)]);
-          break;
-        }
+      const attr = initialFilter.attribute;
+      const { attrMin, attrMax } = getAttributeDomain(attr);
+
+      if (attr.type === 'NUMBER') {
+        const minVal = parseNumberOrNull(initialFilter.minValue) ?? attrMin;
+        const maxVal = parseNumberOrNull(initialFilter.maxValue) ?? attrMax;
+        setRange([minVal - attrMin, maxVal - attrMin]);
+      } else if (attr.type === 'DATE' || attr.type === 'DATETIME') {
+        const minDay = dateStringToDayOffset(toDateISO(initialFilter.minValue) ?? dayOffsetToISODateString(attrMin));
+        const maxDay = dateStringToDayOffset(toDateISO(initialFilter.maxValue) ?? dayOffsetToISODateString(attrMax));
+        setRange([minDay - attrMin, maxDay - attrMin]);
+      } else { // TEXT
+        const minLetter = initialFilter.minValue ?? 'A';
+        const maxLetter = initialFilter.maxValue ?? 'Z';
+        setRange([mapLetterToNumber(minLetter), mapLetterToNumber(maxLetter)]);
       }
     } else {
       setSelectedAttribute(null);
       setRange([0, 25]);
     }
   }, [initialFilter, open]);
-  
 
-  useEffect(() => {
-    // console.log('range changed: ', JSON.stringify(range));
-  }, [range]);
-
-  useEffect(() => {
-    // console.log('selected attribute changed: ', JSON.stringify(selectedAttribute));
-  }, [selectedAttribute]);
-
-  // Compute the attributes to render.
-  // Instead of duplicating the variable declaration, we define it once.
+  // Attributs à afficher
   const attributesToRender = (initialFilter
     ? attributes.find((attr) => attr.id === initialFilter.attribute.id)
       ? attributes
@@ -134,29 +162,17 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
     if (attributeRanges[attribute.id]) {
       setRange(attributeRanges[attribute.id]);
     } else {
-      if (attribute.type === 'number') {
-        const attrMin = attribute.minValue ? parseInt(attribute.minValue, 10) : 0;
-        const attrMax = attribute.maxValue ? parseInt(attribute.maxValue, 10) : 100;
-        setRange([0, Math.max(0, attrMax - attrMin)]);
-      } else if (attribute.type === 'date') {
-        const attrMin = attribute.minValue ? dateStringToDayOffset(attribute.minValue) : 0;
-        const attrMax = attribute.maxValue ? dateStringToDayOffset(attribute.maxValue) : 0;
-        setRange([0, Math.max(0, attrMax - attrMin)]);
-      } else {
-        setRange([0, 25]);
-      }
+      const { attrMin, attrMax } = getAttributeDomain(attribute);
+      setRange([0, Math.max(0, attrMax - attrMin)]);
     }
   };
 
   const getSliderMarks = () => {
     if (!selectedAttribute) return [];
-    if (selectedAttribute.type === 'number') {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const attrMax = selectedAttribute.maxValue ? parseInt(selectedAttribute.maxValue, 10) : 100;
+    const { attrMin, attrMax } = getAttributeDomain(selectedAttribute);
+    if (selectedAttribute.type === 'NUMBER') {
       return createNumericMarks(attrMin, attrMax);
-    } else if (selectedAttribute.type === 'date') {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const attrMax = selectedAttribute.maxValue ? dateStringToDayOffset(selectedAttribute.maxValue) : 0;
+    } else if (selectedAttribute.type === 'DATE' || selectedAttribute.type === 'DATETIME') {
       return createDateMarks(attrMin, attrMax);
     } else {
       return alphabet.map((letter, index) => ({ value: index, label: letter }));
@@ -165,33 +181,17 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
 
   const getSliderMax = () => {
     if (!selectedAttribute) return 25;
-    if (selectedAttribute.type === 'number') {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const attrMax = selectedAttribute.maxValue ? parseInt(selectedAttribute.maxValue, 10) : 100;
-      return Math.max(0, attrMax - attrMin);
-    } else if (selectedAttribute.type === 'date') {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const attrMax = selectedAttribute.maxValue ? dateStringToDayOffset(selectedAttribute.maxValue) : 0;
-      return Math.max(0, attrMax - attrMin);
-    } else {
-      return 25;
-    }
+    const { attrMin, attrMax } = getAttributeDomain(selectedAttribute);
+    return Math.max(0, attrMax - attrMin);
   };
 
   const formatSliderValue = (value: number) => {
     if (!selectedAttribute) return '';
-    if (selectedAttribute.type === 'number') {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      return (attrMin + value).toString();
-    } else if (selectedAttribute.type === 'date') {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      return dayOffsetToLocalizedDateString(attrMin + value);
-    } else {
-      return mapNumberToLetter(value);
-    }
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    return formatSliderLabel(selectedAttribute, attrMin, value);
   };
 
-  const handleSliderChange = (event: Event, newValue: number | number[]) => {
+  const handleSliderChange = (_event: Event, newValue: number | number[]) => {
     const newRange = newValue as [number, number];
     setRange(newRange);
     if (selectedAttribute) {
@@ -204,66 +204,29 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
 
   const handleMinInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (!selectedAttribute) return;
-    const input = event.target.value;
-    if (selectedAttribute.type === 'number') {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const typedNum = parseInt(input, 10);
-      if (!isNaN(typedNum)) {
-        setRange([typedNum - attrMin, range[1]]);
-      }
-    } else if (selectedAttribute.type === 'date') {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const typedDay = dateStringToDayOffset(input);
-      setRange([typedDay - attrMin, range[1]]);
-    } else {
-      const letterIndex = mapLetterToNumber(input);
-      if (letterIndex >= 0 && letterIndex <= 25) {
-        setRange([letterIndex, range[1]]);
-      }
-    }
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    const offset = parseUserInputToOffset(selectedAttribute, attrMin, event.target.value);
+    setRange([offset, range[1]]);
   };
 
   const handleMaxInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (!selectedAttribute) return;
-    const input = event.target.value;
-    if (selectedAttribute.type === 'number') {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const typedNum = parseInt(input, 10);
-      if (!isNaN(typedNum)) {
-        setRange([range[0], typedNum - attrMin]);
-      }
-    } else if (selectedAttribute.type === 'date') {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const typedDay = dateStringToDayOffset(input);
-      setRange([range[0], typedDay - attrMin]);
-    } else {
-      const letterIndex = mapLetterToNumber(input);
-      if (letterIndex >= 0 && letterIndex <= 25) {
-        setRange([range[0], letterIndex]);
-      }
-    }
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    const offset = parseUserInputToOffset(selectedAttribute, attrMin, event.target.value);
+    setRange([range[0], offset]);
   };
 
   const handleSave = () => {
     if (selectedAttribute) {
-      let minValStr: string, maxValStr: string;
-      if (selectedAttribute.type === 'number') {
-        const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-        minValStr = (attrMin + range[0]).toString();
-        maxValStr = (attrMin + range[1]).toString();
-      } else if (selectedAttribute.type === 'date') {
-        const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-        minValStr = dayOffsetToISODateString(attrMin + range[0]);
-        maxValStr = dayOffsetToISODateString(attrMin + range[1]);
-      } else {
-        minValStr = mapNumberToLetter(range[0]);
-        maxValStr = mapNumberToLetter(range[1]);
-      }
+      const { attrMin } = getAttributeDomain(selectedAttribute);
+      const absMin = attrMin + range[0];
+      const absMax = attrMin + range[1];
+
       const gameFilter: GameFilter = {
         id: selectedAttribute.id,
         attribute: selectedAttribute,
-        minValue: minValStr,
-        maxValue: maxValStr,
+        minValue: formatAbsoluteValueForFilter(selectedAttribute, absMin),
+        maxValue: formatAbsoluteValueForFilter(selectedAttribute, absMax),
       };
       onSave(gameFilter);
     }
@@ -283,16 +246,11 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
       onClose={onClose}
       fullWidth
       maxWidth="md"
-      PaperProps={{
-        style: {
-          minWidth: 500,
-          overflow: 'visible',
-        },
-      }}
+      PaperProps={{ style: { minWidth: 500, overflow: 'visible' } }}
     >
       <DialogTitle>{initialFilter ? 'Edit Filter' : 'Add a Filter'}</DialogTitle>
       <DialogContent dividers sx={{ overflowY: 'auto' }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', mb: 2 }}>
           {attributesToRender.map((attr) => (
             <AttributeCard
               key={attr.id}
@@ -302,6 +260,7 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
             />
           ))}
         </Box>
+
         {selectedAttribute && (
           <>
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
@@ -317,43 +276,58 @@ const AddFilterModal: React.FC<AddFilterModalProps> = ({
                 sx={{ width: '80%' }}
               />
             </Box>
+
+            {/* Champs Min/Max */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <TextField
-                label="Min"
-                type={selectedAttribute.type === 'date' ? 'date' : 'text'}
-                value={
-                  selectedAttribute.type === 'number'
-                    ? ((selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[0]).toString()
-                    : selectedAttribute.type === 'date'
-                    ? dayOffsetToISODateString(
-                        (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[0]
-                      )
-                    : mapNumberToLetter(range[0])
-                }
-                onChange={handleMinInputChange}
-                sx={{ width: '45%' }}
-                InputLabelProps={selectedAttribute.type === 'date' ? { shrink: true } : undefined}
-              />
-              <TextField
-                label="Max"
-                type={selectedAttribute.type === 'date' ? 'date' : 'text'}
-                value={
-                  selectedAttribute.type === 'number'
-                    ? ((selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[1]).toString()
-                    : selectedAttribute.type === 'date'
-                    ? dayOffsetToISODateString(
-                        (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[1]
-                      )
-                    : mapNumberToLetter(range[1])
-                }
-                onChange={handleMaxInputChange}
-                sx={{ width: '45%' }}
-                InputLabelProps={selectedAttribute.type === 'date' ? { shrink: true } : undefined}
-              />
+              {(() => {
+                if (!selectedAttribute) return null;
+
+                const isDateLike =
+                  selectedAttribute.type === 'DATE' || selectedAttribute.type === 'DATETIME';
+                const { attrMin: baseMin } = getAttributeDomain(selectedAttribute);
+
+                const minDisplay =
+                  selectedAttribute.type === 'NUMBER'
+                    ? String(baseMin + range[0])
+                    : isDateLike
+                    ? dayOffsetToISODateString(baseMin + range[0])
+                    : mapNumberToLetter(range[0]);
+
+                const maxDisplay =
+                  selectedAttribute.type === 'NUMBER'
+                    ? String(baseMin + range[1])
+                    : isDateLike
+                    ? dayOffsetToISODateString(baseMin + range[1])
+                    : mapNumberToLetter(range[1]);
+
+                return (
+                  <>
+                    <TextField
+                      label="Min"
+                      type={isDateLike ? 'date' : 'text'}
+                      value={minDisplay}
+                      onChange={handleMinInputChange}
+                      sx={{ width: '45%' }}
+                      InputLabelProps={isDateLike ? { shrink: true } : undefined}
+                    />
+
+                    <TextField
+                      label="Max"
+                      type={isDateLike ? 'date' : 'text'}
+                      value={maxDisplay}
+                      onChange={handleMaxInputChange}
+                      sx={{ width: '45%' }}
+                      InputLabelProps={isDateLike ? { shrink: true } : undefined}
+                    />
+                  </>
+                );
+              })()}
             </Box>
+
           </>
         )}
       </DialogContent>
+
       <DialogActions>
         {initialFilter && (
           <Button variant="outlined" color="error" onClick={handleDelete}>

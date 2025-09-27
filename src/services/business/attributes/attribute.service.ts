@@ -1,26 +1,34 @@
+// services/business/attributes/attribute.service.ts
 import { Attribute } from "../../../models/commons/Attribute";
 import API from "../../api/apiUtils";
 
-const endpoint = "/attributes";
-
-export async function getAttributes(): Promise<Attribute[]> {
-    try {
-        const response = await API.get<Attribute[]>(`${endpoint}`);
-        // console.log("voicii attributes:" + JSON.stringify(response.data));
-        return response.data;
-    } catch (error) {
-        console.error('Failed to get attributes:', error);
-        throw error; // You may want to handle this differently depending on your app's design
-    }
+/** Construit la query string expand=... de façon homogène */
+function buildExpandQS(opts?: { stats?: boolean; options?: boolean }) {
+  const parts: string[] = [];
+  if (opts?.stats) parts.push("stats");
+  if (opts?.options) parts.push("options");
+  return parts.length ? `?expand=${encodeURIComponent(parts.join(","))}` : "";
 }
 
-export async function getFilters(): Promise<Attribute[]> {
-    try {
-        const response = await API.get<Attribute[]>(`${endpoint}/filters`);
-        // console.log("voicii filters:" + JSON.stringify(response.data));
-        return response.data;
-    } catch (error) {
-        console.error('Failed to get filters:', error);
-        throw error; // You may want to handle this differently depending on your app's design
-    }
+const endpoint = "/attributes";
+
+/** Tous les attributs (expand optionnel: stats, options) */
+export async function getAttributes(opts?: { stats?: boolean; options?: boolean }): Promise<Attribute[]> {
+  const qs = buildExpandQS(opts);
+  const { data } = await API.get<Attribute[]>(`${endpoint}${qs}`);
+  return data ?? [];
+}
+
+/** Attributs filtrables (expand optionnel: stats, options) */
+export async function getFilters(opts?: { stats?: boolean; options?: boolean }): Promise<Attribute[]> {
+  const qs = buildExpandQS(opts);
+  const { data } = await API.get<Attribute[]>(`${endpoint}/filters${qs}`);
+  return data ?? [];
+}
+
+/** Attributs triables (expand optionnel: stats, options) */
+export async function getSorts(opts?: { stats?: boolean; options?: boolean }): Promise<Attribute[]> {
+  const qs = buildExpandQS(opts);
+  const { data } = await API.get<Attribute[]>(`${endpoint}/sorts${qs}`);
+  return data ?? [];
 }

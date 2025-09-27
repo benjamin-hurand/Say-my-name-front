@@ -5,6 +5,7 @@ import { GameFilter } from '../models/commons/Game/GameOptions/GameFilter.model'
 import { GameSortBy } from '../models/commons/Game/GameOptions/GameSortBy.model';
 import { GameRepetitionPattern } from '../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
+import { GamePopulationScope } from '../models/commons/Game/GameOptions/GamePopulationScope.model';
 
 // Ce contexte gère l'exécution d'une session de quiz :
 // - quizList : file active de questions (ex. reviewList ou fetch)
@@ -33,6 +34,7 @@ interface SessionOptions {
   mode: GameMode | null;
   filters: GameFilter[];
   sorts: GameSortBy[];
+  populationScope: GamePopulationScope;
   repetitionPattern: GameRepetitionPattern;
   helps: { [key: string]: boolean };
 }

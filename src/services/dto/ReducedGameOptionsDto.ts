@@ -1,3 +1,5 @@
+import { GamePopulationScope } from "../../models/commons/Game/GameOptions/GamePopulationScope.model";
+
 export interface ReducedGameModeDto {
     id: number;
     operator: string;
@@ -20,5 +22,6 @@ export interface ReducedGameModeDto {
     gameMode: ReducedGameModeDto;
     filters: ReducedGameAttributeFilterDto[];
     sortBy: ReducedGameAttributeSortDto[];
+    populationScope?: GamePopulationScope;
   }
   

@@ -13,11 +13,6 @@ import {
   IconButton,
   Tooltip,
   Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Badge,
 } from "@mui/material";
 
@@ -75,8 +70,6 @@ type Props = {
   }) => void;
   onRowCancel?: () => void;
 
-  confirmOnOutsideClick?: boolean;
-
   /** Enveloppes CR (typiquement "open") et callback pour ouvrir une CR existante */
   changeRequests: ChangeRequestSummary[];
   onOpenExistingChangeRequest: (crId: number) => void;
@@ -84,32 +77,13 @@ type Props = {
 
 const ROW_HOVER_SCOPE = "row-hover-scope";
 
-const statusColor = (s: ChangeStatus): string => {
-  switch (s) {
-    case "PENDING":
-      return "warning.main";
-    case "APPROVED":
-      return "success.main";
-    case "REJECTED":
-      return "error.main";
-    case "CANCELED":
-    default:
-      return "text.disabled";
-  }
-};
-
 const statusLabel = (s: ChangeStatus): string => {
   switch (s) {
-    case "PENDING":
-      return "En attente";
-    case "APPROVED":
-      return "Approuvée";
-    case "REJECTED":
-      return "Refusée";
-    case "CANCELED":
-      return "Annulée";
-    default:
-      return s;
+    case "PENDING":  return "En attente";
+    case "APPROVED": return "Approuvée";
+    case "REJECTED": return "Refusée";
+    case "CANCELED": return "Annulée";
+    default:         return s;
   }
 };
 
@@ -141,7 +115,6 @@ const AttributeRow: React.FC<Props> = ({
   hasUnsavedChanges,
   onRowSave,
   onRowCancel,
-  confirmOnOutsideClick = true,
 
   changeRequests,
   onOpenExistingChangeRequest,
@@ -149,8 +122,11 @@ const AttributeRow: React.FC<Props> = ({
   const [rowEditMode, setRowEditMode] = React.useState(false);
   const [workingChips, setWorkingChips] = React.useState<ChipPA[]>(chips);
   const originalChipsRef = React.useRef<ChipPA[]>(chips);
-  const rowRef = React.useRef<HTMLDivElement | null>(null);
   const tempIdRef = React.useRef<number>(-1);
+
+  // 🔒 dernière valeur saisie (sert pour l'ajout)
+  const latestAttrValueRef = React.useRef(attrValue);
+  React.useEffect(() => { latestAttrValueRef.current = attrValue; }, [attrValue]);
 
   const max = Math.max(1, attrDef.maxValues ?? 1);
   const count = workingChips.length;
@@ -234,13 +210,10 @@ const AttributeRow: React.FC<Props> = ({
     return { added, updated, deleted, changed };
   }, [workingChips]);
 
-  // === Marqueurs de modifications pour le rendu en mode édition ===
   const createdSet = React.useMemo(() => {
     const origIds = new Set(originalChipsRef.current.map((p) => p.id));
     const s = new Set<number>();
-    for (const p of workingChips) {
-      if (!origIds.has(p.id)) s.add(p.id);
-    }
+    for (const p of workingChips) if (!origIds.has(p.id)) s.add(p.id);
     return s;
   }, [workingChips]);
 
@@ -248,14 +221,12 @@ const AttributeRow: React.FC<Props> = ({
     const origMap = new Map(originalChipsRef.current.map((p) => [p.id, norm(p.value)]));
     const s = new Set<number>();
     for (const p of workingChips) {
-      if (origMap.has(p.id) && norm(p.value) !== origMap.get(p.id)) {
-        s.add(p.id);
-      }
+      if (origMap.has(p.id) && norm(p.value) !== origMap.get(p.id)) s.add(p.id);
     }
     return s;
   }, [workingChips]);
 
-  const internalDirty = computeDiff().changed || Boolean(editingKey) || Boolean(isAdding);
+  const internalDirty = computeDiff().changed;
   const dirty = typeof hasUnsavedChanges === "boolean" ? hasUnsavedChanges : internalDirty;
 
   const handleRowCancel = () => {
@@ -268,12 +239,7 @@ const AttributeRow: React.FC<Props> = ({
   const handleRowSave = () => {
     const { added, updated, deleted } = computeDiff();
     onCancelEdit?.();
-    onRowSave?.({
-      attributeId: attrDef.id,
-      added,
-      updated,
-      deleted,
-    });
+    onRowSave?.({ attributeId: attrDef.id, added, updated, deleted });
     setRowEditMode(false);
   };
 
@@ -287,58 +253,25 @@ const AttributeRow: React.FC<Props> = ({
   };
 
   const applyLocalAdd = (newValue: string) => {
-    if (!canAddMore) return;
-    const tid = tempIdRef.current--;
-    setWorkingChips((prev) => [
-      ...prev,
-      { id: tid, value: newValue, validFrom: "", validTo: null, pendingDelete: false },
-    ]);
+    const max = Math.max(1, attrDef.maxValues ?? 1);
+    setWorkingChips((prev) => {
+      if (prev.length >= max) return prev;
+      const tid = tempIdRef.current--;
+      return [...prev, { id: tid, value: newValue, validFrom: "", validTo: null, pendingDelete: false }];
+    });
     onCancelEdit?.();
   };
 
-  const [confirmLeaveOpen, setConfirmLeaveOpen] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!confirmOnOutsideClick) return;
-
-    const handler = (e: MouseEvent) => {
-      if (!rowEditMode) return;
-      const root = rowRef.current;
-      if (!root) return;
-      const target = e.target as Node;
-      if (!root.contains(target)) {
-        if (dirty) setConfirmLeaveOpen(true);
-        else setRowEditMode(false);
-      }
-    };
-    document.addEventListener("mousedown", handler, true);
-    return () => document.removeEventListener("mousedown", handler, true);
-  }, [rowEditMode, dirty, confirmOnOutsideClick]);
-
-  React.useEffect(() => {
-    const beforeUnload = (e: BeforeUnloadEvent) => {
-      if (rowEditMode && dirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", beforeUnload);
-    return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [rowEditMode, dirty]);
-
-  // === CR existante pour CET attribut (enveloppe porte attributeId)
   const existingCrForAttr = React.useMemo(
     () => (changeRequests ?? []).find((cr) => (cr as any).attributeId === attrDef.id) ?? null,
     [changeRequests, attrDef.id]
   );
 
-  // Map des chips ciblés par la CR : paId -> tooltip
   const crTargetsByPaId = React.useMemo(() => {
     const map = new Map<number, string>();
     if (!existingCrForAttr) return map;
-
     for (const it of existingCrForAttr.items ?? []) {
-      if (!it.personAttributeId) continue; // CREATE n'est pas relié à un chip existant
+      if (!it.personAttributeId) continue;
       if (it.action === "UPDATE") {
         const pv = (it.proposedValue ?? "").toString();
         map.set(it.personAttributeId, `Demande : mettre à jour cette valeur → « ${pv} »`);
@@ -352,16 +285,14 @@ const AttributeRow: React.FC<Props> = ({
   const pendingBadge = existingCrForAttr?.status === "PENDING" ? 1 : 0;
 
   const handleOpenCr = () => {
-    if (rowEditMode) return; // désactivé en mode édition
-    if (existingCrForAttr) {
-      onOpenExistingChangeRequest(existingCrForAttr.id);
-    } else {
+    if (rowEditMode) return;
+    if (existingCrForAttr) onOpenExistingChangeRequest(existingCrForAttr.id);
+    else {
       const pairs = workingChips.map((c) => ({ id: c.id, value: c.value }));
       onOpenChangeRequest(attrDef, pairs);
     }
   };
 
-  // === Actions (boutons de droite) ===
   const actions = (
     <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
       {rowEditMode ? (
@@ -371,32 +302,21 @@ const AttributeRow: React.FC<Props> = ({
               <CloseIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-
           <Tooltip title={dirty ? "Enregistrer" : "Aucune modification"}>
             <span>
-              <IconButton
-                size="small"
-                onClick={() => {
-                  if (!dirty) return;
-                  handleRowSave();
-                }}
-                aria-label="Enregistrer"
-                disabled={!dirty}
-              >
+              <IconButton size="small" onClick={() => { if (dirty) handleRowSave(); }} aria-label="Enregistrer" disabled={!dirty}>
                 <SaveIcon fontSize="small" />
               </IconButton>
             </span>
           </Tooltip>
         </>
       ) : allowEdit || allowAdd ? (
-        // --- Mode éditable : UNIQUEMENT le bouton "modifier"
         <Tooltip title="Modifier">
           <IconButton size="small" onClick={enterEditMode} aria-label={`Modifier ${attrDef.name}`}>
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       ) : (
-        // --- Mode lecture seule : cadenas + bouton CR (avec badge si PENDING)
         <>
           <Tooltip title="Lecture seule">
             <span>
@@ -408,27 +328,12 @@ const AttributeRow: React.FC<Props> = ({
 
           <Tooltip
             title={
-              existingCrForAttr
-                ? `Voir la demande (${statusLabel(existingCrForAttr.status)})`
-                : `Demander une modification`
+              existingCrForAttr ? `Voir la demande (${statusLabel(existingCrForAttr.status)})` : `Demander une modification`
             }
           >
             <span>
-              <Badge
-                color="warning"
-                badgeContent={pendingBadge || undefined}
-                invisible={pendingBadge === 0}
-                overlap="circular"
-              >
-                <IconButton
-                  size="small"
-                  onClick={handleOpenCr}
-                  aria-label={
-                    existingCrForAttr
-                      ? `Voir la demande ${statusLabel(existingCrForAttr.status)}`
-                      : `Demander une modification pour ${attrDef.name}`
-                  }
-                >
+              <Badge color="warning" badgeContent={pendingBadge || undefined} invisible={pendingBadge === 0} overlap="circular">
+                <IconButton size="small" onClick={handleOpenCr} aria-label="Demander une modification">
                   <EditNoteIcon fontSize="small" />
                 </IconButton>
               </Badge>
@@ -453,12 +358,7 @@ const AttributeRow: React.FC<Props> = ({
             size="small"
             variant="outlined"
             label={`${count} / ${max}`}
-            sx={{
-              "& .MuiChip-label": { px: 1.25 },
-              fontSize: 12,
-              height: 24,
-              borderStyle: "dashed",
-            }}
+            sx={{ "& .MuiChip-label": { px: 1.25 }, fontSize: 12, height: 24, borderStyle: "dashed" }}
             aria-label={`Compteur : ${count} sur ${max}`}
           />
         </Tooltip>
@@ -467,139 +367,104 @@ const AttributeRow: React.FC<Props> = ({
   );
 
   return (
-    <>
-      <Box ref={rowRef}>
-        <AttributeRowLayout label={labelNode} statusSlot={statusSlot} actionsSlot={actions}>
-          <Box
-            className={ROW_HOVER_SCOPE}
-            sx={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: { xs: 1, sm: 1.5 },
-              alignItems: "center",
-              minWidth: 0,
-            }}
-          >
-            {workingChips.map((pa) => {
-              const marker: "create" | "update" | null = rowEditMode
-                ? createdSet.has(pa.id)
-                  ? "create"
-                  : updatedSet.has(pa.id)
-                  ? "update"
-                  : null
-                : null;
+    <AttributeRowLayout label={labelNode} statusSlot={statusSlot} actionsSlot={actions}>
+      <Box
+        className={ROW_HOVER_SCOPE}
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: { xs: 1, sm: 1.5 },
+          alignItems: "center",
+          flex: "1 1 auto",
+          minWidth: 0,
+        }}
+      >
+        {workingChips.map((pa) => {
+          const createdSet = new Set(originalChipsRef.current.map((p) => p.id));
+          const marker: "create" | "update" | null = rowEditMode
+            ? (createdSet.has(pa.id) ? null : "create")
+            : null;
 
-              const crTooltip = crTargetsByPaId.get(pa.id);
-              const chipNode = (
-                <AttributeChipValueItem
-                  key={pa.id}
-                  pa={pa}
-                  attrDef={attrDef}
-                  rowEditMode={rowEditMode}
-                  editingKey={editingKey}
-                  status={statusByKey[`pa-${pa.id}`] ?? "idle"}
-                  attrValue={attrValue}
-                  inputRef={inputRef}
-                  formatDisplayValue={formatDisplayValue}
-                  allowDelete={allowDelete}
-                  inlineEditOnChipClickInEditMode={inlineEditOnChipClickInEditMode}
-                  changeMarker={marker}
-                  onStartEdit={onStartEdit}
-                  onCancelEdit={onCancelEdit}
-                  onChangeAttrValue={onChangeAttrValue}
-                  onLocalUpdate={applyLocalUpdate}
-                  onLocalDelete={applyLocalDelete}
+          const origMap = new Map(originalChipsRef.current.map((p) => [p.id, (p.value ?? "").trim().replace(/\s+/g, " ")]));
+          const isUpdated =
+            rowEditMode && origMap.has(pa.id) &&
+            ((pa.value ?? "").trim().replace(/\s+/g, " ") !== origMap.get(pa.id));
+
+          const changeMarker = marker ?? (isUpdated ? "update" : null);
+
+          const crTooltip = ((): string | undefined => {
+            const cr = (changeRequests ?? []).find((cr) => (cr as any).attributeId === attrDef.id);
+            if (!cr) return undefined;
+            for (const it of (cr.items ?? [])) {
+              if (!it.personAttributeId) continue;
+              if (it.personAttributeId === pa.id) {
+                if (it.action === "UPDATE") {
+                  const pv = (it.proposedValue ?? "").toString();
+                  return `Demande : mettre à jour cette valeur → « ${pv} »`;
+                }
+                if (it.action === "DELETE") return "Demande : supprimer cette valeur";
+              }
+            }
+            return undefined;
+          })();
+
+          return (
+            <AttributeChipValueItem
+              key={pa.id}
+              pa={pa}
+              attrDef={attrDef}
+              rowEditMode={rowEditMode}
+              editingKey={editingKey}
+              status={statusByKey[`pa-${pa.id}`] ?? "idle"}
+              attrValue={attrValue}
+              inputRef={inputRef}
+              formatDisplayValue={formatDisplayValue}
+              allowDelete={allowDelete}
+              inlineEditOnChipClickInEditMode={inlineEditOnChipClickInEditMode}
+              changeMarker={changeMarker}
+              onStartEdit={onStartEdit}
+              onCancelEdit={onCancelEdit}
+              onChangeAttrValue={onChangeAttrValue}
+              onLocalUpdate={applyLocalUpdate}
+              onLocalDelete={applyLocalDelete}
+              // Tooltip dot si CR cible le chip
+              // (on l’encapsulait plus haut, mais ici on garde le code simple : pas de Badge enveloppant)
+            />
+          );
+        })}
+
+        {rowEditMode && allowAdd && canAddMore && (
+          <Box key={addKey}>
+            {isAdding ? (
+              <TypedValueInput
+                attribute={attrDef}
+                label={attrDef.name}
+                value={attrValue}
+                status={addStatus}
+                inputRef={inputRef}
+                onChange={onChangeAttrValue}
+                onSave={() => applyLocalAdd(latestAttrValueRef.current)}
+                onCancel={onCancelEdit}
+                onBlur={() => {
+                  /* pas d'auto-save au blur */
+                }}
+              />
+            ) : (
+              <Tooltip title={`Ajouter ${attrDef.name}`}>
+                <Chip
+                  icon={<AddIcon />}
+                  label="Ajouter"
+                  variant="outlined"
+                  onClick={() => onStartEdit(addKey, attrDef.id, null, "")}
+                  sx={{ borderStyle: "dashed", borderWidth: 1, opacity: 0.95 }}
+                  aria-label={`Ajouter ${attrDef.name}`}
                 />
-              );
-
-              // Si la CR cible ce chip (UPDATE/DELETE), on lui met un dot + tooltip
-              return crTooltip ? (
-                <Tooltip key={pa.id} title={crTooltip}>
-                  <Badge
-                    variant="dot"
-                    color="warning"
-                    overlap="circular"
-                    anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(1)",
-                      },
-                    }}
-                  >
-                    {chipNode}
-                  </Badge>
-                </Tooltip>
-              ) : (
-                chipNode
-              );
-            })}
-
-            {rowEditMode && allowAdd && canAddMore && (
-              <Box key={addKey}>
-                {isAdding ? (
-                  <TypedValueInput
-                    label={attrDef.name}
-                    type={attrDef.type as any}
-                    value={attrValue}
-                    status={addStatus}
-                    inputRef={inputRef}
-                    onChange={onChangeAttrValue}
-                    onSave={() => applyLocalAdd(attrValue)}
-                    onCancel={onCancelEdit}
-                    onBlur={() => {
-                      /* pas d'auto-save au blur */
-                    }}
-                  />
-                ) : (
-                  <Tooltip title={`Ajouter ${attrDef.name}`}>
-                    <Chip
-                      icon={<AddIcon />}
-                      label="Ajouter"
-                      variant="outlined"
-                      onClick={() => onStartEdit(addKey, attrDef.id, null, "")}
-                      sx={{ borderStyle: "dashed", borderWidth: 1, opacity: 0.95 }}
-                      aria-label={`Ajouter ${attrDef.name}`}
-                    />
-                  </Tooltip>
-                )}
-              </Box>
+              </Tooltip>
             )}
           </Box>
-        </AttributeRowLayout>
+        )}
       </Box>
-
-      <Dialog open={confirmLeaveOpen} onClose={() => setConfirmLeaveOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Modifications non enregistrées</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            Voulez-vous enregistrer vos changements, annuler les changements, ou revenir à l’édition ?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmLeaveOpen(false)}>Revenir aux changements</Button>
-          <Button
-            color="error"
-            onClick={() => {
-              handleRowCancel();
-              setConfirmLeaveOpen(false);
-            }}
-          >
-            Annuler les changements
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              handleRowSave();
-              setConfirmLeaveOpen(false);
-            }}
-            disabled={!dirty}
-            startIcon={<SaveIcon />}
-          >
-            Enregistrer
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+    </AttributeRowLayout>
   );
 };
 

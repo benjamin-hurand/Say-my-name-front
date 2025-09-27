@@ -240,7 +240,7 @@ const ChallengeMenu: React.FC = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 600, display: 'flex', flexDirection: 'column', height: '100%', padding: 2 }}>
+    <Box sx={{ width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', height: '100%', padding: 2 }}>
       {/* Champ de recherche */}
       <TextField
         label="Recherche de challenge..."

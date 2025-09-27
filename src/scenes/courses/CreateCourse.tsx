@@ -1,32 +1,30 @@
 // src/scenes/courses/CreateCourse.tsx
-import React, { ChangeEvent, useEffect, useState } from 'react';
 import {
   Box,
-  FormGroup,
-  Divider,
-  Typography,
   Button,
+  Chip,
+  Divider,
+  FormControl,
+  FormGroup,
+  InputLabel,
   MenuItem,
+  OutlinedInput,
   Select,
   SelectChangeEvent,
-  InputLabel,
-  FormControl,
-  OutlinedInput,
-  Chip,
+  Typography,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useThemeColorContext } from '../../contexts/ThemeColorContext';
-import { useGlobalData } from '../../contexts/GlobalDataContext';
-import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
-import { Attribute } from '../../models/commons/Attribute';
-import { notifyError, notifySuccess } from '../../services/notification/toast.service';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { CreateCourseDto } from '../../services/dto/courses/CreateCourseDto';
+import { useGlobalData } from '../../contexts/GlobalDataContext';
+import { Attribute } from '../../models/commons/Attribute';
+import { GameMode } from '../../models/commons/Game/GameMode/GameMode.model';
 import { createCourse } from '../../services/business/courses/course.service';
+import { CreateCourseDto } from '../../services/dto/courses/CreateCourseDto';
+import { notifyError, notifySuccess } from '../../services/notification/toast.service';
 
 const CreateCourse: React.FC = () => {
-  const { color } = useThemeColorContext();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -86,7 +84,7 @@ const CreateCourse: React.FC = () => {
       sx={{
         p: 3,
         width: '100%',
-        maxWidth: 600,
+        maxWidth: '100%',
         mx: 'auto',
         display: 'flex',
         flexDirection: 'column',

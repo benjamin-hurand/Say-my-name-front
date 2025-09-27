@@ -210,6 +210,7 @@ export const ProgressionQuiz: React.FC = () => {
           attribute: sortAttribute,
           order: selectedCourse.sortingMethodOrder
         }],
+        populationScope: 'FOLLOWED',
         repetitionPattern: repetitionPatterns.optimal,
         helps: { typosFriendly: true, initialGiven: true },
       });

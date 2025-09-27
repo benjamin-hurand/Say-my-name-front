@@ -18,13 +18,85 @@ import {
 import { StyledSlider } from "../../quiz/components/StyledSlider";
 import { createChallenge } from "../../../services/business/challenges/challenge.service";
 import { AttributeCard } from "../../quiz/components/AttributeCard";
-
-// Import des toasts personnalisés
 import { CreatedChallengeVersionDto } from "../../../services/dto/CreatedChallengeVersionDto";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useQuizSession } from "../../../contexts/QuizSessionContext";
 import { GameFilter } from "../../../models/commons/Game/GameOptions/GameFilter.model";
+
+/* ------------------ Helpers min/max effectifs ------------------ */
+// Récupère les bornes déclaratives (constraint.range) ou observées (stats)
+function getEffectiveRangeStrings(attr: Attribute): { minStr: string | null; maxStr: string | null } {
+  const rule = attr.constraint?.range;
+  const stats = attr.stats;
+  const minStr = (rule?.min ?? stats?.observedMin) ?? null;
+  const maxStr = (rule?.max ?? stats?.observedMax) ?? null;
+  return { minStr, maxStr };
+}
+
+function parseNumberOrNull(s: string | null | undefined): number | null {
+  if (s == null) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Pour DATE/DATETIME, on ne garde que la partie date "YYYY-MM-DD"
+function toDateISO(s: string | null | undefined): string | null {
+  if (!s) return null;
+  return s.length >= 10 ? s.substring(0, 10) : null;
+}
+
+/** Domaine interne du slider (en valeurs absolues, transformées ensuite en offset) */
+function getAttributeDomain(attr: Attribute): { attrMin: number; attrMax: number } {
+  if (attr.type === "NUMBER") {
+    const { minStr, maxStr } = getEffectiveRangeStrings(attr);
+    const min = parseNumberOrNull(minStr) ?? 0;
+    const max = parseNumberOrNull(maxStr) ?? (min + 100);
+    return { attrMin: min, attrMax: Math.max(min, max) };
+  }
+  if (attr.type === "DATE" || attr.type === "DATETIME") {
+    const { minStr, maxStr } = getEffectiveRangeStrings(attr);
+    const isoMin = toDateISO(minStr);
+    const isoMax = toDateISO(maxStr);
+    const min = isoMin ? dateStringToDayOffset(isoMin) : 0;
+    const max = isoMax ? dateStringToDayOffset(isoMax) : (min + 100);
+    return { attrMin: min, attrMax: Math.max(min, max) };
+  }
+  // TEXT (A..Z)
+  return { attrMin: 0, attrMax: 25 };
+}
+
+/** Formate une valeur absolue (pour payload GameFilter) */
+function formatAbsoluteValueForFilter(attr: Attribute, absVal: number): string {
+  if (attr.type === "NUMBER") return String(absVal);
+  if (attr.type === "DATE" || attr.type === "DATETIME") return dayOffsetToISODateString(absVal);
+  return mapNumberToLetter(absVal);
+}
+
+/** Affichage label slider */
+function formatSliderLabel(attr: Attribute, baseMin: number, offsetVal: number): string {
+  if (attr.type === "NUMBER") return String(baseMin + offsetVal);
+  if (attr.type === "DATE" || attr.type === "DATETIME") {
+    return dayOffsetToLocalizedDateString(baseMin + offsetVal);
+  }
+  return mapNumberToLetter(offsetVal);
+}
+
+/** Parse la saisie Min/Max utilisateur -> offset */
+function parseUserInputToOffset(attr: Attribute, baseMin: number, input: string): number {
+  if (attr.type === "NUMBER") {
+    const n = Number(input);
+    return Number.isFinite(n) ? (n - baseMin) : 0;
+  }
+  if (attr.type === "DATE" || attr.type === "DATETIME") {
+    const day = dateStringToDayOffset(toDateISO(input) ?? "");
+    return day - baseMin;
+  }
+  // TEXT
+  const idx = mapLetterToNumber(input);
+  return (idx >= 0 && idx <= 25) ? idx : 0;
+}
+/* --------------------------------------------------------------- */
 
 const AddChallengeForm: React.FC = () => {
   const navigate = useNavigate();
@@ -34,14 +106,14 @@ const AddChallengeForm: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [challengeDescription, setChallengeDescription] = useState<string>("");
 
-  // Pour l'exemple, on simule l'ID du créateur (remplacez par votre vrai context auth).
   const currentCreatorId: number = user?.id || 0;
 
-  // States liés aux filtres
+  // Filtres
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
-  const [range, setRange] = useState<[number, number]>([0, 25]);
+  const [range, setRange] = useState<[number, number]>([0, 25]); // offsets
   const [attributeRanges, setAttributeRanges] = useState<{ [attrId: number]: [number, number] }>({});
 
+  // Pré-remplissage depuis la session
   useEffect(() => {
     if (!sessionOptions) return;
 
@@ -51,10 +123,8 @@ const AddChallengeForm: React.FC = () => {
       return;
     }
 
-    // 1) Mode
     setSelectedMode(sessionOptions.mode);
 
-    // 2) Attribut + plage par défaut = filtre courant
     const attr: Attribute = firstFilter.attribute;
     if (!attr) {
       notifyError("Aucun attribut trouvé pour le filtre");
@@ -62,46 +132,27 @@ const AddChallengeForm: React.FC = () => {
     }
     setSelectedAttribute(attr);
 
-    // on calcule la plage selon le type
+    // Calcule la plage d'offset à partir des valeurs du filtre existant
+    const { attrMin, attrMax } = getAttributeDomain(attr);
     let initialRange: [number, number] = [0, 0];
 
-    if (attr.type === 'number') {
-      const attrMin = attr.minValue ? parseInt(attr.minValue, 10) : 0;
-      const minVal = firstFilter.minValue ? parseInt(firstFilter.minValue, 10) : attrMin;
-      const maxVal = firstFilter.maxValue ? parseInt(firstFilter.maxValue, 10) : attrMin;
+    if (attr.type === "NUMBER") {
+      const minVal = parseNumberOrNull(firstFilter.minValue) ?? attrMin;
+      const maxVal = parseNumberOrNull(firstFilter.maxValue) ?? attrMax;
       initialRange = [minVal - attrMin, maxVal - attrMin];
-
-    } else if (attr.type === 'date') {
-      const attrMinOffset = attr.minValue ? dateStringToDayOffset(attr.minValue) : 0;
-      const minOffset = firstFilter.minValue ? dateStringToDayOffset(firstFilter.minValue) : attrMinOffset;
-      const maxOffset = firstFilter.maxValue ? dateStringToDayOffset(firstFilter.maxValue) : attrMinOffset;
-      initialRange = [minOffset - attrMinOffset, maxOffset - attrMinOffset];
-
-    } else {
-      // type texte → A→0, B→1, etc.
-      const minIdx = mapLetterToNumber(firstFilter.minValue || 'A');
-      const maxIdx = mapLetterToNumber(firstFilter.maxValue || 'Z');
+    } else if (attr.type === "DATE" || attr.type === "DATETIME") {
+      const minDay = firstFilter.minValue ? dateStringToDayOffset(toDateISO(firstFilter.minValue)!) : attrMin;
+      const maxDay = firstFilter.maxValue ? dateStringToDayOffset(toDateISO(firstFilter.maxValue)!) : attrMax;
+      initialRange = [minDay - attrMin, maxDay - attrMin];
+    } else { // TEXT
+      const minIdx = mapLetterToNumber(firstFilter.minValue || "A");
+      const maxIdx = mapLetterToNumber(firstFilter.maxValue || "Z");
       initialRange = [minIdx, maxIdx];
     }
 
     setRange(initialRange);
-    setAttributeRanges(prev => ({
-      ...prev,
-      [attr.id]: initialRange
-    }));
-
-  }, [
-    sessionOptions, 
-    setSelectedMode, 
-    setSelectedAttribute, 
-    setRange, 
-    setAttributeRanges
-  ]);
-
-
-  useEffect(() => {
-    // Si besoin de réinitialiser quand l'attribut change
-  }, [selectedAttribute]);
+    setAttributeRanges(prev => ({ ...prev, [attr.id]: initialRange }));
+  }, [sessionOptions]);
 
   const renderModes = () => {
     return modes.map((mode) => (
@@ -119,29 +170,17 @@ const AddChallengeForm: React.FC = () => {
     if (attributeRanges[attribute.id]) {
       setRange(attributeRanges[attribute.id]);
     } else {
-      if (attribute.type === "number") {
-        const attrMin = attribute.minValue ? parseInt(attribute.minValue, 10) : 0;
-        const attrMax = attribute.maxValue ? parseInt(attribute.maxValue, 10) : 100;
-        setRange([0, Math.max(0, attrMax - attrMin)]);
-      } else if (attribute.type === "date") {
-        const attrMin = attribute.minValue ? dateStringToDayOffset(attribute.minValue) : 0;
-        const attrMax = attribute.maxValue ? dateStringToDayOffset(attribute.maxValue) : 0;
-        setRange([0, Math.max(0, attrMax - attrMin)]);
-      } else {
-        setRange([0, 25]);
-      }
+      const { attrMin, attrMax } = getAttributeDomain(attribute);
+      setRange([0, Math.max(0, attrMax - attrMin)]);
     }
   };
 
   const getSliderMarks = () => {
     if (!selectedAttribute) return [];
-    if (selectedAttribute.type === "number") {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const attrMax = selectedAttribute.maxValue ? parseInt(selectedAttribute.maxValue, 10) : 100;
+    const { attrMin, attrMax } = getAttributeDomain(selectedAttribute);
+    if (selectedAttribute.type === "NUMBER") {
       return createNumericMarks(attrMin, attrMax);
-    } else if (selectedAttribute.type === "date") {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const attrMax = selectedAttribute.maxValue ? dateStringToDayOffset(selectedAttribute.maxValue) : 0;
+    } else if (selectedAttribute.type === "DATE" || selectedAttribute.type === "DATETIME") {
       return getDateSliderMarks(attrMin, attrMax);
     } else {
       return alphabet.map((letter, index) => ({ value: index, label: letter }));
@@ -150,33 +189,17 @@ const AddChallengeForm: React.FC = () => {
 
   const getSliderMax = () => {
     if (!selectedAttribute) return 25;
-    if (selectedAttribute.type === "number") {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const attrMax = selectedAttribute.maxValue ? parseInt(selectedAttribute.maxValue, 10) : 100;
-      return Math.max(0, attrMax - attrMin);
-    } else if (selectedAttribute.type === "date") {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const attrMax = selectedAttribute.maxValue ? dateStringToDayOffset(selectedAttribute.maxValue) : 0;
-      return Math.max(0, attrMax - attrMin);
-    } else {
-      return 25;
-    }
+    const { attrMin, attrMax } = getAttributeDomain(selectedAttribute);
+    return Math.max(0, attrMax - attrMin);
   };
 
   const formatSliderValue = (value: number) => {
     if (!selectedAttribute) return "";
-    if (selectedAttribute.type === "number") {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      return (attrMin + value).toString();
-    } else if (selectedAttribute.type === "date") {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      return dayOffsetToLocalizedDateString(attrMin + value);
-    } else {
-      return mapNumberToLetter(value);
-    }
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    return formatSliderLabel(selectedAttribute, attrMin, value);
   };
 
-  const handleSliderChange = (event: Event, newValue: number | number[]) => {
+  const handleSliderChange = (_event: any, newValue: number | number[]) => {
     const newRange = newValue as [number, number];
     setRange(newRange);
     if (selectedAttribute) {
@@ -189,47 +212,19 @@ const AddChallengeForm: React.FC = () => {
 
   const handleMinInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (!selectedAttribute) return;
-    const input = event.target.value;
-    if (selectedAttribute.type === "number") {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const typedNum = parseInt(input, 10);
-      if (!isNaN(typedNum)) {
-        setRange([typedNum - attrMin, range[1]]);
-      }
-    } else if (selectedAttribute.type === "date") {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const typedDay = dateStringToDayOffset(input);
-      setRange([typedDay - attrMin, range[1]]);
-    } else {
-      const letterIndex = mapLetterToNumber(input);
-      if (letterIndex >= 0 && letterIndex <= 25) {
-        setRange([letterIndex, range[1]]);
-      }
-    }
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    const offset = parseUserInputToOffset(selectedAttribute, attrMin, event.target.value);
+    setRange([offset, range[1]]);
   };
 
   const handleMaxInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (!selectedAttribute) return;
-    const input = event.target.value;
-    if (selectedAttribute.type === "number") {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      const typedNum = parseInt(input, 10);
-      if (!isNaN(typedNum)) {
-        setRange([range[0], typedNum - attrMin]);
-      }
-    } else if (selectedAttribute.type === "date") {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      const typedDay = dateStringToDayOffset(input);
-      setRange([range[0], typedDay - attrMin]);
-    } else {
-      const letterIndex = mapLetterToNumber(input);
-      if (letterIndex >= 0 && letterIndex <= 25) {
-        setRange([range[0], letterIndex]);
-      }
-    }
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    const offset = parseUserInputToOffset(selectedAttribute, attrMin, event.target.value);
+    setRange([range[0], offset]);
   };
 
-  // Handler principal pour sauvegarder le challenge via l'API
+  // Save
   const handleSaveClick = async () => {
     if (!selectedMode) {
       notifyError("Veuillez sélectionner un mode.");
@@ -240,49 +235,26 @@ const AddChallengeForm: React.FC = () => {
       return;
     }
 
-    // Calcul des bornes min / max en fonction du slider
-    let computedMinValue: string;
-    let computedMaxValue: string;
+    const { attrMin } = getAttributeDomain(selectedAttribute);
+    const absMin = attrMin + range[0];
+    const absMax = attrMin + range[1];
 
-    if (selectedAttribute.type === "number") {
-      const attrMin = selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0;
-      computedMinValue = (attrMin + range[0]).toString().trim();
-      computedMaxValue = (attrMin + range[1]).toString().trim();
-    } else if (selectedAttribute.type === "date") {
-      const attrMin = selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0;
-      computedMinValue = dayOffsetToISODateString(attrMin + range[0]).trim();
-      computedMaxValue = dayOffsetToISODateString(attrMin + range[1]).trim();
-    } else {
-      computedMinValue = mapNumberToLetter(range[0]).trim();
-      computedMaxValue = mapNumberToLetter(range[1]).trim();
-    }
-
-    const trimmedDescription = challengeDescription.trim();
-
-    // Préparation du DTO
     const addChallengeDto = {
-      description: trimmedDescription,
+      description: challengeDescription.trim(),
       gameModeId: selectedMode.id,
       attributeFilter: {
         attributeId: selectedAttribute.id,
-        minValue: computedMinValue,
-        maxValue: computedMaxValue,
+        minValue: formatAbsoluteValueForFilter(selectedAttribute, absMin),
+        maxValue: formatAbsoluteValueForFilter(selectedAttribute, absMax),
       },
-      creatorId: currentCreatorId,
+      creatorId: user?.id || 0,
     };
 
     try {
       const createdChallenge: CreatedChallengeVersionDto = await createChallenge(addChallengeDto);
-
-      // ---------------
-      // Dans l'idéal, votre backend renvoie un DTO avec la saison et la date de début.
-      // On suppose ici qu'on peut accéder à `createdChallenge.seasonNumber`, `createdChallenge.seasonStartDate`, etc.
-      // ---------------
       const seasonNumber = createdChallenge.firstSeasonNumber ?? "inconnue";
       const seasonStartDate = createdChallenge.startDate ?? null;
 
-      // Exemple simplifié : si vous avez déjà un utilitaire pour formatDate / formatTime, réutilisez-le
-      // ou utilisez dayOffsetToLocalizedDateString en supposant que la date soit un offset, etc.
       const formattedDate = seasonStartDate
         ? new Date(seasonStartDate).toLocaleDateString("fr-FR")
         : "date inconnue";
@@ -294,18 +266,12 @@ const AddChallengeForm: React.FC = () => {
         `Challenge créé avec succès ! Il sera disponible au début de la saison ${seasonNumber} le ${formattedDate} à ${formattedTime}.`
       );
 
-      // Redirection après un court délai pour laisser le temps de lire le toast
-      setTimeout(() => {
-        navigate("/challenges");
-      }, 2000);
+      setTimeout(() => navigate("/challenges"), 2000);
     } catch (error: any) {
-      // On teste d’abord le code de statut (409, 400, etc.)
       if (error.response) {
         if (error.response.status === 409) {
-          // Conflit => un challenge existe déjà
           notifyError("Échec : ce challenge existe déjà pour ce filtre/mode.");
         } else if (error.response.status === 400) {
-          // Mauvaise requête => par exemple, moins de 10 personnes
           notifyError("Échec : il y a moins de 10 personnes correspondant à ce filtre.");
         } else {
           notifyError("Une erreur inattendue est survenue lors de la création du challenge.");
@@ -316,9 +282,7 @@ const AddChallengeForm: React.FC = () => {
     }
   };
 
-  const goToChallengeMenu = () => {
-    navigate("/challenges", { replace: true });
-  };
+  const goToChallengeMenu = () => navigate("/challenges", { replace: true });
 
   return (
     <Box
@@ -340,7 +304,7 @@ const AddChallengeForm: React.FC = () => {
           {renderModes()}
         </Box>
 
-        {/* Description du challenge */}
+        {/* Description */}
         <TextField
           label="Challenge Description (facultatif)"
           variant="outlined"
@@ -350,10 +314,11 @@ const AddChallengeForm: React.FC = () => {
           sx={{ marginTop: "16px" }}
         />
 
-        {/* Section Filters */}
+        {/* Filtres */}
         <Divider>
           <Typography variant="h6">Filters</Typography>
         </Divider>
+
         <Box sx={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {filters.map((filter) => (
@@ -365,6 +330,7 @@ const AddChallengeForm: React.FC = () => {
               />
             ))}
           </Box>
+
           {selectedAttribute && (
             <>
               <Box sx={{ display: "flex", justifyContent: "center" }}>
@@ -380,65 +346,58 @@ const AddChallengeForm: React.FC = () => {
                   sx={{ width: "80%" }}
                 />
               </Box>
+
+              {/* Champs Min/Max */}
               <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-                <TextField
-                  label="Min"
-                  type={selectedAttribute.type === "date" ? "date" : "text"}
-                  value={
-                    selectedAttribute.type === "number"
-                      ? (
-                          (selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[0]
-                        ).toString()
-                      : selectedAttribute.type === "date"
-                      ? dayOffsetToISODateString(
-                          (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[0]
-                        )
-                      : mapNumberToLetter(range[0])
-                  }
-                  onChange={handleMinInputChange}
-                  sx={{ width: "45%" }}
-                  InputLabelProps={selectedAttribute.type === "date" ? { shrink: true } : undefined}
-                />
-                <TextField
-                  label="Max"
-                  type={selectedAttribute.type === "date" ? "date" : "text"}
-                  value={
-                    selectedAttribute.type === "number"
-                      ? (
-                          (selectedAttribute.minValue ? parseInt(selectedAttribute.minValue, 10) : 0) + range[1]
-                        ).toString()
-                      : selectedAttribute.type === "date"
-                      ? dayOffsetToISODateString(
-                          (selectedAttribute.minValue ? dateStringToDayOffset(selectedAttribute.minValue) : 0) + range[1]
-                        )
-                      : mapNumberToLetter(range[1])
-                  }
-                  onChange={handleMaxInputChange}
-                  sx={{ width: "45%" }}
-                  InputLabelProps={selectedAttribute.type === "date" ? { shrink: true } : undefined}
-                />
+                {(() => {
+                  const isDateLike =
+                    selectedAttribute.type === "DATE" || selectedAttribute.type === "DATETIME";
+                  const { attrMin: baseMin } = getAttributeDomain(selectedAttribute);
+
+                  const minDisplay =
+                    selectedAttribute.type === "NUMBER"
+                      ? String(baseMin + range[0])
+                      : isDateLike
+                      ? dayOffsetToISODateString(baseMin + range[0])
+                      : mapNumberToLetter(range[0]);
+
+                  const maxDisplay =
+                    selectedAttribute.type === "NUMBER"
+                      ? String(baseMin + range[1])
+                      : isDateLike
+                      ? dayOffsetToISODateString(baseMin + range[1])
+                      : mapNumberToLetter(range[1]);
+
+                  return (
+                    <>
+                      <TextField
+                        label="Min"
+                        type={isDateLike ? "date" : "text"}
+                        value={minDisplay}
+                        onChange={handleMinInputChange}
+                        sx={{ width: "45%" }}
+                        InputLabelProps={isDateLike ? { shrink: true } : undefined}
+                      />
+                      <TextField
+                        label="Max"
+                        type={isDateLike ? "date" : "text"}
+                        value={maxDisplay}
+                        onChange={handleMaxInputChange}
+                        sx={{ width: "45%" }}
+                        InputLabelProps={isDateLike ? { shrink: true } : undefined}
+                      />
+                    </>
+                  );
+                })()}
               </Box>
             </>
           )}
         </Box>
       </FormGroup>
 
-      {/* Footer Buttons */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          width: "100%",
-          height: "7vh",
-          marginTop: "15px",
-        }}
-      >
-        <Button
-          variant="outlined"
-          className="menu nobg"
-          onClick={() => goToChallengeMenu()}
-          sx={{ marginRight: "1vw" }}
-        >
+      {/* Footer */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", height: "7vh", mt: "15px" }}>
+        <Button variant="outlined" className="menu nobg" onClick={goToChallengeMenu} sx={{ mr: "1vw" }}>
           Cancel
         </Button>
         <Button variant="contained" className="menu" onClick={handleSaveClick}>

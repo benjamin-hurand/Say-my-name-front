@@ -56,6 +56,8 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
 
 
   const {
+    selectedPopulationScope, 
+    setSelectedPopulationScope,
     modes,
     filters,
     availableFilters,
@@ -132,6 +134,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
     console.log('TrainingQuiz: fetchList', selectedMode, selectedFilters, selectedSortingMethods);
     setIsLoading(true);
     if (!selectedMode) {
+      setSelectedPopulationScope('ALL');
       setSelectedMode(modes[0]);
       setSelectedRepetitionPattern(repetitionPatterns.optimal);
       setSelectedHelps({ initialGiven: true, typosFriendly: true });
@@ -144,9 +147,10 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
         gameMode: selectedMode ?? modes[0],
         filters: selectedFilters ?? [],
         sortBy: selectedSortingMethods ?? [],
+        populationScope: selectedPopulationScope ?? 'ALL',
         repetitionPattern: selectedRepetitionPattern ?? repetitionPatterns.optimal,
         initialGiven: selectedHelps.initialGiven,
-        typosFriendly: selectedHelps.typosFriendly
+        typosFriendly: selectedHelps.typosFriendly,
       };
       const dto: ReducedGameOptionsDto = toReducedGameOptionsDto(options);
       const entries: QuizEntry[] = await getQuizList(dto);
@@ -171,6 +175,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
           mode: selectedMode,
           filters: selectedFilters,
           sorts: selectedSortingMethods,
+          populationScope: selectedPopulationScope ?? 'ALL',
           repetitionPattern: selectedRepetitionPattern,
           helps: { typosFriendly: selectedHelps.typosFriendly, initialGiven: selectedHelps.initialGiven }
         });
@@ -181,7 +186,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
       setIsLoading(false);
       setHasFetched(true);
     }
-  }, [selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
+  }, [selectedPopulationScope, selectedMode, selectedFilters, selectedSortingMethods, selectedRepetitionPattern, selectedHelps]);
 
   // Handle INIT (from challenge: reviewList / from menu: fetchList / from options: hasUncheckedCriticalChanges)
   useEffect(() => {
@@ -189,6 +194,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
     if (reviewList.length > 0 && sessionOptions && uncheckedNewSession) {
       console.log('reviewList');
       setSelectedRepetitionPattern(repetitionPatterns.optimal);
+      setSelectedPopulationScope(sessionOptions.populationScope);
       setSelectedMode(sessionOptions.mode);
       setSelectedFilters(sessionOptions.filters);
       setSelectedHelps(sessionOptions.helps);
@@ -490,6 +496,7 @@ export const TrainingQuiz: React.FC<QuizProps> = () => {
           filters: selectedFilters,
           sorts: selectedSortingMethods,
           repetitionPattern: selectedRepetitionPattern,
+          populationScope: selectedPopulationScope ?? 'ALL',
           helps: { typosFriendly: selectedHelps.typosFriendly, initialGiven: selectedHelps.initialGiven }
         });
         navigate("/challenges/new", {

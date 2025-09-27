@@ -1,6 +1,6 @@
 // Footer.tsx
 import React, { useState } from 'react';
-import { Stack, IconButton, Menu, MenuItem } from "@mui/material";
+import { Stack, IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
 import { Settings, Brightness7, Brightness4, Language, Logout, Home } from "@mui/icons-material";
 import { useThemeColorContext } from "../../../../contexts/ThemeColorContext";
 import { notifySuccess } from "../../../../services/notification/toast.service";
@@ -15,22 +15,30 @@ interface FooterProps {
 }
 
 const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
-  const { color, randomizeColor, toggleTheme, theme: currentTheme } = useThemeColorContext();
+  const {
+    color,
+    randomizeColor,
+    toggleTheme,
+    theme: currentTheme,
+    accentMode,
+  } = useThemeColorContext();
+
   const { i18n } = useTranslation();
   const navigate = useNavigate();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleMouseEnter = () => randomizeColor();
+  const handleMouseEnter = () => {
+    // Randomize only if user selected "random-hover"
+    if (accentMode === 'random-hover') randomizeColor();
+  };
 
-  const handleLanguageMenu = (event: React.MouseEvent<HTMLElement>) => {
+  const handleOpenLanguageMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
   const handleLanguageChange = (newLang: string) => {
-    i18n.changeLanguage(newLang).then(() => {
-      setAnchorEl(null);
-    });
+    i18n.changeLanguage(newLang).then(() => setAnchorEl(null));
   };
 
   const handleLogout = () => {
@@ -40,26 +48,57 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
     navigate('/signin', { replace: true });
   };
 
+  const handleGoSettings = () => {
+    navigate('/settings');
+  };
+
   const iconButtonStyle = {
     color: color,
     boxShadow: `0 0 8px ${color}`,
     transition: 'box-shadow 0.2s ease-in-out',
     backdropFilter: 'blur(6px)',
     backgroundColor: currentTheme === 'dark' ? '#24242450' : '#ffffff50',
-  };
+  } as const;
 
   return (
     <div className="footer">
       <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '400px', padding: '5px' }}>
-        <IconButton className="menu" style={iconButtonStyle} aria-label="settings" onMouseEnter={handleMouseEnter}>
-          <Settings style={{ color }} />
-        </IconButton>
-        <IconButton className="menu" style={iconButtonStyle} aria-label="toggle dark/light mode" onClick={toggleTheme} onMouseEnter={handleMouseEnter}>
-          {currentTheme === 'dark' ? <Brightness7 style={{ color }} /> : <Brightness4 style={{ color }} />}
-        </IconButton>
-        <IconButton className="menu" style={iconButtonStyle} aria-label="change language" onMouseEnter={handleMouseEnter} onClick={handleLanguageMenu}>
-          <Language style={{ color }} />
-        </IconButton>
+        <Tooltip title="Settings" arrow>
+          <IconButton
+            className="menu"
+            style={iconButtonStyle}
+            aria-label="settings"
+            onMouseEnter={handleMouseEnter}
+            onClick={handleGoSettings}
+          >
+            <Settings style={{ color }} />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title={currentTheme === 'dark' ? 'Light mode' : 'Dark mode'} arrow>
+          <IconButton
+            className="menu"
+            style={iconButtonStyle}
+            aria-label="toggle dark/light mode"
+            onClick={toggleTheme}
+            onMouseEnter={handleMouseEnter}
+          >
+            {currentTheme === 'dark' ? <Brightness7 style={{ color }} /> : <Brightness4 style={{ color }} />}
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Language" arrow>
+          <IconButton
+            className="menu"
+            style={iconButtonStyle}
+            aria-label="change language"
+            onMouseEnter={handleMouseEnter}
+            onClick={handleOpenLanguageMenu}
+          >
+            <Language style={{ color }} />
+          </IconButton>
+        </Tooltip>
+
         <Menu
           id="language-menu"
           anchorEl={anchorEl}
@@ -72,14 +111,31 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
           <MenuItem onClick={() => handleLanguageChange('fr')}>Français</MenuItem>
           <MenuItem onClick={() => handleLanguageChange('es')}>Español</MenuItem>
         </Menu>
+
         {isMenu ? (
-          <IconButton className="menu" style={iconButtonStyle} aria-label="logout" onClick={handleLogout} onMouseEnter={handleMouseEnter}>
-            <Logout style={{ color }} />
-          </IconButton>
+          <Tooltip title="Logout" arrow>
+            <IconButton
+              className="menu"
+              style={iconButtonStyle}
+              aria-label="logout"
+              onClick={handleLogout}
+              onMouseEnter={handleMouseEnter}
+            >
+              <Logout style={{ color }} />
+            </IconButton>
+          </Tooltip>
         ) : (
-          <IconButton className="menu" style={iconButtonStyle} aria-label="home" onClick={handleHomeClick} onMouseEnter={handleMouseEnter}>
-            <Home style={{ color }} />
-          </IconButton>
+          <Tooltip title="Home" arrow>
+            <IconButton
+              className="menu"
+              style={iconButtonStyle}
+              aria-label="home"
+              onClick={handleHomeClick}
+              onMouseEnter={handleMouseEnter}
+            >
+              <Home style={{ color }} />
+            </IconButton>
+          </Tooltip>
         )}
       </Stack>
     </div>

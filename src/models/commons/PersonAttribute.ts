@@ -9,6 +9,12 @@ export interface PersonAttributeLite {
   personId: number;
 }
 
+export interface PersonAttributeExtraLite {
+  id: number;
+  attributeId: number;
+  value: string;
+}
+
 export interface PersonAttributeFull {
   id: number;
   attribute: Attribute;

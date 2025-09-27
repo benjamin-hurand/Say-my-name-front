@@ -9,10 +9,11 @@ html, body {
 }
 
 .layout {
+  height: 100svh;
   position: relative; /* Contexte de positionnement pour les éléments absolus */
   height: 100vh;      /* Occupation totale de la fenêtre */
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
 }
 
@@ -47,11 +48,10 @@ html, body {
   position: absolute;
   top: var(--header-height);
   bottom: var(--footer-height);
-  left: 0;
-  right: 0;
+  left: 0; right: 0;
   box-sizing: border-box;
   padding: 10px 10px;
-  overflow: visible; /* Pas de scroll, tout doit tenir dans cet espace */
+  overflow: hidden;    /* <<<<< au lieu de visible */
 }
 
 /* Pour les navigateurs WebKit (Chrome, Edge, Safari) */

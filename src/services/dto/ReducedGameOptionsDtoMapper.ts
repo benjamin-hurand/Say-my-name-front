@@ -1,5 +1,5 @@
 import { GameOptions } from "../../models/commons/Game/GameOptions/GameOptions.model";
-import { ReducedGameOptionsDto, ReducedGameModeDto, ReducedGameAttributeFilterDto, ReducedGameAttributeSortDto } from "./ReducedGameOptionsDto";
+import { ReducedGameAttributeFilterDto, ReducedGameAttributeSortDto, ReducedGameModeDto, ReducedGameOptionsDto } from "./ReducedGameOptionsDto";
 
 export function toReducedGameOptionsDto(gameOptions: GameOptions): ReducedGameOptionsDto {
   // Transformation du gameMode
@@ -22,11 +22,11 @@ export function toReducedGameOptionsDto(gameOptions: GameOptions): ReducedGameOp
     attributeId: sort.attribute.id,
     order: sort.order
   }));
-
   return {
     id: gameOptions.id,
     gameMode: reducedGameMode,
     filters: reducedFilters,
-    sortBy: reducedSortBy
+    sortBy: reducedSortBy,
+    populationScope: gameOptions.populationScope ?? 'ALL',
   };
 }

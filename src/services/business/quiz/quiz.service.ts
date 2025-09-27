@@ -1,4 +1,3 @@
-import { GameOptions } from "../../../models/commons/Game/GameOptions/GameOptions.model";
 import { QuizEntry } from "../../../models/commons/Game/QuizEntry";
 import API from "../../api/apiUtils";
 import { ReducedGameOptionsDto } from "../../dto/ReducedGameOptionsDto";

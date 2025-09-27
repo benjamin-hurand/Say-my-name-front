@@ -1,13 +1,28 @@
-import { GameMode } from "../../../models/commons/Game/GameMode/GameMode.model";
-import { ReducedGameModeDto } from "../ReducedGameOptionsDto";
+export type PopulationScope = "FOLLOWED" | "ALL";
 
-// src/dto/course/CourseDto.ts
+// Nouveau DTO côté front, aligné avec le back refactor
+export type CourseStatus =
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'ABANDONED'
+  | 'PAUSED'
+  | 'CANCELLED';
+
 export interface CourseDto {
   id: number;
   userId: number;
   gameModeId: number;
-  sortingMethodAttributeId: number;
-  sortingMethodOrder: 'ASC' | 'DESC';
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED' | 'PAUSED' | 'CANCELLED';
-  populationIds: number[];
+  status: CourseStatus;
+  currentRound: number;
+  populationScope: PopulationScope;
+  createdAt?: string;   // optionnel si exposé par le back
+  updatedAt?: string;   // optionnel si exposé par le back
+}
+
+
+
+export interface CreateCourseDto {
+  userId: number;
+  gameModeId: number;
+  populationScope: PopulationScope; // ex: "FOLLOWED"
 }

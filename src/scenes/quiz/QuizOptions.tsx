@@ -1,34 +1,31 @@
 // QuizOptions.tsx
-import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
-  FormGroup,
-  Divider,
-  Typography,
-  IconButton,
+  Chip,
   Dialog,
-  DialogTitle,
   DialogActions,
   DialogContent,
   DialogContentText,
+  DialogTitle,
+  Divider,
+  FormGroup,
   Tooltip,
-  Chip,
-  FormControlLabel,
-  Switch,
+  Typography
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { AddSortModal } from './components/AddSortModal';
-import AddFilterModal from './components/AddFilterModal';
-import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
-import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
-import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
-import { DraggableSortingMethods } from './components/DraggableSortingMethods';
-import ModeCard from './components/ModeCard';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuizOptions } from '../../contexts/QuizOptionsContext';
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
+import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
+import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
+import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
+import AddFilterModal from './components/AddFilterModal';
+import { AddSortModal } from './components/AddSortModal';
+import { DraggableSortingMethods } from './components/DraggableSortingMethods';
+import ModeCard from './components/ModeCard';
 import OptionCard from './components/OptionCard';
-import { useNavigate } from 'react-router-dom';
+import { populationScopes } from '../../models/commons/Game/GameOptions/GamePopulationScope.model';
 
 interface QuizOptionsProps {
 }
@@ -42,8 +39,9 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
   // RECUP DEPUIS CONTEXT
-  const { color } = useThemeColorContext();
   const {
+    selectedPopulationScope, setSelectedPopulationScope,
+    tempSelectedPopulationScope, setTempSelectedPopulationScope,
     modes, selectedMode, setSelectedMode, tempSelectedMode, setTempSelectedMode,
     availableFilters, selectedFilters, setSelectedFilters, tempSelectedFilters, setTempSelectedFilters,
     availableSorts, selectedSortingMethods, setSelectedSortingMethods, tempSelectedSortingMethods, setTempSelectedSortingMethods,
@@ -62,6 +60,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
       typosFriendly: selectedHelps.typosFriendly,
       initialGiven:  selectedHelps.initialGiven
     });
+    setTempSelectedPopulationScope(selectedPopulationScope);
   }, []);  // <-- vide : ne tourne qu’une seule fois
   
 
@@ -241,6 +240,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
 
   const goToQuiz = (saveChanges: boolean) => {
     if (saveChanges) {
+      setSelectedPopulationScope(tempSelectedPopulationScope);
       setSelectedMode(tempSelectedMode);
       setSelectedFilters(tempSelectedFilters);
       setSelectedSortingMethods(tempSelectedSortingMethods);
@@ -248,6 +248,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
       setSelectedHelps(tempSelectedHelps);
     } else {
         // Revert interim states to last committed state if changes were made but user cancelled
+        setTempSelectedPopulationScope(selectedPopulationScope);
         setTempSelectedMode(selectedMode);
         setTempSelectedFilters(selectedFilters);
         setTempSelectedSortingMethods(selectedSortingMethods);
@@ -269,6 +270,20 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
       }}
     >
       <FormGroup sx={{ width: '100%' }}>
+        {/* Population */}
+        <Divider sx={{ mt: 2 }}>
+          <Typography variant="h6">Population</Typography>
+        </Divider>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', mt: '8px' }}>
+          {(['ALL','FOLLOWED','UNFOLLOWED'] as const).map(key => (
+            <OptionCard
+              key={key}
+              option={populationScopes[key].label}
+              isSelected={tempSelectedPopulationScope === key}
+              onSelect={() => setTempSelectedPopulationScope(key)}
+            />
+          ))}
+        </Box>
         {/* Mode */}
         <Divider>
           <Typography variant="h6">Mode</Typography>

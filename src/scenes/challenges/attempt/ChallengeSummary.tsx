@@ -166,6 +166,7 @@ const ChallengeSummary: React.FC = () => {
       mode,
       filters: [gameFilter],
       sorts: [],
+      populationScope: 'ALL',
       repetitionPattern: repetitionPatterns.optimal,
       helps: { typosFriendly: true, initialGiven: true },
     });

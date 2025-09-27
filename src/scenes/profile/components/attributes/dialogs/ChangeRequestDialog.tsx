@@ -33,6 +33,16 @@ import AttributeChipValueItem, {
 } from "../rows/components/AttributeChipValueItem";
 
 /* =======================
+   Anti-clip label flottant
+======================= */
+const floatLabelUnclipSx = {
+  overflow: "visible",
+  "& .MuiFormControl-root": { overflow: "visible" },
+  "& .MuiInputBase-root": { overflow: "visible" },
+  "& .MuiOutlinedInput-root": { overflow: "visible" },
+} as const;
+
+/* =======================
    Props publiques
 ======================= */
 
@@ -307,7 +317,6 @@ const ChangeRequestDialog: React.FC<Props> = ({
 
     document.addEventListener("mousedown", handler, true);
     return () => document.removeEventListener("mousedown", handler, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingKey, attrValue, addKey]);
 
   /** Contraintes + bouton Envoyer */
@@ -391,7 +400,14 @@ const ChangeRequestDialog: React.FC<Props> = ({
         </Tooltip>
       </DialogTitle>
 
-      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <DialogContent
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          ...floatLabelUnclipSx, // ✅ empêche le clip global dans le contenu du dialog
+        }}
+      >
         {/* Zone A — Édition live (chips) */}
         <Box
           sx={{
@@ -400,7 +416,7 @@ const ChangeRequestDialog: React.FC<Props> = ({
             gap: { xs: 1, sm: 1.5 },
             alignItems: "center",
             minWidth: 0,
-            overflow: "visible",
+            ...floatLabelUnclipSx, // ✅ empêche le clip au niveau de la grille de chips
           }}
         >
           {workingChips.length === 0 ? (
@@ -440,11 +456,11 @@ const ChangeRequestDialog: React.FC<Props> = ({
 
           {/* Chip "Ajouter" */}
           {canAddMore && (
-            <Box key={addKey} sx={{ overflow: "visible" }}>
+            <Box key={addKey} sx={{ ...floatLabelUnclipSx }}>
               {isAdding ? (
                 <TypedValueInput
                   label={attr?.name ?? "Valeur"}
-                  type={(attr?.type as any) ?? "TEXT"}
+                  attribute={attr ?? undefined}
                   value={attrValue}
                   status={addStatus}
                   inputRef={editInputRef}
@@ -519,7 +535,7 @@ const ChangeRequestDialog: React.FC<Props> = ({
                   border: (t) => `1px dashed ${t.palette.divider}`,
                   borderRadius: 1,
                   backgroundColor: (t) => t.palette.action.hover,
-                  overflow: "visible",
+                  ...floatLabelUnclipSx, // ✅ au cas où un input apparaisse ici plus tard
                 }}
               >
                 {deletedList.map((d) => (
@@ -564,7 +580,9 @@ const ChangeRequestDialog: React.FC<Props> = ({
           helperText={
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
               <span>{requireGlobalReason ? "Requis pour l’envoi" : "Optionnel"}</span>
-              <span>{charCount} / {charLimit}</span>
+              <span>
+                {globalReason.length} / 1024
+              </span>
             </Box>
           }
           FormHelperTextProps={{ sx: { mx: 0 } }}
@@ -591,8 +609,17 @@ const ChangeRequestDialog: React.FC<Props> = ({
         >
           {/* Tooltip checklist quand le bouton est désactivé */}
           <Tooltip
-            title={reasons.length ? reasons.join(" • ") : ""}
-            disableHoverListener={reasons.length === 0}
+            title={(() => {
+              const reasons: string[] = [];
+              if (ops.length === 0) reasons.push("Ajoutez au moins un changement");
+              if (hasBlockingError) {
+                if (count > max) reasons.push(`Nombre maximum atteint (${max})`);
+                if (required && count < 1) reasons.push("Au moins une valeur requise");
+              }
+              if (requireGlobalReason && !globalReason.trim()) reasons.push("Renseignez le motif global");
+              return reasons.length ? reasons.join(" • ") : "";
+            })()}
+            disableHoverListener={!(ops.length === 0 || hasBlockingError || (requireGlobalReason && !globalReason.trim()))}
           >
             <span>
               <Button

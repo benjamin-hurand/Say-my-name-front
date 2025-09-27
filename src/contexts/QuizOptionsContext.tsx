@@ -5,12 +5,19 @@ import { GameSortBy } from '../models/commons/Game/GameOptions/GameSortBy.model'
 import { GameRepetitionPattern, repetitionPatterns } from '../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
 import { useGlobalData } from './GlobalDataContext';
+import { GamePopulationScope } from '../models/commons/Game/GameOptions/GamePopulationScope.model';
+
 
 interface QuizOptionsContextType {
   // Critical changes
   hasCriticalChanges: boolean;
   hasUncheckedCriticalChanges: boolean;
   setHasUncheckedCriticalChanges: React.Dispatch<React.SetStateAction<boolean>>;
+  // Population
+  selectedPopulationScope: GamePopulationScope;
+  setSelectedPopulationScope: React.Dispatch<React.SetStateAction<GamePopulationScope>>;
+  tempSelectedPopulationScope: GamePopulationScope;
+  setTempSelectedPopulationScope: React.Dispatch<React.SetStateAction<GamePopulationScope>>;
   // Modes
   modes: GameMode[];
   tempSelectedMode: GameMode | null;
@@ -66,6 +73,10 @@ interface QuizOptionsContextType {
 const QuizOptionsContext = createContext<QuizOptionsContextType | undefined>(undefined);
 
 export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
+  // Population
+  const [selectedPopulationScope, setSelectedPopulationScope] = useState<GamePopulationScope>('ALL');
+  const [tempSelectedPopulationScope, setTempSelectedPopulationScope] = useState<GamePopulationScope>('ALL');
+  
   // Modes, filters, sorts
   const { filters, sorts, modes } = useGlobalData();
   // Modes
@@ -125,17 +136,20 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   // Critical changes
   const hasCriticalChanges: boolean = useMemo(() => {
     return (
+      tempSelectedPopulationScope !== selectedPopulationScope ||
       JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
       JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
       JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
     );
   }, [
+    tempSelectedPopulationScope,
+    selectedPopulationScope,
     tempSelectedMode,
     selectedMode,
     tempSelectedFilters,
     selectedFilters,
     tempSelectedSortingMethods,
-    selectedSortingMethods,
+    selectedSortingMethods
   ]);
 
   // → State “sticky” qui passe à true une fois que hasCriticalChanges devient true
@@ -151,6 +165,8 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   
   // Fetch des données lors du montage du provider
   useEffect(() => {
+    setSelectedPopulationScope('ALL');
+    setTempSelectedPopulationScope('ALL');
     setSelectedMode(modes[0]);
     setTempSelectedMode(modes[0]);
   }, [modes]);
@@ -158,6 +174,10 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   return (
     <QuizOptionsContext.Provider
       value={{
+        selectedPopulationScope,
+        setSelectedPopulationScope,
+        tempSelectedPopulationScope,
+        setTempSelectedPopulationScope,
         modes,
         hasCriticalChanges,
         hasUncheckedCriticalChanges,

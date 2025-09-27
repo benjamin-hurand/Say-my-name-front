@@ -6,28 +6,34 @@ import { QuizSessionProvider } from "../../contexts/QuizSessionContext";
 import ChallengeSummary from "../../scenes/challenges/attempt/ChallengeSummary";
 import AddChallengeForm from "../../scenes/challenges/menu/AddChallengeForm";
 import ChallengeMenu from "../../scenes/challenges/menu/challengeMenu";
-import CreateCourse from "../../scenes/courses/CreateCourse";
+import StartCourse from "../../scenes/courses/StartCourse";
 import Menu from "../../scenes/menu/menu";
 import ProfilePage from "../../scenes/profile/profile";
 import { ChallengeQuiz } from "../../scenes/quiz/ChallengeQuiz";
 import ProgressionQuiz from "../../scenes/quiz/ProgressionQuiz";
 import QuizOptions from "../../scenes/quiz/QuizOptions";
 import { TrainingQuiz } from "../../scenes/quiz/TrainingQuiz";
+import SettingsPage from "../../scenes/settings/SettingsPage";
+import ForgotPasswordPage from "../../scenes/sign-in/ForgotPasswordPage";
+import ResetPasswordPage from "../../scenes/sign-in/ResetPasswordPage";
 import SignIn from "../../scenes/sign-in/SignIn";
 import SignUp from "../../scenes/sign-up/SignUp";
+import TrombinoscopePage from "../../scenes/trombinoscope/TrombinoscopePage";
 import ChallengeLayout from "../layout/ChallengeLayout";
 import GlobalDataLayout from "../layout/GlobalDataLayout";
 import { Layout } from "../layout/Layout";
 import ProtectedRoute from "./ProtectedRoute";
-import ForgotPasswordPage from "../../scenes/sign-in/ForgotPasswordPage";
-import ResetPasswordPage from "../../scenes/sign-in/ResetPasswordPage";
+import { CourseStatsProvider } from "../../contexts/CourseStatsContext";
+import CoursesHub from "../../scenes/courses/CoursesHub";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: (
           <CourseProvider>
-            <GlobalDataLayout />
+            <CourseStatsProvider>
+              <GlobalDataLayout />
+            </CourseStatsProvider>
           </CourseProvider>
         ),
     children: [
@@ -38,10 +44,26 @@ const router = createBrowserRouter([
         )
       },
       {
+          path: "trombinoscope",
+          element: (
+            <Layout headerTitle="Trombinoscope" onBack="/">
+              <ProtectedRoute element={<TrombinoscopePage />} />
+            </Layout>
+          ),
+        },
+      {
         path: "profile",
         element: (
           <Layout headerTitle="Profile">
             <ProtectedRoute element={<ProfilePage />} />
+          </Layout>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <Layout headerTitle="Settings" onBack="/">
+            <ProtectedRoute element={<SettingsPage />} />
           </Layout>
         ),
       },
@@ -143,12 +165,21 @@ const router = createBrowserRouter([
                   </Layout>
                 ),
               },
+              // Hub des parcours
+              {
+                path: "hub",
+                element: (
+                  <Layout headerTitle="Mes parcours" onBack="/">
+                    <ProtectedRoute element={<CoursesHub />} />
+                  </Layout>
+                ),
+              },
               // création d'un nouveau cours
               {
                 path: "new",
                 element: (
-                  <Layout headerTitle="Start Course">
-                    <ProtectedRoute element={<CreateCourse />} />
+                  <Layout headerTitle="Start Course" onBack="/course/hub">
+                    <ProtectedRoute element={<StartCourse />} />
                   </Layout>
                 ),
               },

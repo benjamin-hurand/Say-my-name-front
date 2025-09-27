@@ -67,6 +67,10 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
   const raw = pa.value;
   const display = formatDisplayValue(attrDef.type, raw);
 
+  // 🔒 Toujours prendre la dernière valeur tapée/choisie (évite stale closures)
+  const latestValueRef = React.useRef(attrValue);
+  React.useEffect(() => { latestValueRef.current = attrValue; }, [attrValue]);
+
   const labelRef = React.useRef<HTMLDivElement | null>(null);
   const [isMultiline, setIsMultiline] = React.useState(false);
   const [isTruncated, setIsTruncated] = React.useState(false);
@@ -140,14 +144,12 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
     <Box sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 480 }}>
       {isTruncated ? (display || "—") : null}
 
-      {/* En vue : affiche l'info future */}
       {!rowEditMode && futureInfoText && (
         <Typography variant="caption" sx={{ display: "block", opacity: 0.8, mt: 0.5 }}>
           {futureInfoText}
         </Typography>
       )}
 
-      {/* En compositeur/édition de ligne : si marqué create/update, ajoute la légende */}
       {rowEditMode && markerInfoText && (
         <Typography variant="caption" sx={{ display: "block", opacity: 0.8, mt: 0.5 }}>
           {markerInfoText}
@@ -162,10 +164,6 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
     </Box>
   );
 
-  /** Leading icon selon contexte :
-   *  - vue (rowEditMode=false) : sablier si futur
-   *  - compositeur/édition : + ou ✏ si changeMarker défini
-   */
   const leadingIcon = !ghost
     ? !rowEditMode && isFutureChip(pa)
       ? <HourglassTopOutlinedIcon fontSize="small" />
@@ -176,13 +174,11 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
       : undefined
     : undefined;
 
-  /** Teinte de bordure selon changeMarker (compositeur) */
   const borderTint = (t: any) => {
     if (ghost) return t.palette.divider;
     if (changeMarker === "create") return alpha(t.palette.success.main, 0.7);
     if (changeMarker === "update") return alpha(t.palette.info.main, 0.7);
     return undefined;
-    // en vue standard, on reste sur la bordure par défaut
   };
 
   const showTooltip =
@@ -194,17 +190,18 @@ const AttributeChipValueItem: React.FC<ChipValueItemProps> = ({
     <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.25, overflow: "visible" }}>
       {isFieldEditing ? (
         <Box>
+          {/* ✅ Utiliser toujours TypedValueInput avec l’attribut complet */}
           <TypedValueInput
+            attribute={attrDef}
             label={attrDef.name}
-            type={attrDef.type as any}
             value={attrValue}
             status={status}
             inputRef={inputRef}
             onChange={onChangeAttrValue}
-            onSave={() => onLocalUpdate(pa.id, attrValue)}
+            onSave={() => onLocalUpdate(pa.id, latestValueRef.current)}
             onCancel={onCancelEdit}
             onBlur={() => {
-              /* no auto-save */
+              /* pas d'auto-save au blur ici */
             }}
           />
           {/* Helper 'future' en édition */}

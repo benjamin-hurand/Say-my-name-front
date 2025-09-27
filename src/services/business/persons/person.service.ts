@@ -1,7 +1,10 @@
 import { PersonAttributeLite } from "../../../models/commons/PersonAttribute";
 import API from "../../api/apiUtils";
+import { PersonCardDto } from "../../dto/person/search/PersonCardDtos";
+import { PersonSearchRequestDto } from "../../dto/person/search/PersonSearchRequestDto";
+import { Page } from "../subscriptions/subscriptions.service";
 
-const ENDPOINT = "/persons";
+const BASE = "/persons";
 
 /**
  * Récupère les attributs d'une Person donnée.
@@ -12,7 +15,7 @@ const ENDPOINT = "/persons";
 export async function getPersonAttributesById(personId: number): Promise<PersonAttributeLite[]> {
   try {
     const response = await API.get<PersonAttributeLite[]>(
-      `${ENDPOINT}/${personId}/attributes`
+      `${BASE}/${personId}/attributes`
     );
     return response.data;
   } catch (error) {
@@ -20,6 +23,32 @@ export async function getPersonAttributesById(personId: number): Promise<PersonA
       `Failed to get person attributes with personId ${personId} :`,
       error
     );
+    throw error;
+  }
+}
+
+/**
+ * Recherche trombinoscope (filtrée/triée/paginée).
+ * Envoie le body PersonSearchRequestDto et passe page/size en query (Spring Pageable).
+ *
+ * @param body   critères de recherche
+ * @param page   index de page (0-based)
+ * @param size   taille de page (ex: 24)
+ */
+export async function searchPersons(
+  body: PersonSearchRequestDto,
+  page = 0,
+  size = 24
+): Promise<Page<PersonCardDto>> {
+  try {
+    const { data } = await API.post<Page<PersonCardDto>>(
+      `${BASE}/search`,
+      body ?? {},
+      { params: { page, size } } // Pageable Spring
+    );
+    return data;
+  } catch (error) {
+    console.error("[searchPersons] API error:", error);
     throw error;
   }
 }
