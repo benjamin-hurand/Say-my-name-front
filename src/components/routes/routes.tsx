@@ -46,7 +46,7 @@ const router = createBrowserRouter([
       {
           path: "trombinoscope",
           element: (
-            <Layout headerTitle="Trombinoscope" onBack="/">
+            <Layout headerTitle="Trombinoscope">
               <ProtectedRoute element={<TrombinoscopePage />} />
             </Layout>
           ),

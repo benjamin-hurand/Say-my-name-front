@@ -1,12 +1,11 @@
+// Types/DTO alignés avec le backend refactor
+
 export type PopulationScope = "FOLLOWED" | "ALL";
 
-// Nouveau DTO côté front, aligné avec le back refactor
+// On ne se sert côté UI que de IN_PROGRESS, mais on tolère d'autres valeurs
 export type CourseStatus =
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'ABANDONED'
-  | 'PAUSED'
-  | 'CANCELLED';
+  | "IN_PROGRESS"
+  | "ARCHIVED";
 
 export interface CourseDto {
   id: number;
@@ -14,15 +13,11 @@ export interface CourseDto {
   gameModeId: number;
   status: CourseStatus;
   currentRound: number;
-  populationScope: PopulationScope;
-  createdAt?: string;   // optionnel si exposé par le back
-  updatedAt?: string;   // optionnel si exposé par le back
 }
 
-
-
+// Payload pour créer ou reprendre (le scope est requis à la création)
 export interface CreateCourseDto {
   userId: number;
   gameModeId: number;
-  populationScope: PopulationScope; // ex: "FOLLOWED"
+  populationScope: PopulationScope; // "FOLLOWED" | "ALL"
 }

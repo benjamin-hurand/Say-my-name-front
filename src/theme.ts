@@ -1,5 +1,6 @@
 /// <reference path="./theme-augmentations.d.ts" />
 import { createTheme, Theme } from '@mui/material/styles';
+import type { CSSObject } from '@mui/system';
 
 const commonStyles = {
   '@import':
@@ -16,16 +17,25 @@ const commonStyles = {
 };
 
 declare module '@mui/material/SvgIcon' {
-  interface SvgIconClasses { menu: string; auth: string }
+  interface SvgIconClasses {
+    menu: string;
+    auth: string;
+  }
 }
 declare module '@mui/material/IconButton' {
-  interface IconButtonClasses { menu: string }
+  interface IconButtonClasses {
+    menu: string;
+  }
 }
 declare module '@mui/material/Typography' {
-  interface TypographyClasses { title: string }
+  interface TypographyClasses {
+    title: string;
+  }
 }
 declare module '@mui/material/Avatar' {
-  interface AvatarClasses { auth: string }
+  interface AvatarClasses {
+    auth: string;
+  }
 }
 
 /* =========================================================
@@ -33,7 +43,7 @@ declare module '@mui/material/Avatar' {
    ========================================================= */
 const sharedTypography = {
   fontFamily: ['Titillium Web', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'].join(','),
-  button: { textTransform: 'none' as const }, // <- IMPORTANT pour le typage
+  button: { textTransform: 'none' as const },
 };
 
 const sharedComponents = {
@@ -46,7 +56,6 @@ const sharedComponents = {
       contained: {},
       outlined: {},
     },
-    // ✅ Variants opt-in via color="accent"
     variants: [
       {
         props: { variant: 'contained', color: 'accent' } as const,
@@ -77,6 +86,42 @@ const sharedComponents = {
         }),
       },
     ],
+  },
+
+  // 🔥 Card harmonisée + variante .menu
+  MuiCard: {
+    styleOverrides: {
+      // IMPORTANT : retourner un CSSObject (pas React.CSSProperties)
+      root: ({ theme }: { theme: Theme }): CSSObject => {
+        const baseBg =
+          theme.palette.mode === 'dark' ? 'rgba(36,36,36,0.35)' : 'rgba(255,255,255,0.75)';
+        const menuBg =
+          theme.palette.mode === 'dark' ? 'rgba(36,36,36,0.35)' : 'rgba(245,245,220,0.35)';
+
+        // on tape l’objet comme CSSObject & index pour accepter la custom property
+        const cardBase: CSSObject & Record<string, any> = {
+          // ✅ Variable CSS lisible par les descendants (Chip au hover, etc.)
+          '--smn-card-bg': baseBg,
+          borderRadius: 16,
+          backdropFilter: 'blur(8px)',
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'dark' ? '#ffffff30' : '#24242420',
+          backgroundColor: 'var(--smn-card-bg)',
+          transition: 'box-shadow 0.3s, border-color 0.3s, background-color 0.3s',
+          '&.menu': {
+            '--smn-card-bg': menuBg, // variante menu
+            borderColor: theme.palette.accent.main,
+            boxShadow: `0 0 8px ${theme.palette.accent.main}`,
+            backgroundColor: 'var(--smn-card-bg)',
+            '&:hover': {
+              boxShadow: `0 0 20px ${theme.palette.accent.main}`,
+            },
+          },
+        };
+
+        return cardBase;
+      },
+    },
   },
 
   MuiSvgIcon: {
@@ -114,7 +159,7 @@ const sharedComponents = {
   MuiTypography: {
     styleOverrides: {
       root: {},
-      title: {}, // défini par thème (ombre différente)
+      title: {},
     },
   },
 
@@ -125,8 +170,7 @@ const sharedComponents = {
     },
   },
 
-  // ✅ Variant opt-in pour TextField outlined accent
-  // (sélecteurs corrigés pour cibler le vrai root de l’OutlinedInput en hover/focus)
+  // ✅ TextField accent -> cible l'OutlinedInput interne
   MuiTextField: {
     styleOverrides: { root: {} },
     variants: [
@@ -134,15 +178,12 @@ const sharedComponents = {
         props: { variant: 'outlined', color: 'accent' } as const,
         style: ({ theme }: { theme: Theme }) => ({
           backdropFilter: 'blur(6px)',
-          // état normal
           '& .MuiOutlinedInput-notchedOutline': {
             borderColor: theme.palette.accent.main,
           },
-          // HOVER (sur le OutlinedInput root)
           '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
             borderColor: theme.palette.accent.main,
           },
-          // FOCUS
           '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: theme.palette.accent.main,
           },
@@ -151,24 +192,12 @@ const sharedComponents = {
     ],
   },
 
-  // ✅ Verrouille aussi les états directement sur le composant OutlinedInput
   MuiOutlinedInput: {
-    variants: [
-      {
-        props: { color: 'accent' } as const,
-        style: ({ theme }: { theme: Theme }) => ({
-          '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: theme.palette.accent.main,
-          },
-          '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: theme.palette.accent.main,
-          },
-          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: theme.palette.accent.main,
-          },
-        }),
+    styleOverrides: {
+      root: {
+        backdropFilter: 'blur(6px)',
       },
-    ],
+    },
   },
 
   MuiChip: {
@@ -229,8 +258,7 @@ const darkTheme = (color: string) =>
               maxHeight: '100%',
               boxShadow: `0 0 8px ${color}`,
               textShadow: `0 0 8px ${color}`,
-              transition:
-                'color 0.2s, border-color 0.3s, box-shadow 0.3s, text-shadow 0.3s',
+              transition: 'color 0.2s, border-color 0.3s, box-shadow 0.3s, text-shadow 0.3s',
               '&:hover': { boxShadow: `0 0 20px ${color}` },
             },
           },
@@ -240,7 +268,8 @@ const darkTheme = (color: string) =>
             '&.signup-outlined-button:hover': {
               backgroundColor: '#e0e0e0',
               color: '#242424',
-              boxShadow: '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff',
+              boxShadow:
+                '0 0 4px #ffffff, 0 0 5px #ffffff, 0 0 6px #ffffff, 0 0 6px #ffffff',
               border: '1px solid #ffffff',
             },
             '&.menu': {
@@ -252,8 +281,7 @@ const darkTheme = (color: string) =>
               maxHeight: '100%',
               boxShadow: `0 0 8px ${color}`,
               textShadow: `0 0 8px ${color}`,
-              transition:
-                'color 0.2s, border-color 0.3s, box-shadow 0.3s, text-shadow 0.3s',
+              transition: 'color 0.2s, border-color 0.3s, box-shadow 0.3s, text-shadow 0.3s',
               '&:hover': {
                 backgroundColor: color,
                 color: '#242424',
@@ -286,7 +314,8 @@ const darkTheme = (color: string) =>
         styleOverrides: {
           ...sharedComponents.MuiTypography.styleOverrides,
           title: {
-            textShadow: '0 0 1px #000000, 0 0 2px #000000, 0 0 3px #000000, 0 0 4px #ffffff',
+            textShadow:
+              '0 0 1px #000000, 0 0 2px #000000, 0 0 3px #000000, 0 0 4px #ffffff',
           },
         },
       },
@@ -351,7 +380,8 @@ const lightTheme = (color: string) =>
             '&.signup-outlined-button:hover': {
               backgroundColor: '#242424',
               color: '#e0e0e0',
-              boxShadow: '0 0 4px #000000, 0 0 5px #000000, 0 0 6px #000000, 0 0 6px #000000',
+              boxShadow:
+                '0 0 4px #000000, 0 0 5px #000000, 0 0 6px #000000, 0 0 6px #000000',
               border: '1px solid #000000',
             },
             '&.menu': {
@@ -391,7 +421,8 @@ const lightTheme = (color: string) =>
         styleOverrides: {
           ...sharedComponents.MuiTypography.styleOverrides,
           title: {
-            textShadow: '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #000000',
+            textShadow:
+              '0 0 1px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff, 0 0 4px #000000',
           },
         },
       },

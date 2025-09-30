@@ -19,6 +19,7 @@ export const neonColors: string[] = [
     '#00ffff', // Bright cyan
     '#ffff00', // Bright yellow
     '#ff00cc', // Bright magenta
+    '#ffffff' // White
 ];
 
 export const lightThemeColors: string[] = [

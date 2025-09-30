@@ -1,27 +1,44 @@
-// src/contexts/CourseStatsContext.tsx
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  ReactNode,
+} from 'react';
 import { CourseStatsDto } from '../services/dto/courses/CourseStatsDto';
-import { getCourseStats } from '../services/business/courses/course.service';
+import { getCourseStats, getUserCourseStats } from '../services/business/courses/course.service';
 import { useCourse } from './CoursesContext';
 
 type StatsCacheEntry = {
   data: CourseStatsDto;
-  fetchedAt: number; // epoch ms
+  progressPercent: number; // dérivé, 0..100
+  fetchedAt: number;       // epoch ms
 };
 
 type CourseStatsContextValue = {
-  // compat : stats & loading reflètent le cours sélectionné (s’il existe)
+  // sélection courante (compat)
   stats: CourseStatsDto | null;
+  progress: number | null; // progression (%) du cours sélectionné
   loading: boolean;
   error: any;
 
   // multi-courses
   get: (courseId: number) => CourseStatsDto | null;
+  getProgress: (courseId: number) => number | null; // progression (%) pour un cours
   isLoading: (courseId: number) => boolean;
-  refresh: (courseId: number, opts?: { force?: boolean; ttlMs?: number }) => Promise<CourseStatsDto>;
+  refresh: (
+    courseId: number,
+    opts?: { force?: boolean; ttlMs?: number }
+  ) => Promise<CourseStatsDto>;
   prefetch: (courseIds: number[], opts?: { ttlMs?: number }) => Promise<void>;
+  refreshForUser: (userId: number, opts?: { ttlMs?: number }) => Promise<void>;
   invalidate: (courseId?: number) => void;
   set: (courseId: number, stats: CourseStatsDto) => void;
+
+  // util exposé si besoin ailleurs
+  computeProgressPercent: (s?: CourseStatsDto | null) => number;
 };
 
 const CourseStatsContext = createContext<CourseStatsContextValue | undefined>(undefined);
@@ -35,16 +52,30 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set());
   const [errorById, setErrorById] = useState<Record<number, any>>({});
 
-  // ⬇️ Correction ici : valeur optionnelle dans le record
   const inFlight = useRef<Record<number, Promise<CourseStatsDto> | undefined>>({});
 
+  // ---- Calcul centralisé de progression ----
+  const computeProgressPercent = useCallback((s?: CourseStatsDto | null) => {
+    if (!s) return 0;
+    const u = s.unknown ?? 0;
+    const d = s.discovered ?? 0;
+    const l = s.learned ?? 0;
+    const m = s.mastered ?? 0;
+    const total = u + d + l + m;
+    if (total <= 0) return 0;
+    const earned = d * 1 + l * 2 + m * 4;
+    const max = total * 4;
+    return Math.max(0, Math.min(100, Math.round((earned / max) * 100)));
+  }, []);
+
   const set = useCallback((courseId: number, data: CourseStatsDto) => {
-    setCache(prev => ({ ...prev, [courseId]: { data, fetchedAt: Date.now() } }));
+    const progressPercent = computeProgressPercent(data);
+    setCache(prev => ({ ...prev, [courseId]: { data, progressPercent, fetchedAt: Date.now() } }));
     setErrorById(prev => {
       const { [courseId]: _, ...rest } = prev;
       return rest;
     });
-  }, []);
+  }, [computeProgressPercent]);
 
   const markLoading = useCallback((courseId: number, on: boolean) => {
     setLoadingIds(prev => {
@@ -69,11 +100,8 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
       return cache[courseId].data;
     }
 
-    // ⬇️ Correction ici : lis dans une variable optionnelle
     const existing = inFlight.current[courseId];
-    if (existing) {
-      return existing;
-    }
+    if (existing) return existing;
 
     markLoading(courseId, true);
     const p = getCourseStats(courseId)
@@ -87,7 +115,6 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
       })
       .finally(() => {
         markLoading(courseId, false);
-        // ⬇️ nettoie l’inflight
         delete inFlight.current[courseId];
       });
 
@@ -96,12 +123,22 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [cache, set, markLoading, shouldRefetch]);
 
   const prefetch = useCallback(async (courseIds: number[], opts?: { ttlMs?: number }) => {
-    await Promise.all(
-      courseIds.map(id => refresh(id, { ttlMs: opts?.ttlMs }))
-    );
+    await Promise.all(courseIds.map(id => refresh(id, { ttlMs: opts?.ttlMs })));
   }, [refresh]);
 
+  const refreshForUser = useCallback(async (userId: number, opts?: { ttlMs?: number }) => {
+    const ttlMs = opts?.ttlMs ?? DEFAULT_TTL;
+    const list = await getUserCourseStats(userId);
+    for (const s of list) {
+      const entry = cache[s.courseId];
+      const expired = !entry || (Date.now() - entry.fetchedAt > ttlMs);
+      if (expired) set(s.courseId, s);
+    }
+  }, [cache, set]);
+
   const get = useCallback((courseId: number) => cache[courseId]?.data ?? null, [cache]);
+  const getProgress = useCallback((courseId: number) =>
+    (cache[courseId]?.progressPercent ?? null), [cache]);
 
   const invalidate = useCallback((courseId?: number) => {
     if (courseId == null) {
@@ -133,6 +170,12 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
     return cache[selectedCourseId]?.data ?? null;
   }, [selectedCourseId, cache]);
 
+  const progress = useMemo(() => {
+    if (selectedCourseId == null) return null;
+    const p = cache[selectedCourseId]?.progressPercent;
+    return typeof p === 'number' ? p : null;
+  }, [selectedCourseId, cache]);
+
   const loading = useMemo(() => {
     if (selectedCourseId == null) return false;
     return loadingIds.has(selectedCourseId);
@@ -145,15 +188,33 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const value = useMemo<CourseStatsContextValue>(() => ({
     stats,
+    progress,
     loading,
     error,
     get,
+    getProgress,
     isLoading: (id: number) => loadingIds.has(id),
     refresh,
     prefetch,
+    refreshForUser,
     invalidate,
     set,
-  }), [stats, loading, error, get, loadingIds, refresh, prefetch, invalidate, set]);
+    computeProgressPercent,
+  }), [
+    stats,
+    progress,
+    loading,
+    error,
+    get,
+    getProgress,
+    loadingIds,
+    refresh,
+    prefetch,
+    refreshForUser,
+    invalidate,
+    set,
+    computeProgressPercent,
+  ]);
 
   return <CourseStatsContext.Provider value={value}>{children}</CourseStatsContext.Provider>;
 };

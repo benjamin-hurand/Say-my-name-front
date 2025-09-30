@@ -1,10 +1,22 @@
-// src/contexts/CoursesContext.tsx
-import React, { createContext, useContext, useMemo, useState, useCallback, ReactNode } from 'react';
-import { CourseDto } from '../services/dto/courses/CourseDto';
-import { getCurrentCourse } from '../services/business/courses/course.service';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  ReactNode,
+} from 'react';
+import { CourseDto, CreateCourseDto, PopulationScope } from '../services/dto/courses/CourseDto';
+import {
+  getCurrentCourse,
+  getUserCourses,
+  createOrResumeCourse,
+  focusCourse,
+} from '../services/business/courses/course.service';
 
 type CoursesContextValue = {
-  // sélection courante (compat)
+  // sélection courante
   selectedCourse: CourseDto | null;
   selectedCourseId: number | null;
   setSelectedCourse: (course: CourseDto | null) => void;
@@ -16,14 +28,20 @@ type CoursesContextValue = {
   removeCourse: (courseId: number) => void;
   getCourseFromCache: (courseId: number) => CourseDto | undefined;
   listCourses: () => CourseDto[];
+  findCourseByModeId: (gameModeId: number) => CourseDto | undefined;
 
-  // chargements
+  // chargements / API
   loading: boolean;
   refreshCurrentCourse: (userId: number) => Promise<CourseDto | null>;
+  refreshUserCourses: (userId: number) => Promise<CourseDto[]>;
+  createOrResume: (userId: number, gameModeId: number, scope?: PopulationScope) => Promise<CourseDto>;
+  focus: (courseId: number) => Promise<void>;
 
   // utilitaires
   resetAll: () => void;
 };
+
+const LOCAL_SELECTED_ID = 'smn:selectedCourseId';
 
 const CoursesContext = createContext<CoursesContextValue | undefined>(undefined);
 
@@ -31,6 +49,24 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [coursesById, setCoursesById] = useState<Record<number, CourseDto>>({});
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Hydrate la sélection depuis localStorage
+  useEffect(() => {
+    const raw = localStorage.getItem(LOCAL_SELECTED_ID);
+    if (raw) {
+      const id = Number(raw);
+      if (!Number.isNaN(id)) setSelectedCourseId(id);
+    }
+  }, []);
+
+  // Persiste la sélection
+  useEffect(() => {
+    if (selectedCourseId == null) {
+      localStorage.removeItem(LOCAL_SELECTED_ID);
+    } else {
+      localStorage.setItem(LOCAL_SELECTED_ID, String(selectedCourseId));
+    }
+  }, [selectedCourseId]);
 
   const selectedCourse = useMemo(
     () => (selectedCourseId != null ? coursesById[selectedCourseId] ?? null : null),
@@ -61,9 +97,17 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setSelectedCourseId(course.id);
   }, [upsertCourse]);
 
-  const getCourseFromCache = useCallback((courseId: number) => coursesById[courseId], [coursesById]);
+  const getCourseFromCache = useCallback(
+    (courseId: number) => coursesById[courseId],
+    [coursesById]
+  );
 
   const listCourses = useCallback(() => Object.values(coursesById), [coursesById]);
+
+  const findCourseByModeId = useCallback(
+    (gameModeId: number) => Object.values(coursesById).find(c => c.gameModeId === gameModeId),
+    [coursesById]
+  );
 
   const refreshCurrentCourse = useCallback(async (userId: number) => {
     setLoading(true);
@@ -74,18 +118,58 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // si rien sélectionné on sélectionne celui-ci
         setSelectedCourseId(prev => prev ?? course.id);
         return course;
-      } else {
-        // pas de course actif
-        return null;
       }
+      return null;
     } finally {
       setLoading(false);
     }
   }, [upsertCourse]);
 
+  const refreshUserCourses = useCallback(async (userId: number) => {
+    setLoading(true);
+    try {
+      const list = await getUserCourses(userId);
+      // upsert tous + sélectionne le premier si rien sélectionné
+      setCoursesById(prev => {
+        const next = { ...prev };
+        for (const c of list) next[c.id] = c;
+        return next;
+      });
+      if (list.length > 0) {
+        setSelectedCourseId(prev => prev ?? list[0].id);
+      } else {
+        setSelectedCourseId(null);
+      }
+      return list;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const createOrResume = useCallback(async (userId: number, gameModeId: number, scope: PopulationScope = 'FOLLOWED') => {
+    setLoading(true);
+    try {
+      const payload: CreateCourseDto = { userId, gameModeId, populationScope: scope };
+      const course = await createOrResumeCourse(payload);
+      upsertCourse(course);
+      setSelectedCourseId(course.id);
+      // marque le focus côté back (utile pour /current)
+      await focusCourse(course.id);
+      return course;
+    } finally {
+      setLoading(false);
+    }
+  }, [upsertCourse]);
+
+  const focus = useCallback(async (courseId: number) => {
+    await focusCourse(courseId);
+    setSelectedCourseId(courseId);
+  }, []);
+
   const resetAll = useCallback(() => {
     setCoursesById({});
     setSelectedCourseId(null);
+    localStorage.removeItem(LOCAL_SELECTED_ID);
   }, []);
 
   const value = useMemo<CoursesContextValue>(() => ({
@@ -98,8 +182,12 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     removeCourse,
     getCourseFromCache,
     listCourses,
+    findCourseByModeId,
     loading,
     refreshCurrentCourse,
+    refreshUserCourses,
+    createOrResume,
+    focus,
     resetAll,
   }), [
     selectedCourse,
@@ -111,8 +199,12 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     removeCourse,
     getCourseFromCache,
     listCourses,
+    findCourseByModeId,
     loading,
     refreshCurrentCourse,
+    refreshUserCourses,
+    createOrResume,
+    focus,
     resetAll,
   ]);
 

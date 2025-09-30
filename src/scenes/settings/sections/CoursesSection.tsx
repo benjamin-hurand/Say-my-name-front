@@ -1,327 +1,459 @@
+// src/scenes/settings/components/sections/CoursesSection.tsx
 import * as React from "react";
 import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, IconButton, Menu, MenuItem, Skeleton, Stack, Tooltip, Typography
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  IconButton,
+  Menu,
+  MenuItem,
+  Skeleton,
+  Stack,
+  Tooltip,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+  TextField,
+  LinearProgress,
+  Link as MuiLink,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import SectionCard from "../SectionCard";
-import AdvancedBlock from "../AdvancedBlock";
-
-import { useAuth } from "../../../contexts/AuthContext";
-import { useGlobalData } from "../../../contexts/GlobalDataContext";
-import { useCourseStats } from "../../../contexts/CourseStatsContext";
-
-import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
-import {
-  getCurrentCourse, restartCourse, abandonCourse
-} from "../../../services/business/courses/course.service";
-
-// Icons
+import OpenInNewRounded from "@mui/icons-material/OpenInNewRounded";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
-import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
-import TuneRounded from "@mui/icons-material/TuneRounded";
 import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import RestartAltRounded from "@mui/icons-material/RestartAltRounded";
-import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
-import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import SportsEsportsRounded from "@mui/icons-material/SportsEsportsRounded";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
+import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
+import LinkRounded from "@mui/icons-material/LinkRounded";
+
+import { useAuth } from "../../../contexts/AuthContext";
 import { useCourse } from "../../../contexts/CoursesContext";
+import { useCourseStats } from "../../../contexts/CourseStatsContext";
+import { useGlobalData } from "../../../contexts/GlobalDataContext";
+import API from "../../../services/api/apiUtils";
+import { restartCourse, getUserCourses } from "../../../services/business/courses/course.service";
+import { CourseDto } from "../../../services/dto/courses/CourseDto";
+import { CourseStatsDto } from "../../../services/dto/courses/CourseStatsDto";
+import { notifySuccess, notifyError } from "../../../services/notification/toast.service";
+import SectionCard from "../SectionCard";
+
+function computeProgressPercent(s: CourseStatsDto | null | undefined): number {
+  if (!s) return 0;
+  const u = s.unknown ?? 0, d = s.discovered ?? 0, l = s.learned ?? 0, m = s.mastered ?? 0;
+  const total = u + d + l + m;
+  if (total <= 0) return 0;
+  const weighted = d * 0.33 + l * 0.66 + m * 1.0;
+  return Math.round((weighted / total) * 100);
+}
 
 type Props = { showAdvanced: boolean };
-
-// --- Mini components -------------------------------------------------
-
-function ProgressBar({
-  unknown = 0, discovered = 0, learned = 0, mastered = 0, totalCreated = 0
-}: {
-  unknown?: number; discovered?: number; learned?: number; mastered?: number; totalCreated?: number;
-}) {
-  const total = Math.max(1, totalCreated);
-  const seg = (n: number) => `${Math.round((n / total) * 100)}%`;
-  return (
-    <Box sx={{ mt: 1, mb: 0.5 }}>
-      <Box
-        sx={{
-          display: "flex",
-          height: 8,
-          borderRadius: 999,
-          overflow: "hidden",
-          bgcolor: "action.hover",
-        }}
-        aria-label="Progression"
-      >
-        <Box sx={{ width: seg(unknown), bgcolor: "warning.light" }} />
-        <Box sx={{ width: seg(discovered), bgcolor: "info.light" }} />
-        <Box sx={{ width: seg(learned), bgcolor: "primary.main", opacity: 0.7 }} />
-        <Box sx={{ width: seg(mastered), bgcolor: "success.main" }} />
-      </Box>
-      <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
-        <Legend label="Nouveaux" value={unknown} />
-        <Legend label="En cours" value={discovered} />
-        <Legend label="Acquis" value={learned} />
-        <Legend label="Maîtrisés" value={mastered} />
-      </Stack>
-    </Box>
-  );
-}
-
-function Legend({ label, value }: { label: string; value: number }) {
-  return (
-    <Typography variant="caption" color="text.secondary">
-      {label} : <Typography component="span" variant="caption" fontWeight={600}>{value}</Typography>
-    </Typography>
-  );
-}
-
-// --------------------------------------------------------------------
 
 const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { modes } = useGlobalData();
-  const { selectedCourse, setSelectedCourse } = useCourse();
-  const {
-    stats, loading: statsLoading, refresh: refreshStats,
-  } = useCourseStats();
+  const { setSelectedCourse, refreshCurrentCourse, upsertCourse, listCourses } = useCourse();
+  const { get: getStats, isLoading: isStatsLoading, refresh: refreshStats, prefetch: prefetchStats } = useCourseStats();
 
   const [bootLoading, setBootLoading] = React.useState(true);
+  const [activeCourses, setActiveCourses] = React.useState<CourseDto[]>([]);
 
-  const [openRestart, setOpenRestart] = React.useState(false);
-  const [openAbandon, setOpenAbandon] = React.useState(false);
+  // kebab menu
+  const [menuAnchor, setMenuAnchor] = React.useState<HTMLElement | null>(null);
+  const [menuCourseId, setMenuCourseId] = React.useState<number | null>(null);
+  const openMenu = Boolean(menuAnchor);
+  const openMenuFor = (e: React.MouseEvent<HTMLElement>, id: number) => { setMenuAnchor(e.currentTarget); setMenuCourseId(id); };
+  const closeMenu = () => { setMenuAnchor(null); setMenuCourseId(null); };
 
-  const [anchorMenu, setAnchorMenu] = React.useState<null | HTMLElement>(null);
-  const openMenu = Boolean(anchorMenu);
-  const handleMenu = (e: React.MouseEvent<HTMLElement>) => setAnchorMenu(e.currentTarget);
-  const closeMenu = () => setAnchorMenu(null);
+  // RESET (parcours unique)
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [confirmChecked, setConfirmChecked] = React.useState(false);
+  const [confirmText, setConfirmText] = React.useState("");
+  const [confirmLoading, setConfirmLoading] = React.useState(false);
+  const [courseToReset, setCourseToReset] = React.useState<{ id: number; title: string } | null>(null);
+  const canConfirm = confirmChecked && confirmText.trim().toUpperCase() === "RESET";
 
-  // Bootstrap : si pas de selectedCourse, aller le chercher côté API
-  const bootstrap = React.useCallback(async () => {
-    if (!user) {
-      setBootLoading(false);
-      return;
-    }
+  // RESET GLOBAL
+  const [confirmGlobalOpen, setConfirmGlobalOpen] = React.useState(false);
+  const [confirmGlobalChecked, setConfirmGlobalChecked] = React.useState(false);
+  const [confirmGlobalText, setConfirmGlobalText] = React.useState("");
+  const [confirmGlobalLoading, setConfirmGlobalLoading] = React.useState(false);
+  const canConfirmGlobal = confirmGlobalChecked && confirmGlobalText.trim().toUpperCase() === "RESET ALL";
+
+  const openConfirmFor = (course: { id: number; title: string }) => { setCourseToReset(course); setConfirmOpen(true); };
+  const closeConfirm = () => {
+    if (confirmLoading) return;
+    setConfirmOpen(false); setConfirmChecked(false); setConfirmText(""); setCourseToReset(null);
+  };
+
+  const doConfirmReset = async () => {
+    if (!courseToReset) return;
+    setConfirmLoading(true);
     try {
-      if (!selectedCourse) {
-        const c = await getCurrentCourse(user.id);
-        setSelectedCourse(c ?? null);
-      }
-    } catch {
-      notifyError(t("COURSE_LOAD_FAILED", "Impossible de charger le parcours"));
-    } finally {
-      setBootLoading(false);
-    }
-  }, [user, selectedCourse, setSelectedCourse, t]);
-
-  React.useEffect(() => { void bootstrap(); }, [bootstrap]);
-
-  const goContinue = () => selectedCourse && navigate(`/course/${selectedCourse.id}/continue`);
-  const goChange = () => navigate("/courses");
-  const goManageFollows = () => navigate("/trombinoscope");
-
-  const confirmRestart = async () => {
-    if (!selectedCourse) return;
-    try {
-      await restartCourse(selectedCourse.id);
-      notifySuccess(t("COURSE_RESTARTED", "Parcours redémarré"));
-      setOpenRestart(false); closeMenu();
-      // on garde le même courseId, on refreshe les stats
-      await refreshStats();
+      await restartCourse(courseToReset.id);
+      await refreshStats(courseToReset.id, { force: true });
+      notifySuccess(t("COURSE_RESTARTED", "Parcours réinitialisé"));
+      closeConfirm();
     } catch (e: any) {
       notifyError(e?.response?.data?.message || t("COURSE_RESTART_FAILED", "Le redémarrage a échoué"));
+      setConfirmLoading(false);
     }
   };
 
-  const confirmAbandon = async () => {
-    if (!selectedCourse) return;
+  const openConfirmGlobal = () => setConfirmGlobalOpen(true);
+  const closeConfirmGlobal = () => {
+    if (confirmGlobalLoading) return;
+    setConfirmGlobalOpen(false); setConfirmGlobalChecked(false); setConfirmGlobalText("");
+  };
+  const doConfirmGlobalReset = async () => {
+    setConfirmGlobalLoading(true);
     try {
-      await abandonCourse(selectedCourse.id);
-      notifySuccess(t("COURSE_ABANDONED", "Parcours abandonné"));
-      setOpenAbandon(false); closeMenu();
-      setSelectedCourse(null);
-      // plus de stats si plus de course
-      await refreshStats();
+      for (const c of activeCourses) {
+        await restartCourse(c.id);
+        await refreshStats(c.id, { force: true });
+      }
+      notifySuccess(t("ALL_PROGRESS_RESET", "Toute la progression a été réinitialisée"));
+      closeConfirmGlobal();
     } catch (e: any) {
-      notifyError(e?.response?.data?.message || t("COURSE_ABANDON_FAILED", "L’abandon a échoué"));
+      notifyError(e?.response?.data?.message || t("GLOBAL_RESET_FAILED", "La réinitialisation globale a échoué"));
+      setConfirmGlobalLoading(false);
     }
   };
 
-  const modeTitle = React.useMemo(() => {
-    if (!selectedCourse) return "";
-    return modes.find((m) => m.id === selectedCourse.gameModeId)?.title ?? `#${selectedCourse.gameModeId}`;
-  }, [selectedCourse, modes]);
+  // focus silencieux
+  async function focusCourse(courseId: number) {
+    try {
+      await API.post(`/courses/${courseId}/focus`);
+      const course = activeCourses.find(c => c.id === courseId) || listCourses().find(c => c.id === courseId) || null;
+      if (course) setSelectedCourse(course);
+    } catch { /* no-op */ }
+  }
+  async function openCourse(courseId: number) { await focusCourse(courseId); navigate("/course"); }
 
-  const subtitle = React.useMemo(() => {
-    if (bootLoading) return t("LOADING", "Chargement…");
-    if (!selectedCourse) return t("NO_ACTIVE_COURSE", "Aucun parcours actif");
-    return modeTitle; // épuré : mode uniquement
-  }, [bootLoading, selectedCourse, modeTitle, t]);
-
-  const continueLabel = React.useMemo(() => {
-    const base = t("CONTINUE_COURSE", "Continuer");
-    return dueNow > 0 ? `${base} • ${dueNow}` : base;
-  }, [dueNow, t]);
+  // bootstrap
+  React.useEffect(() => {
+    if (!user) { setBootLoading(false); return; }
+    (async () => {
+      try {
+        const focused = await refreshCurrentCourse(user.id);
+        if (focused) { upsertCourse(focused); setSelectedCourse(focused); }
+        const list = await getUserCourses(user.id);
+        setActiveCourses(list);
+        list.forEach(upsertCourse);
+        await prefetchStats(list.map(c => c.id));
+      } catch (e) {
+        console.error(e);
+        notifyError(t("COURSE_LOAD_FAILED", "Impossible de charger vos parcours"));
+      } finally { setBootLoading(false); }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return (
     <>
-      <SectionCard headerTitle={t("COURSES", "Parcours")} subtitle={subtitle} defaultExpanded={false}>
-        {/* Loading bootstrap */}
-        {bootLoading && (
-          <Box>
-            <Skeleton height={28} width={220} sx={{ mb: 1 }} />
-            <Skeleton height={46} width="60%" sx={{ mb: 2 }} />
-            <Skeleton height={12} width="50%" />
-          </Box>
-        )}
-
-        {/* No course */}
-        {!bootLoading && !selectedCourse && (
-          <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t("NO_ACTIVE_COURSE_HELP", "Crée un parcours pour t’entraîner régulièrement.")}
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button variant="contained" onClick={() => navigate("/courses/create")} startIcon={<PlayArrowRounded />}>
-                {t("CREATE_COURSE", "Créer un parcours")}
-              </Button>
-              <Button variant="outlined" onClick={goManageFollows} startIcon={<PeopleAltRounded />}>
-                {t("MANAGE_FOLLOWS", "Gérer mes suivis")}
-              </Button>
-            </Stack>
-          </>
-        )}
-
-        {/* Active course */}
-        {!bootLoading && !!selectedCourse && (
-          <>
-            {/* Pills réduites */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", mb: 1 }}>
-              <Chip size="small" color="success" label={t("STATUS", "Statut") + ": " + selectedCourse.status} sx={{ fontWeight: 600 }} />
-              <Chip size="small" icon={<SportsEsportsRounded />} label={modeTitle} variant="outlined" />
-              <IconButton size="small" onClick={handleMenu} sx={{ ml: "auto" }} aria-label={t("MORE_ACTIONS", "Plus d’actions")}>
-                <MoreVertRounded />
-              </IconButton>
-            </Stack>
-
-            {/* CTA row */}
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              alignItems={{ xs: "stretch", sm: "center" }}
-              sx={{ mb: 1 }}
-            >
-              <Button onClick={goContinue} variant="contained" size="large" startIcon={<PlayArrowRounded />} sx={{ minWidth: 200 }}>
-                {continueLabel}
-              </Button>
-              <Button onClick={goManageFollows} variant="outlined" startIcon={<PeopleAltRounded />}>
-                {t("MANAGE_FOLLOWS", "Gérer mes suivis")}
-              </Button>
-              <Button onClick={goChange} variant="text" startIcon={<TuneRounded />}>
-                {t("CHANGE_COURSE", "Changer de parcours")}
-              </Button>
-            </Stack>
-
-            {/* Mini dashboard : due now + progression */}
-            {(statsLoading || stats) && (
-              <Box sx={{ mt: 0.5 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <InfoOutlined fontSize="small" color="action" />
-                  <Typography variant="caption" color="text.secondary">
-                    {t(
-                      "COURSE_HINT_INLINE",
-                      "Basé sur vos suivis. Pour ajuster la difficulté, changez de mode ou affinez vos suivis."
-                    )}
+      <SectionCard
+        headerTitle={t("PROGRESSION_TITLE", "Progression")}
+        subtitle={t("PROGRESSION_SUB", "Ici, on consulte et règle la progression. Les actions à risque sont dans les options avancées.")}
+        defaultExpanded
+      >
+        {/* --- 1) Panneau avancé (en premier si activé) --- */}
+        {showAdvanced && activeCourses.length > 0 && (
+          <Card
+            variant="outlined"
+            sx={(th) => ({
+              mb: 1.25,
+              borderColor: th.palette.error.main,
+              backgroundColor: alpha(th.palette.error.main, 0.06),
+            })}
+          >
+            <CardContent sx={{ py: 1.25, "&:last-child": { pb: 1.25 } }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography variant="subtitle2" sx={(th) => ({ color: th.palette.error.main, fontWeight: 700 })}>
+                    {t("ADVANCED_ACTIONS", "Actions avancées")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t("RESET_ALL_EXPLAIN", "Réinitialise la progression et la planification de révision sur tous vos parcours.")}
                   </Typography>
                 </Box>
 
-                {statsLoading && <Skeleton height={18} sx={{ mt: 1, width: "60%" }} />}
+                <Button
+                  color="error"
+                  variant="contained"
+                  size="small"
+                  onClick={openConfirmGlobal}
+                  startIcon={<RestartAltRounded />}
+                  sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+                >
+                  {t("RESET_ALL_PROGRESS", "Réinitialiser toute la progression")}
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
 
-                {!statsLoading && stats && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {headline}
-                    </Typography>
-                    <ProgressBar
-                      unknown={stats.unknown}
-                      discovered={stats.discovered}
-                      learned={stats.learned}
-                      mastered={stats.mastered}
-                      totalCreated={totalCreated}
-                    />
-                  </Box>
-                )}
-              </Box>
-            )}
+        {/* --- 2) Intro + lien “Gérer mes suivis” (lien discret) --- */}
+        <Grid container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Grid item xs>
+            <Typography variant="body2" color="text.secondary">
+              {t("COURSE_FROM_FOLLOWS_HINT", "Les parcours ciblent en priorité les personnes que vous suivez.")}
+            </Typography>
+          </Grid>
+          <Grid item>
+            <MuiLink
+              component="button"
+              type="button"
+              onClick={() => navigate("/trombinoscope")}
+              underline="hover"
+              color="inherit"
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.5,
+                opacity: 0.9,
+                fontSize: 14,
+                px: 0.5,
+                "&:hover": { opacity: 1 },
+                "&:focus-visible": (th) => ({
+                  outline: `2px solid ${th.palette.primary.main}`,
+                  outlineOffset: 2,
+                  borderRadius: 6,
+                }),
+              }}
+              aria-label={t("MANAGE_FOLLOWS", "Gérer mes suivis")}
+            >
+              <OpenInNewRounded fontSize="small" />
+              {t("MANAGE_FOLLOWS", "Gérer mes suivis")}
+            </MuiLink>
+          </Grid>
+        </Grid>
 
-            {/* Bloc avancé : transparence algo / pédagogie */}
-            {showAdvanced && (
-              <>
-                <Divider sx={{ my: 1.5 }} />
-                <AdvancedBlock defaultOpen={false} label={t("HOW_IT_WORKS", "Comment ça marche ?")}>
-                  <Box sx={{ display: "grid", gap: 1.25 }}>
-                    <Typography variant="body2">
-                      {t(
-                        "COURSE_HOW_1",
-                        "Le parcours choisit automatiquement des personnes à partir de vos suivis. Les révisions utilisent une répétition espacée (SRS) pour maximiser la rétention."
-                      )}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t(
-                        "COURSE_HOW_2",
-                        "« Continuer » reprend la session là où tu t’es arrêté. Tu peux modifier le mode ou tes suivis à tout moment."
-                      )}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t(
-                        "COURSE_HOW_3",
-                        "« Redémarrer » remet le parcours à zéro. « Abandonner » l’arrête et te permet d’en créer un nouveau."
-                      )}
-                    </Typography>
-                  </Box>
-                </AdvancedBlock>
-              </>
-            )}
+        {/* --- 3) Liste des parcours --- */}
+        {bootLoading ? (
+          <Box>
+            <Skeleton height={26} width="35%" sx={{ mb: 1 }} />
+            <Skeleton variant="rectangular" height={112} sx={{ borderRadius: 2 }} />
+          </Box>
+        ) : activeCourses.length === 0 ? (
+          <Stack spacing={1}>
+            <Typography variant="body2" color="text.secondary">
+              {t("NO_ACTIVE_COURSE", "Aucun parcours actif pour le moment.")}
+            </Typography>
+            <MuiLink component="button" type="button" underline="hover" onClick={() => navigate("/course/new")}>
+              {t("CREATE_COURSE", "Créer un parcours")}
+            </MuiLink>
+          </Stack>
+        ) : (
+          <Stack spacing={1}>
+            {activeCourses.map((c) => {
+              const stats = getStats(c.id);
+              const progress = computeProgressPercent(stats);
+              const loading = isStatsLoading(c.id);
+              const modeTitle = (modes.find(m => m.id === c.gameModeId)?.title) ?? `#${c.gameModeId}`;
 
-            {/* Menu “Plus” */}
-            <Menu anchorEl={anchorMenu} open={openMenu} onClose={closeMenu}>
-              <MenuItem onClick={() => { closeMenu(); setOpenRestart(true); }}>
-                <RestartAltRounded fontSize="small" style={{ marginRight: 8 }} />
-                {t("RESTART_COURSE", "Redémarrer")}
-              </MenuItem>
-              <MenuItem onClick={() => { closeMenu(); setOpenAbandon(true); }}>
-                <DeleteOutlineRounded fontSize="small" style={{ marginRight: 8 }} />
-                {t("ABANDON_COURSE", "Abandonner")}
-              </MenuItem>
-            </Menu>
-          </>
+              return (
+                <Card
+                  key={c.id}
+                  variant="outlined"
+                  className="menu"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter") openCourse(c.id); }}
+                  sx={{
+                    p: 0,
+                    "&:focus-visible": {
+                      outline: "2px solid",
+                      outlineColor: (th) => th.palette.primary.main,
+                      outlineOffset: 2,
+                      borderRadius: 2,
+                    },
+                    "&:hover .row-open, &:focus-within .row-open": { opacity: 1, pointerEvents: "auto" },
+                  }}
+                >
+                  <CardContent sx={{ py: 1.25, px: 1.5 }}>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <SportsEsportsRounded fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+                        {modeTitle}
+                      </Typography>
+                      <Tooltip title={t("COURSE_HINT", "Questions liées à vos suivis + logique du mode.") as string}>
+                        <InfoOutlined fontSize="small" color="action" />
+                      </Tooltip>
+
+                      <Box sx={{ flexGrow: 1 }} />
+
+                      <Tooltip title={t("OPEN_COURSE", "Ouvrir ce parcours") as string}>
+                        <span>
+                          <Button
+                            className="row-open"
+                            size="small"
+                            variant="text"
+                            startIcon={<PlayArrowRounded />}
+                            onClick={() => openCourse(c.id)}
+                            disabled={loading}
+                            sx={{
+                              opacity: 0,
+                              pointerEvents: "none",
+                              transition: "opacity .15s",
+                              textTransform: "none",
+                              minWidth: 0,
+                              px: 0.75,
+                            }}
+                          >
+                            {t("OPEN", "Ouvrir")}
+                          </Button>
+                        </span>
+                      </Tooltip>
+
+                      <IconButton
+                        size="small"
+                        onClick={(e) => openMenuFor(e, c.id)}
+                        aria-label={t("MORE_ACTIONS", "Plus d’actions")}
+                      >
+                        <MoreVertRounded />
+                      </IconButton>
+                    </Stack>
+
+                    <Stack spacing={0.5} sx={{ mt: 1 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={progress}
+                        sx={{
+                          height: 6,
+                          borderRadius: 999,
+                          "& .MuiLinearProgress-bar": { borderRadius: 999 },
+                        }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {t("COURSE_PROGRESS_SHORT", "{{p}}% maîtrisé", { p: progress })}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Stack>
         )}
       </SectionCard>
 
-      {/* Dialogs */}
-      <Dialog open={openRestart} onClose={() => setOpenRestart(false)}>
-        <DialogTitle>{t("CONFIRM_RESTART_TITLE", "Redémarrer ce parcours ?")}</DialogTitle>
-        <DialogContent>
-          <Typography>{t("CONFIRM_RESTART_DESC", "Tout le progrès sera remis à zéro. Cette action est irréversible.")}</Typography>
+      {/* Menu kebab */}
+      <Menu anchorEl={menuAnchor} open={openMenu} onClose={closeMenu}>
+        <MenuItem
+          onClick={async () => {
+            const id = menuCourseId; closeMenu(); if (!id) return;
+            await openCourse(id);
+          }}
+        >
+          <PlayArrowRounded fontSize="small" style={{ marginRight: 8 }} />
+          {t("OPEN", "Ouvrir")}
+        </MenuItem>
+
+        {showAdvanced && (
+          <MenuItem
+            onClick={() => {
+              const id = menuCourseId; closeMenu(); if (!id) return;
+              const course = activeCourses.find((c) => c.id === id);
+              const title = course ? (modes.find((m) => m.id === course.gameModeId)?.title ?? "") : "";
+              openConfirmFor({ id, title });
+            }}
+            sx={{ color: (th) => th.palette.error.main, "& .MuiSvgIcon-root": { color: "inherit" } }}
+          >
+            <RestartAltRounded fontSize="small" style={{ marginRight: 8 }} />
+            {t("RESTART", "Redémarrer")}
+          </MenuItem>
+        )}
+      </Menu>
+
+      {/* Dialog RESET (un parcours) */}
+      <Dialog open={confirmOpen} onClose={closeConfirm} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberRounded color="warning" /> {t("CONFIRM_RESET_TITLE", "Confirmer la réinitialisation")}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.25}>
+            <Typography variant="body2">
+              {t("CONFIRM_RESET_DESC", "Cette action remettra à zéro votre progression et le planning de révision pour ce parcours.")}
+            </Typography>
+            {courseToReset?.title && (
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                {t("COURSE_LABEL", "Parcours")} : <strong>{courseToReset.title}</strong>
+              </Typography>
+            )}
+            <FormControlLabel control={<Checkbox checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)} />}
+              label={t("CONFIRM_RESET_CHECK", "Je comprends que cette action est irréversible pour la progression.")} />
+            <Box>
+              <Typography variant="caption" sx={{ display: "block", mb: 0.5, opacity: 0.9 }}>
+                {t("TYPE_RESET_TO_CONFIRM", 'Pour confirmer, tapez « RESET » :')}
+              </Typography>
+              <TextField size="small" fullWidth placeholder="RESET" value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
+                inputProps={{ style: { textTransform: "uppercase", letterSpacing: 1 } }} />
+            </Box>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenRestart(false)}>{t("CANCEL", "Annuler")}</Button>
-          <Button color="warning" onClick={confirmRestart} startIcon={<RestartAltRounded />}>
-            {t("CONFIRM", "Confirmer")}
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button onClick={closeConfirm} disabled={confirmLoading}>{t("CANCEL", "Annuler")}</Button>
+          <Button variant="contained" color="error" disableElevation onClick={doConfirmReset} disabled={!canConfirm || confirmLoading}
+            startIcon={<RestartAltRounded />}>
+            {confirmLoading ? t("RESETTING", "Réinitialisation…") : t("RESET_NOW", "Oui, réinitialiser")}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openAbandon} onClose={() => setOpenAbandon(false)}>
-        <DialogTitle>{t("CONFIRM_ABANDON_TITLE", "Abandonner ce parcours ?")}</DialogTitle>
-        <DialogContent>
-          <Typography>{t("CONFIRM_ABANDON_DESC", "Tu pourras toujours en créer un nouveau plus tard.")}</Typography>
+      {/* Dialog RESET GLOBAL */}
+      <Dialog open={confirmGlobalOpen} onClose={closeConfirmGlobal} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberRounded color="warning" /> {t("CONFIRM_GLOBAL_RESET_TITLE", "Réinitialiser TOUTE la progression ?")}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.25}>
+            <Typography variant="body2">
+              {t("CONFIRM_GLOBAL_RESET_DESC", "Tous vos parcours seront réinitialisés (progression et planification).")}
+            </Typography>
+            <FormControlLabel
+              control={<Checkbox checked={confirmGlobalChecked} onChange={(e) => setConfirmGlobalChecked(e.target.checked)} />}
+              label={t("CONFIRM_RESET_CHECK", "Je comprends que cette action est irréversible pour la progression.")}
+            />
+            <Box>
+              <Typography variant="caption" sx={{ display: "block", mb: 0.5, opacity: 0.9 }}>
+                {t("TYPE_RESET_ALL_TO_CONFIRM", 'Pour confirmer, tapez « RESET ALL » :')}
+              </Typography>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="RESET ALL"
+                value={confirmGlobalText}
+                onChange={(e) => setConfirmGlobalText(e.target.value)}
+                inputProps={{ style: { textTransform: "uppercase", letterSpacing: 1 } }}
+              />
+            </Box>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAbandon(false)}>{t("CANCEL", "Annuler")}</Button>
-          <Button color="error" onClick={confirmAbandon} startIcon={<DeleteOutlineRounded />}>
-            {t("CONFIRM", "Confirmer")}
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button onClick={closeConfirmGlobal} disabled={confirmGlobalLoading}>{t("CANCEL", "Annuler")}</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disableElevation
+            onClick={doConfirmGlobalReset}
+            disabled={!canConfirmGlobal || confirmGlobalLoading}
+            startIcon={<RestartAltRounded />}
+          >
+            {confirmGlobalLoading ? t("RESETTING", "Réinitialisation…") : t("RESET_NOW", "Oui, réinitialiser tout")}
           </Button>
         </DialogActions>
       </Dialog>

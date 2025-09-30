@@ -7,83 +7,66 @@ import { CourseDto, CreateCourseDto } from "../../dto/courses/CourseDto";
 import { CourseQuestionDto } from "../../dto/courses/CourseQuestionDto";
 import { CourseStatsDto } from "../../dto/courses/CourseStatsDto";
 
-// src/services/courseService.ts
+// Base pour /api/courses (API util préfixe déjà /api)
 const endpoint = "/courses";
 
-/**
- * Récupère le cours en cours d'un utilisateur (ou null si aucun)
- */
+/** Dernier cours focal (ou null si 204) */
 export async function getCurrentCourse(userId: number): Promise<CourseDto | null> {
-  try {
-    const response = await API.get<CourseDto>(`${endpoint}/${userId}/current`);
-    return response.status === 204 ? null : response.data;
-  } catch (err: any) {
-    console.error("getCurrentCourse failed", err);
-    throw err;
-  }
+  const res = await API.get<CourseDto>(`${endpoint}/${userId}/current`, {
+    validateStatus: (s) => s === 200 || s === 204,
+  });
+  return res.status === 204 ? null : res.data;
 }
 
-/** Stats du parcours */
+/** Tous les cours ACTIFS de l’utilisateur */
+export async function getUserCourses(userId: number): Promise<CourseDto[]> {
+  const res = await API.get<CourseDto[]>(`${endpoint}/user/${userId}`, {
+    validateStatus: (s) => s === 200 || s === 204,
+  });
+  return res.status === 204 ? [] : res.data;
+}
+
+/** Stats d’un cours */
 export async function getCourseStats(courseId: number): Promise<CourseStatsDto> {
-  try {
-    const res = await API.get<CourseStatsDto>(`${endpoint}/${courseId}/stats`);
-    return res.data;
-  } catch (err: any) {
-    console.error("getCourseStats failed", err);
-    throw err;
-  }
+  const res = await API.get<CourseStatsDto>(`${endpoint}/${courseId}/stats`);
+  return res.data;
 }
 
-/**
- * Crée un nouveau cours
- */
+/** Stats de tous les cours ACTIFS d’un utilisateur */
+export async function getUserCourseStats(userId: number): Promise<CourseStatsDto[]> {
+  const res = await API.get<CourseStatsDto[]>(`${endpoint}/user/${userId}/stats`, {
+    validateStatus: (s) => s === 200 || s === 204,
+  });
+  return res.status === 204 ? [] : res.data;
+}
+
+/** Crée un nouveau cours (échoue si déjà un IN_PROGRESS pour user/mode/scope) */
 export async function createCourse(dto: CreateCourseDto): Promise<CourseDto> {
-  try {
-    const response = await API.post<CourseDto>(`${endpoint}/create`, dto);
-    return response.data;
-  } catch (err: any) {
-    console.error("createCourse failed", err);
-    throw err;
-  }
+  const res = await API.post<CourseDto>(`${endpoint}/create`, dto);
+  return res.data;
 }
 
-/**
- * Redémarre un cours : purge la progression & remet à zéro
- */
+/** Crée ou reprend l’IN_PROGRESS existant (user/mode/scope) */
+export async function createOrResumeCourse(dto: CreateCourseDto): Promise<CourseDto> {
+  const res = await API.post<CourseDto>(`${endpoint}/create-or-resume`, dto);
+  return res.data;
+}
+
+/** Redémarre un cours (purge progression + reseed) */
 export async function restartCourse(courseId: number): Promise<CourseDto> {
-  try {
-    const response = await API.post<CourseDto>(`${endpoint}/${courseId}/restart`);
-    return response.data;
-  } catch (err: any) {
-    console.error("restartCourse failed", err);
-    throw err;
-  }
+  const res = await API.post<CourseDto>(`${endpoint}/${courseId}/restart`);
+  return res.data;
 }
 
-/**
- * Abandonne un cours : passe le statut à ABANDONED
- */
-export async function abandonCourse(courseId: number): Promise<CourseDto> {
-  try {
-    const response = await API.post<CourseDto>(`${endpoint}/${courseId}/abandon`);
-    return response.data;
-  } catch (err: any) {
-    console.error("abandonCourse failed", err);
-    throw err;
-  }
+/** Marque un cours comme “focus” (lastAccessedAt = now) */
+export async function focusCourse(courseId: number): Promise<void> {
+  await API.post<void>(`${endpoint}/${courseId}/focus`);
 }
 
-/**
- * Démarre (ou récupère) la première question d'un cours
- */
+/** Démarre/continue un cours (renvoie la question) */
 export async function continueCourse(courseId: number): Promise<CourseQuestionDto> {
-  try {
-    const response = await API.get<CourseQuestionDto>(`${endpoint}/${courseId}/continue`);
-    return response.data;
-  } catch (err: any) {
-    console.error("continueCourse failed", err);
-    throw err;
-  }
+  const res = await API.get<CourseQuestionDto>(`${endpoint}/${courseId}/continue`);
+  return res.data;
 }
 
 export class NoMoreQuestionsError extends Error {
@@ -93,61 +76,37 @@ export class NoMoreQuestionsError extends Error {
   }
 }
 
-/**
- * Soumet une réponse et récupère la question suivante
- */
+/** Soumet une réponse et récupère la suivante */
 export async function answerCourse(
   courseId: number,
   answerDto: CourseAnswerDto
 ): Promise<CourseAnswerAndNextQuestionDto> {
-  try {
-    const response = await API.post<CourseAnswerAndNextQuestionDto>(
-      `${endpoint}/${courseId}/answer`,
-      answerDto,
-      { validateStatus: (status) => status < 500 }
-    );
+  const res = await API.post<CourseAnswerAndNextQuestionDto>(
+    `${endpoint}/${courseId}/answer`,
+    answerDto,
+    { validateStatus: (status) => status < 500 }
+  );
 
-    if (response.status === 206) {
-      throw new NoMoreQuestionsError();
-    }
-
-    return response.data;
-  } catch (err: any) {
-    throw err;
+  if (res.status === 206) {
+    throw new NoMoreQuestionsError();
   }
+  return res.data;
 }
 
-/**
- * Marquer une question avec l'aide et récupérer les attributs utiles
- */
+/** Marque l’aide et récupère des attributs utiles */
 export async function useHelp(
   courseId: number,
   questionId: number
 ): Promise<PersonAttributeLite[]> {
-  try {
-    const response = await API.post<PersonAttributeLite[]>(
-      `${endpoint}/${courseId}/questions/${questionId}/help`
-    );
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Failed to get help containing person attributes with courseId " +
-        courseId +
-        " and questionId " +
-        questionId +
-        " :",
-      error
-    );
-    throw error;
-  }
+  const res = await API.post<PersonAttributeLite[]>(
+    `${endpoint}/${courseId}/questions/${questionId}/help`
+  );
+  return res.data;
 }
 
+/** Liste d’entraînement à partir d’un cours */
 export async function getTrainingList(courseId: number): Promise<QuizEntry[]> {
-  try {
-    const response = await API.get<QuizEntry[]>(`${endpoint}/${courseId}/training`);
-    return response.data;
-  } catch (error) {
-    console.error("Failed to get the training list with courseId " + courseId + " :", error);
-    throw error;
-  }
+  const res = await API.get<QuizEntry[]>(`${endpoint}/${courseId}/training`);
+  return res.data;
 }
+
