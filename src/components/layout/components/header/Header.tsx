@@ -44,11 +44,12 @@ const Header: React.FC<HeaderProps> = ({ color, title, tooltip, onBack }) => {
     const prevFromReferrer = sameOriginReferrer;      // referrer même origine
 
     const target =
-      prevFromState ||
-      prevFromStorage ||
-      prevFromReferrer ||
-      onBack ||       // fallback fourni par la route (ex: "/challenges")
-      "/";            // dernier filet de sécurité
+    onBack ||             // ⚡ onBack en premier
+    prevFromState ||
+    prevFromStorage ||
+    prevFromReferrer ||
+    "/";
+
 
     navigate(target, { replace: true });
   };

@@ -1,70 +1,149 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { loginWithGoogle, silentGoogleSignIn, verifyToken as verifyTokenApi } from "../services/security/Auth.service";
+import {
+  AuthResponse,
+  loginWithGoogle,
+  silentGoogleSignIn,
+  verifyToken as verifyTokenApi,
+} from "../services/security/Auth.service";
 import { User } from "../models/commons/User";
 import { CredentialResponse } from "@react-oauth/google";
+import { UserOrganizationDto } from "../services/dto/organization/UserOrganizationDto";
 
 interface AuthContextProps {
   user: User | null;
   token: string | null;
+  organizations: UserOrganizationDto[];
+  activeOrganization: UserOrganizationDto | null;
   isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  login: (authResponse: AuthResponse) => void;
   logout: () => void;
+  switchOrganization: (orgId: number) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
+
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem("user");
-    return stored ? JSON.parse(stored) : null;
+    if (!stored || stored === "undefined" || stored === "null") return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
   });
 
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem("token", newToken);
+  const [organizations, setOrganizations] = useState<UserOrganizationDto[]>(() => {
+    const stored = localStorage.getItem("organizations");
+    if (!stored || stored === "undefined" || stored === "null") return [];
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeOrganization, setActiveOrganization] = useState<UserOrganizationDto | null>(() => {
+    const storedOrgId = localStorage.getItem("orgId");
+    const storedOrgs = localStorage.getItem("organizations");
+
+    if (!storedOrgId || !storedOrgs) return null;
+
+    try {
+      const orgs: UserOrganizationDto[] = JSON.parse(storedOrgs);
+      const parsedId = parseInt(storedOrgId, 10);
+      return orgs.find((o) => o.organizationId === parsedId) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const login = (authResponse: AuthResponse) => {
+    const { bearerToken, userId, username, email, roles, srsAlgorithm, organizations } =
+      authResponse;
+
+    const newUser: User = {
+      id: userId,
+      username,
+      email,
+      roles,
+      srsAlgorithm,
+      organizations,
+    };
+
+    localStorage.setItem("token", bearerToken);
     localStorage.setItem("user", JSON.stringify(newUser));
-    setToken(newToken);
+
+    if (organizations && organizations.length > 0) {
+      localStorage.setItem("organizations", JSON.stringify(organizations));
+
+      // ✅ soit on reprend l’orgId déjà stocké si valide
+      const storedOrgId = localStorage.getItem("orgId");
+      let defaultOrg: UserOrganizationDto | null = null;
+
+      if (storedOrgId) {
+        const parsed = parseInt(storedOrgId, 10);
+        defaultOrg = organizations.find((o) => o.organizationId === parsed) || null;
+      }
+
+      // ✅ sinon on prend la première
+      if (!defaultOrg) {
+        defaultOrg = organizations[0];
+        localStorage.setItem("orgId", String(defaultOrg.organizationId));
+      }
+
+      setActiveOrganization(defaultOrg);
+    } else {
+      localStorage.removeItem("organizations");
+      localStorage.removeItem("orgId");
+      setActiveOrganization(null);
+    }
+
+    setToken(bearerToken);
     setUser(newUser);
+    setOrganizations(organizations || []);
+  };
+
+  const switchOrganization = (orgId: number) => {
+    const org = organizations.find((o) => o.organizationId === orgId) || null;
+    setActiveOrganization(org);
+    if (org) {
+      localStorage.setItem("orgId", String(org.organizationId));
+    } else {
+      localStorage.removeItem("orgId");
+    }
   };
 
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("organizations");
+    localStorage.removeItem("orgId");
     setToken(null);
     setUser(null);
+    setOrganizations([]);
+    setActiveOrganization(null);
   };
 
   const isAuthenticated = !!token;
 
-   // Fonction de vérification du token auprès du backend
-   const verifyTokenn = async (currentToken: string) => {
+  const verifyTokenn = async (currentToken: string) => {
     try {
-      // Remplacez '/api/verify-token' par l’endpoint réel de vérification
       await verifyTokenApi(currentToken);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   };
 
-  // Fonction pour tenter une auto-reconnexion avec Google
   const autoReconnectWithGoogle = async () => {
     try {
-      // On suppose ici que vous avez configuré Google Identity Services
-      // et que vous disposez d'une fonction utilitaire pour tenter une reconnexion silencieuse.
-      // Par exemple, en utilisant « prompt: 'none' » ou le One Tap de Google.
       const googleResponse: CredentialResponse = await silentGoogleSignIn();
       if (googleResponse?.credential) {
-        // On utilise ici votre service existant (loginWithGoogle) pour récupérer les infos utilisateur
         const apiResponse = await loginWithGoogle(googleResponse);
-        // Stockage du token et des infos utilisateur dans le context et le localStorage
-        login(apiResponse.bearerToken, {
-          id: apiResponse.userId, // en fonction de la réponse de votre API
-          username: apiResponse.username,
-          email: apiResponse.email,
-          roles: apiResponse.roles,
-          srsAlgorithm: apiResponse.srsAlgorithm, // Assurez-vous que votre API renvoie cette info
-        });
+        login(apiResponse);
         return true;
       }
       return false;
@@ -74,18 +153,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Effet au montage pour vérifier la validité du token
   useEffect(() => {
     const checkSession = async () => {
       if (token) {
         const valid = await verifyTokenn(token);
         if (!valid) {
-          // Si le token n'est plus valide, tentez l'auto-reconnexion via Google
           const reconnected = await autoReconnectWithGoogle();
-          if (!reconnected) {
-            // Si l'auto-reconnexion échoue, déconnectez l'utilisateur
-            logout();
-          }
+          if (!reconnected) logout();
         }
       }
     };
@@ -94,7 +168,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        organizations,
+        activeOrganization,
+        isAuthenticated,
+        login,
+        logout,
+        switchOrganization,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

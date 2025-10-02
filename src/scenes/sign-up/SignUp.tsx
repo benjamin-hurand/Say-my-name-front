@@ -147,12 +147,7 @@ export default function SignUp(): JSX.Element {
     try {
       const apiResponse: AuthResponse = await registerWithGoogle(googleResponse);
       console.log("Response back after google: ", apiResponse);
-      login(apiResponse.jwt.bearer, {
-        id: apiResponse.userId,
-        username: apiResponse.username,
-        email: apiResponse.email,
-        roles: apiResponse.roles,
-      });
+      login(apiResponse);
       notifySuccess("Successfully connected.");
       randomizeColor();
       navigate('/');

@@ -79,9 +79,12 @@ const initialSorts: any[] = [];
 
 const ChallengeMenu: React.FC = () => {
   const { color } = useThemeColorContext();
-  const { user } = useAuth();
+  const { user, activeOrganization } = useAuth();
   const { setCurrentAttempt, setChallengeCardDto } = useAttempt();
   const navigate = useNavigate();
+
+  const hasEditorRights =
+  activeOrganization?.role === "EDITOR" || activeOrganization?.role === "CLIENT_ADMIN";
 
   // Champ de recherche
   const [search, setSearch] = useState<string>('');
@@ -260,17 +263,19 @@ const ChallengeMenu: React.FC = () => {
       </Box>
 
       {/* Bouton "Créer un challenge" */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          className="menu"
-          variant="outlined"
-          fullWidth
-          onClick={handleCreateChallenge}
-          sx={{ whiteSpace: 'nowrap', boxShadow: `0 0 4px ${color}`, textShadow: `0 0 4px ${color}` }}
-        >
-          + Créer un challenge
-        </Button>
-      </Box>
+      {hasEditorRights && (
+        <Box sx={{ mb: 2 }}>
+          <Button
+            className="menu"
+            variant="outlined"
+            fullWidth
+            onClick={handleCreateChallenge}
+            sx={{ whiteSpace: 'nowrap', boxShadow: `0 0 4px ${color}`, textShadow: `0 0 4px ${color}` }}
+          >
+            + Créer un challenge
+          </Button>
+        </Box>
+      )}
 
       {/* Liste des challenges (ou skeleton, ou message "Aucun challenge trouvé") */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto' }} className="scrollable-content">

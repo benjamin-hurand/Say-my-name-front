@@ -1,13 +1,14 @@
 // Footer.tsx
 import React, { useState } from 'react';
 import { Stack, IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
-import { Settings, Brightness7, Brightness4, Language, Logout, Home } from "@mui/icons-material";
+import { Settings, Brightness7, Brightness4, Language, Logout, Home, Business } from "@mui/icons-material";
 import { useThemeColorContext } from "../../../../contexts/ThemeColorContext";
 import { notifySuccess } from "../../../../services/notification/toast.service";
 import { googleLogout } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import "../../layout.css"; // Import du CSS
+import { useAuth } from '../../../../contexts/AuthContext';
 
 interface FooterProps {
   isMenu?: boolean;
@@ -25,6 +26,22 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
 
   const { i18n } = useTranslation();
   const navigate = useNavigate();
+
+  const { organizations, activeOrganization, switchOrganization } = useAuth();
+  const [orgAnchorEl, setOrgAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleOpenOrgMenu = (event: React.MouseEvent<HTMLElement>) => {
+    if (organizations.length > 1) {
+      setOrgAnchorEl(event.currentTarget);
+    }
+  };
+
+  const handleCloseOrgMenu = () => setOrgAnchorEl(null);
+
+  const handleSwitchOrg = (orgId: number) => {
+    switchOrganization(orgId);
+    handleCloseOrgMenu();
+  };
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -63,6 +80,43 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
   return (
     <div className="footer">
       <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '400px', padding: '5px' }}>
+        <Tooltip
+          title={
+            activeOrganization
+              ? `Organization: ${activeOrganization.organizationName}`
+              : "No organization"
+          }
+          arrow
+        >
+          <IconButton
+            className="menu"
+            style={iconButtonStyle}
+            aria-label="organization"
+            onClick={handleOpenOrgMenu}
+            onMouseEnter={handleMouseEnter}
+          >
+            <Business style={{ color }} />
+          </IconButton>
+        </Tooltip>
+
+        <Menu
+          id="org-menu"
+          anchorEl={orgAnchorEl}
+          open={Boolean(orgAnchorEl)}
+          onClose={handleCloseOrgMenu}
+          anchorOrigin={{ vertical: "center", horizontal: "center" }}
+          transformOrigin={{ vertical: "center", horizontal: "center" }}
+        >
+          {organizations.map((org) => (
+            <MenuItem
+              key={org.organizationId}
+              selected={org.organizationId === activeOrganization?.organizationId}
+              onClick={() => handleSwitchOrg(org.organizationId)}
+            >
+              {org.organizationName} ({org.role})
+            </MenuItem>
+          ))}
+        </Menu>
         <Tooltip title="Settings" arrow>
           <IconButton
             className="menu"

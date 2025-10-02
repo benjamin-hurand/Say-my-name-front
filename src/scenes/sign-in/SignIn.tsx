@@ -53,13 +53,7 @@ export default function SignIn() {
     try {
       const apiResponse: AuthResponse = await loginWithGoogle(googleResponse);
       console.log("Response back after google:", apiResponse);
-      login(apiResponse.bearerToken, {
-        id: apiResponse.userId,
-        username: apiResponse.username,
-        email: apiResponse.email,
-        roles: apiResponse.roles,
-        srsAlgorithm: apiResponse.srsAlgorithm
-      });
+      login(apiResponse);
       notifySuccess('Successfully connected.');
       console.log('Successfully connected with Google:', apiResponse);
       randomizeColor();
@@ -103,13 +97,7 @@ export default function SignIn() {
         identifier: data.get('identifier') as string,
         password: data.get('password') as string,
       });
-      login(response.bearerToken, {
-        id: response.userId,
-        username: response.username,
-        email: response.email,
-        roles: response.roles,
-        srsAlgorithm: response.srsAlgorithm
-      });
+      login(response);
       notifySuccess('Successfully connected.');
       randomizeColor();
       navigate('/');

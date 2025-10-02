@@ -25,6 +25,7 @@ import { Layout } from "../layout/Layout";
 import ProtectedRoute from "./ProtectedRoute";
 import { CourseStatsProvider } from "../../contexts/CourseStatsContext";
 import CoursesHub from "../../scenes/courses/CoursesHub";
+import RoleProtectedRoute from "./RoleProtectedRoute";
 
 const router = createBrowserRouter([
   {
@@ -87,7 +88,7 @@ const router = createBrowserRouter([
               {
                 index: true,
                 element: (
-                  <Layout headerTitle="Training">
+                  <Layout headerTitle="Training" onBack="/">
                     <ProtectedRoute element={<TrainingQuiz />} />
                   </Layout>
                 ),
@@ -126,7 +127,7 @@ const router = createBrowserRouter([
                 path: "new",
                 element: (
               <Layout headerTitle="Créer un challenge" onBack="/challenges">
-                <ProtectedRoute element={<AddChallengeForm />} />
+                <RoleProtectedRoute element={<AddChallengeForm />} allowedRoles={["EDITOR","CLIENT_ADMIN"]} redirectPath="/"/>
               </Layout>
                 ),
               },

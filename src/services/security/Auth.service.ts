@@ -2,6 +2,8 @@ import axios from 'axios';
 import API from '../api/apiUtils';
 import { CredentialResponse } from '@react-oauth/google';
 import { SrsAlgorithm } from '../../models/commons/User';
+import { Organization } from '../../models/organizations/Organization';
+import { UserOrganizationDto } from '../dto/organization/UserOrganizationDto';
 
 interface LoginCredentials {
     identifier: string;
@@ -29,6 +31,7 @@ export interface AuthResponse {
     email: string;
     roles: string;
     srsAlgorithm: SrsAlgorithm;
+    organizations: UserOrganizationDto[];
 }
 
 // interface UserDetails {
@@ -130,7 +133,7 @@ export const verifyToken = async (token: string): Promise<boolean> => {
 
 export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
     try {
-        const response = await API.get<boolean>(`/usernames/isavailable/${username}`);
+        const response = await API.get<boolean>(`/auth/usernames/isavailable/${username}`);
         return response.data;
     } catch (error) {
         console.error('Failed to verify username availability');
@@ -140,7 +143,7 @@ export const checkUsernameAvailability = async (username: string): Promise<boole
 
 export const generate = async (lang: string): Promise<string> => {
     try {
-        const response = await API.get(`/usernames/generate/${lang}`);
+        const response = await API.get(`/auth/usernames/generate/${lang}`);
         return response.data;
     } catch (error) {
         console.error('Failed to fetch username:', error);

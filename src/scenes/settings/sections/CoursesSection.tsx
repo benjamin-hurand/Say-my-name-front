@@ -165,7 +165,6 @@ const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
       <SectionCard
         headerTitle={t("PROGRESSION_TITLE", "Progression")}
         subtitle={t("PROGRESSION_SUB", "Ici, on consulte et règle la progression. Les actions à risque sont dans les options avancées.")}
-        defaultExpanded
       >
         {/* --- 1) Panneau avancé (en premier si activé) --- */}
         {showAdvanced && activeCourses.length > 0 && (
