@@ -9,8 +9,8 @@ type Props = {
   selectionLabel: string;
   selectionCount: number;
   onClearSelection: () => void;
-  onBulkFollow: () => void;
-  onBulkUnfollow: () => void;
+  onBulkFollow?: () => void;
+  onBulkUnfollow?: () => void;
 };
 
 const SelectionToolbar: React.FC<Props> = ({

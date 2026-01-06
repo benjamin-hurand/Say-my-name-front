@@ -17,7 +17,6 @@ export interface CourseDto {
 
 // Payload pour créer ou reprendre (le scope est requis à la création)
 export interface CreateCourseDto {
-  userId: number;
   gameModeId: number;
   populationScope: PopulationScope; // "FOLLOWED" | "ALL"
 }

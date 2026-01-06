@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import { Attribute } from '../models/commons/Attribute';
+import { Attribute } from '../models/commons/Attribute/Attribute';
 import { GameFilter } from '../models/commons/Game/GameOptions/GameFilter.model';
 import { GameSortBy } from '../models/commons/Game/GameOptions/GameSortBy.model';
 import { GameRepetitionPattern, repetitionPatterns } from '../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameMode } from '../models/commons/Game/GameMode/GameMode.model';
-import { useGlobalData } from './GlobalDataContext';
+import { useOrgData } from './OrgDataContext';
 import { GamePopulationScope } from '../models/commons/Game/GameOptions/GamePopulationScope.model';
 
 
@@ -78,7 +78,7 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   const [tempSelectedPopulationScope, setTempSelectedPopulationScope] = useState<GamePopulationScope>('ALL');
   
   // Modes, filters, sorts
-  const { filters, sorts, modes } = useGlobalData();
+  const { filters, sorts, modes } = useOrgData();
   // Modes
   const [tempSelectedMode, setTempSelectedMode] = useState<GameMode | null>(null);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);

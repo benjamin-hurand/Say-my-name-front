@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import { AttributeFilterDto } from "../../../services/dto/person/search/PersonSearchRequestDto";
-import { Attribute, AttributeType, isEnumRule, isRange } from "../../../models/commons/Attribute";
+import { Attribute, AttributeType, isEnumRule, isRange } from "../../../models/commons/Attribute/Attribute";
 
 type Props = {
   filtersAttributes: Attribute[];
@@ -15,7 +15,6 @@ type Props = {
 
   /** Panneau rétractable contrôlé (fermé par défaut) */
   filtersOpen?: boolean;
-  onFiltersOpenChange?: (open: boolean) => void;
 
   /** Ref pour auto-close sur scroll dans la page */
   rootRef?: React.RefObject<HTMLDivElement>;
@@ -50,7 +49,7 @@ const isTextualOnly = (a: Attribute) =>
 
 const TrombiFilters: React.FC<Props> = ({
   filtersAttributes, selectedFilters, onFiltersChange,
-  filtersOpen = false, onFiltersOpenChange, rootRef,
+  filtersOpen = false, rootRef,
 }) => {
   // Ranges (number/date) : brouillon local avant "Appliquer"
   const [rangeDraft, setRangeDraft] = useState<Record<number, { min: string; max: string }>>({});

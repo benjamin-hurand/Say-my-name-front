@@ -15,6 +15,9 @@ import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import PhotoCameraFrontOutlinedIcon from "@mui/icons-material/PhotoCameraFrontOutlined";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
+import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
+import MarkEmailUnreadRoundedIcon from "@mui/icons-material/MarkEmailUnreadRounded";
+import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 
 import {
   PersonAttributeExtraDto,
@@ -51,6 +54,7 @@ const TrombiCard: React.FC<{
   followed: boolean;
   followPending?: boolean;
   onToggleFollow: () => void;
+  hideFollowFeatures: boolean;
   selectedFilters: SelectedFilters;
   searchText?: string;
 
@@ -70,6 +74,7 @@ const TrombiCard: React.FC<{
   followed,
   followPending = false,
   onToggleFollow,
+  hideFollowFeatures = false,
   selectedFilters,
   searchText,
   selectionEnabled = false,
@@ -89,6 +94,30 @@ const TrombiCard: React.FC<{
   const name = displayName(person);
   const initials = useMemo(() => initialsFrom(name), [name]);
   const small = person.photoSmallUrl ?? null;
+
+  // ---- Email status
+  const emailStatus = (person as any)?.emailStatus ?? "NONE";
+  const emailMeta = useMemo(() => {
+    switch (emailStatus) {
+      case "PRIMARY_VERIFIED":
+        return {
+          title: "E-mail principal vérifié",
+          icon: <MarkEmailReadRoundedIcon sx={{ fontSize: 12 }} />,
+        };
+      case "PRIMARY":
+        return {
+          title: "E-mail principal défini",
+          icon: <MarkEmailUnreadRoundedIcon sx={{ fontSize: 12 }} />,
+        };
+      case "HAS":
+        return {
+          title: "Au moins un e-mail",
+          icon: <MailOutlineRoundedIcon sx={{ fontSize: 12 }} />,
+        };
+      default:
+        return { title: "Aucun e-mail", icon: null as React.ReactNode };
+    }
+  }, [emailStatus]);
 
   // ---- Glass constants
   const baseBgA = alpha(theme.palette.background.paper, 0.35);
@@ -296,6 +325,38 @@ const TrombiCard: React.FC<{
               <PhotoCameraFrontOutlinedIcon sx={{ fontSize: 12 }} />
             </Box>
           </Box>
+
+          {/* pictogramme "email" (symétrique au pictogramme photo) */}
+          {emailMeta.icon && (
+            <Box
+              sx={{
+                position: "absolute",
+                left: "calc(50% - 36px - 6px)",
+                bottom: -6,
+              }}
+            >
+              <Tooltip title={emailMeta.title}>
+                <Box
+                  sx={{
+                    bgcolor: alpha(theme.palette.background.paper, 0.6),
+                    borderRadius: "50%",
+                    p: 0.35,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                    border: `1px solid ${alpha(theme.palette.common.white, 0.16)}`,
+                    backdropFilter: "blur(6px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 18,
+                    minHeight: 18,
+                  }}
+                  aria-label={emailMeta.title}
+                >
+                  {emailMeta.icon}
+                </Box>
+              </Tooltip>
+            </Box>
+          )}
         </Box>
 
         <CardContent sx={{ py: 0.75, px: 1.1 }}>
@@ -317,59 +378,60 @@ const TrombiCard: React.FC<{
       </CardActionArea>
 
       {/* Bouton follow (en haut-droite) */}
-      <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
-        <Tooltip title={followed ? "Ne plus suivre" : "Suivre"}>
-          <span>
-            <IconButton
-              size="small"
-              aria-pressed={followed}
-              aria-label={followed ? "Ne plus suivre" : "Suivre"}
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (!followPending) await onToggleFollow();
-              }}
-              disableRipple
-              sx={{
-                "@keyframes pulse": {
-                  "0%": { transform: "scale(1)" },
-                  "35%": { transform: "scale(1.15)" },
-                  "100%": { transform: "scale(1)" },
-                },
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                pointerEvents: followPending ? "none" : "auto",
-                opacity: followPending ? 0.6 : 1,
-                color: followed ? theme.palette.success.main : theme.palette.text.primary,
-                background: `linear-gradient(145deg, ${alpha(
-                  theme.palette.background.paper,
-                  0.45
-                )}, ${alpha(theme.palette.background.paper, 0.25)})`,
-                border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
-                backdropFilter: "blur(8px) saturate(140%)",
-                WebkitBackdropFilter: "blur(8px) saturate(140%)",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
-                transition:
-                  "transform 140ms, background-color 140ms, box-shadow 140ms, color 140ms, border-color 140ms",
-                animation: pulse ? "pulse 280ms ease-out" : "none",
-                "&:hover": {
-                  transform: "scale(1.06)",
-                  boxShadow: "0 6px 18px rgba(0,0,0,0.24)",
-                  borderColor: alpha(theme.palette.common.white, 0.18),
-                },
-                "& .MuiTouchRipple-root": { display: "none" },
-              }}
-            >
-              {followed ? (
-                <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />
-              ) : (
-                <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />
-              )}
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-
+      {!hideFollowFeatures && (
+        <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
+          <Tooltip title={followed ? "Ne plus suivre" : "Suivre"}>
+            <span>
+              <IconButton
+                size="small"
+                aria-pressed={followed}
+                aria-label={followed ? "Ne plus suivre" : "Suivre"}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!followPending) await onToggleFollow();
+                }}
+                disableRipple
+                sx={{
+                  "@keyframes pulse": {
+                    "0%": { transform: "scale(1)" },
+                    "35%": { transform: "scale(1.15)" },
+                    "100%": { transform: "scale(1)" },
+                  },
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  pointerEvents: followPending ? "none" : "auto",
+                  opacity: followPending ? 0.6 : 1,
+                  color: followed ? theme.palette.success.main : theme.palette.text.primary,
+                  background: `linear-gradient(145deg, ${alpha(
+                    theme.palette.background.paper,
+                    0.45
+                  )}, ${alpha(theme.palette.background.paper, 0.25)})`,
+                  border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
+                  backdropFilter: "blur(8px) saturate(140%)",
+                  WebkitBackdropFilter: "blur(8px) saturate(140%)",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+                  transition:
+                    "transform 140ms, background-color 140ms, box-shadow 140ms, color 140ms, border-color 140ms",
+                  animation: pulse ? "pulse 280ms ease-out" : "none",
+                  "&:hover": {
+                    transform: "scale(1.06)",
+                    boxShadow: "0 6px 18px rgba(0,0,0,0.24)",
+                    borderColor: alpha(theme.palette.common.white, 0.18),
+                  },
+                  "& .MuiTouchRipple-root": { display: "none" },
+                }}
+              >
+                {followed ? (
+                  <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+      )}
     </Card>
   );
 };

@@ -10,20 +10,22 @@ import { useCourseStats } from '../../contexts/CourseStatsContext';
 import { useTheme } from '@mui/material/styles';
 import CourseQuickStart from './components/CourseQuickStart';
 import GridViewRounded from '@mui/icons-material/GridViewRounded';
-import { useGlobalData } from '../../contexts/GlobalDataContext';
+import { useOrgData } from '../../contexts/OrgDataContext';
 
 const Menu: React.FC = () => {
   const { color } = useThemeColorContext();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { activeOrganization } = useAuth();
   const theme = useTheme();
+
+  const canSeeAdmin = !!activeOrganization && ["ADMIN","OWNER"].includes(activeOrganization.role);
 
   // Responsive
   const smallWidth = useMediaQuery(theme.breakpoints.down('sm'));
   const compactHeight = useMediaQuery('(max-height: 820px)');
 
-  const { modes } = useGlobalData();
+  const { modes } = useOrgData();
   const { selectedCourse, setSelectedCourse, refreshCurrentCourse, focus } = useCourse();
   const { get, isLoading, refresh, progress } = useCourseStats();
 
@@ -38,9 +40,14 @@ const Menu: React.FC = () => {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
+      // 🚫 Si aucune organisation active, on ne tente pas de charger le cours
+      if (!activeOrganization) {
+        setLoadingCourse(false);
+        return;
+      }
+
       try {
-        const course = await refreshCurrentCourse(user.id);
+        const course = await refreshCurrentCourse();
         setSelectedCourse(course);
         if (course) await refresh(course.id);
       } catch (err) {
@@ -49,7 +56,7 @@ const Menu: React.FC = () => {
         setLoadingCourse(false);
       }
     })();
-  }, [user, refreshCurrentCourse, setSelectedCourse, refresh]);
+  }, [activeOrganization, refreshCurrentCourse, setSelectedCourse, refresh]);
 
   const rawStats = selectedCourse ? get(selectedCourse.id) : null;
   const statsLoading = selectedCourse ? isLoading(selectedCourse.id) : false;
@@ -83,6 +90,65 @@ const Menu: React.FC = () => {
 
   const accent = theme.palette.accent?.main ?? theme.palette.primary.main;
 
+  // 🧩 ÉTAT ONBOARDING : pas d’organisation → pas de menu normal
+  if (!activeOrganization) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100svh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          px: { xs: 2, sm: 3 },
+          textAlign: 'center',
+          gap: 3,
+        }}
+      >
+        <SvgLogo color={color} style={svgStyle} />
+
+        <Box sx={{ maxWidth: 520 }}>
+          <Typography variant="h5" sx={{ mb: 1.5, fontWeight: 600 }}>
+            Bienvenue sur SayMyName 👋
+          </Typography>
+          <Typography variant="body1" sx={{ opacity: 0.9, mb: 2 }}>
+            Tu es connecté, mais tu n’as pas encore d’organisation.
+            <br />
+            Crée ton espace perso ou rejoins une équipe pour commencer à t’entraîner.
+          </Typography>
+
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            justifyContent="center"
+            sx={{ mt: 2 }}
+          >
+            <Button
+              variant="contained"
+              onClick={() => navigate('/settings')}
+              sx={{ minWidth: 220, borderRadius: 999 }}
+            >
+              Créer mon espace
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/invitation')}
+              sx={{ minWidth: 220, borderRadius: 999 }}
+            >
+              J’ai un lien d’invitation
+            </Button>
+          </Stack>
+
+          <Typography variant="caption" sx={{ display: 'block', mt: 2, opacity: 0.7 }}>
+            (Si tu as reçu un email d’invitation, clique sur le lien dans l’email,
+            ou colle l’URL dans ton navigateur.)
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  // ✅ CAS NORMAL : l’utilisateur a une organisation → menu complet
   return (
     <Box
       sx={{
@@ -208,28 +274,6 @@ const Menu: React.FC = () => {
             </Box>
           </Box>
 
-          {/* === Compétition === */}
-          <Box sx={{ width: '100%', maxWidth: 980 }}>
-            <Typography
-              variant="overline"
-              sx={{
-                display: 'block',
-                color: accent,
-                textShadow: `0 0 4px ${accent}`,
-                mb: 0.4,
-                pl: 0.5,
-              }}
-            >
-              Compétition
-            </Typography>
-            <Stack spacing={compactHeight || smallWidth ? 0.8 : 1.4}>
-              <Button onClick={() => navigate('/challenges')} variant="outlined" className="menu"
-                size={compactHeight || smallWidth ? 'small' : 'medium'} sx={{ py: compactHeight || smallWidth ? 0.6 : 1 }}>
-                {t('RANKED', 'Classé')}
-              </Button>
-            </Stack>
-          </Box>
-
           {/* === Mon compte === */}
           <Box sx={{ width: '100%', maxWidth: 980 }}>
             <Typography
@@ -244,6 +288,7 @@ const Menu: React.FC = () => {
             >
               Mon compte
             </Typography>
+
             <Box
               sx={{
                 display: 'grid',
@@ -251,16 +296,75 @@ const Menu: React.FC = () => {
                 gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
               }}
             >
-              <Button onClick={() => navigate('/profile')} variant="outlined" className="menu"
-                size={compactHeight || smallWidth ? 'small' : 'medium'} sx={{ py: compactHeight || smallWidth ? 0.6 : 1 }}>
+              <Button
+                onClick={() => navigate('/profile')}
+                variant="outlined"
+                className="menu"
+                size={compactHeight || smallWidth ? 'small' : 'medium'}
+                sx={{ py: compactHeight || smallWidth ? 0.6 : 1 }}
+              >
                 {t('PROFILE')}
               </Button>
-              <Button onClick={() => navigate('/settings')} variant="outlined" className="menu"
-                size={compactHeight || smallWidth ? 'small' : 'medium'} sx={{ py: compactHeight || smallWidth ? 0.6 : 1 }}>
+
+              <Button
+                onClick={() => navigate('/leaderboard')}
+                variant="outlined"
+                className="menu"
+                size={compactHeight || smallWidth ? 'small' : 'medium'}
+                sx={{ py: compactHeight || smallWidth ? 0.6 : 1 }}
+              >
+                LEADERBOARD
+              </Button>
+
+              <Button
+                onClick={() => navigate('/settings')}
+                variant="outlined"
+                className="menu"
+                size={compactHeight || smallWidth ? 'small' : 'medium'}
+                sx={{
+                  py: compactHeight || smallWidth ? 0.6 : 1,
+                  gridColumn: { xs: 'auto', md: '1 / -1' },
+                }}
+              >
                 {t('SETTINGS')}
               </Button>
             </Box>
           </Box>
+
+          {canSeeAdmin && (
+            <Box sx={{ width: '100%', maxWidth: 980 }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  display: 'block',
+                  color: accent,
+                  textShadow: `0 0 4px ${accent}`,
+                  mb: 0.4,
+                  pl: 0.5,
+                }}
+              >
+                Administration
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: compactHeight || smallWidth ? 0.8 : 1.4,
+                  gridTemplateColumns: { xs: '1fr', md: '1fr' },
+                }}
+              >
+                <Button
+                  onClick={() => navigate('/admin')}
+                  variant="outlined"
+                  className="menu"
+                  size={compactHeight || smallWidth ? 'small' : 'medium'}
+                  sx={{ py: compactHeight || smallWidth ? 0.6 : 1 }}
+                >
+                  Ouvrir l’admin
+                </Button>
+              </Box>
+            </Box>
+          )}
+
         </Stack>
       </Box>
     </Box>

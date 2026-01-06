@@ -1,50 +1,48 @@
 // src/scenes/settings/components/sections/CoursesSection.tsx
-import * as React from "react";
 import {
   Box,
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Grid,
   IconButton,
+  LinearProgress,
   Menu,
   MenuItem,
+  Link as MuiLink,
   Skeleton,
   Stack,
+  TextField,
   Tooltip,
   Typography,
-  Checkbox,
-  FormControlLabel,
-  TextField,
-  LinearProgress,
-  Link as MuiLink,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
+import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import OpenInNewRounded from "@mui/icons-material/OpenInNewRounded";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
-import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import RestartAltRounded from "@mui/icons-material/RestartAltRounded";
 import SportsEsportsRounded from "@mui/icons-material/SportsEsportsRounded";
-import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
-import LinkRounded from "@mui/icons-material/LinkRounded";
 
-import { useAuth } from "../../../contexts/AuthContext";
 import { useCourse } from "../../../contexts/CoursesContext";
 import { useCourseStats } from "../../../contexts/CourseStatsContext";
-import { useGlobalData } from "../../../contexts/GlobalDataContext";
+import { useOrgData } from "../../../contexts/OrgDataContext";
 import API from "../../../services/api/apiUtils";
-import { restartCourse, getUserCourses } from "../../../services/business/courses/course.service";
+import { getUserCourses, restartCourse } from "../../../services/business/courses/course.service";
 import { CourseDto } from "../../../services/dto/courses/CourseDto";
 import { CourseStatsDto } from "../../../services/dto/courses/CourseStatsDto";
-import { notifySuccess, notifyError } from "../../../services/notification/toast.service";
+import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 import SectionCard from "../SectionCard";
 
 function computeProgressPercent(s: CourseStatsDto | null | undefined): number {
@@ -61,8 +59,7 @@ type Props = { showAdvanced: boolean };
 const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { modes } = useGlobalData();
+  const { modes } = useOrgData();
   const { setSelectedCourse, refreshCurrentCourse, upsertCourse, listCourses } = useCourse();
   const { get: getStats, isLoading: isStatsLoading, refresh: refreshStats, prefetch: prefetchStats } = useCourseStats();
 
@@ -143,12 +140,11 @@ const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
 
   // bootstrap
   React.useEffect(() => {
-    if (!user) { setBootLoading(false); return; }
     (async () => {
       try {
-        const focused = await refreshCurrentCourse(user.id);
+        const focused = await refreshCurrentCourse();
         if (focused) { upsertCourse(focused); setSelectedCourse(focused); }
-        const list = await getUserCourses(user.id);
+        const list = await getUserCourses();
         setActiveCourses(list);
         list.forEach(upsertCourse);
         await prefetchStats(list.map(c => c.id));
@@ -158,7 +154,7 @@ const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
       } finally { setBootLoading(false); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, []);
 
   return (
     <>

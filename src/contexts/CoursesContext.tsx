@@ -32,9 +32,9 @@ type CoursesContextValue = {
 
   // chargements / API
   loading: boolean;
-  refreshCurrentCourse: (userId: number) => Promise<CourseDto | null>;
-  refreshUserCourses: (userId: number) => Promise<CourseDto[]>;
-  createOrResume: (userId: number, gameModeId: number, scope?: PopulationScope) => Promise<CourseDto>;
+  refreshCurrentCourse: () => Promise<CourseDto | null>;
+  refreshUserCourses: () => Promise<CourseDto[]>;
+  createOrResume: (gameModeId: number, scope?: PopulationScope) => Promise<CourseDto>;
   focus: (courseId: number) => Promise<void>;
 
   // utilitaires
@@ -109,10 +109,10 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     [coursesById]
   );
 
-  const refreshCurrentCourse = useCallback(async (userId: number) => {
+  const refreshCurrentCourse = useCallback(async () => {
     setLoading(true);
     try {
-      const course = await getCurrentCourse(userId);
+      const course = await getCurrentCourse();
       if (course) {
         upsertCourse(course);
         // si rien sélectionné on sélectionne celui-ci
@@ -125,10 +125,10 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [upsertCourse]);
 
-  const refreshUserCourses = useCallback(async (userId: number) => {
+  const refreshUserCourses = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getUserCourses(userId);
+      const list = await getUserCourses();
       // upsert tous + sélectionne le premier si rien sélectionné
       setCoursesById(prev => {
         const next = { ...prev };
@@ -146,10 +146,10 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, []);
 
-  const createOrResume = useCallback(async (userId: number, gameModeId: number, scope: PopulationScope = 'FOLLOWED') => {
+  const createOrResume = useCallback(async (gameModeId: number, scope: PopulationScope = 'FOLLOWED') => {
     setLoading(true);
     try {
-      const payload: CreateCourseDto = { userId, gameModeId, populationScope: scope };
+      const payload: CreateCourseDto = { gameModeId, populationScope: scope };
       const course = await createOrResumeCourse(payload);
       upsertCourse(course);
       setSelectedCourseId(course.id);

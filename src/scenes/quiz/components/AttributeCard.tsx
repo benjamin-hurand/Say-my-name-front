@@ -1,5 +1,5 @@
 import { Chip } from "@mui/material";
-import { Attribute } from "../../../models/commons/Attribute";
+import { Attribute } from "../../../models/commons/Attribute/Attribute";
 
 export const AttributeCard = ({
   attribute,

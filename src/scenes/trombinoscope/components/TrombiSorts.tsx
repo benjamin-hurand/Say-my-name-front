@@ -8,7 +8,7 @@ import SortOutlinedIcon from "@mui/icons-material/SortOutlined";
 import ClearIcon from "@mui/icons-material/Clear";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
-import { Attribute } from "../../../models/commons/Attribute";
+import { Attribute } from "../../../models/commons/Attribute/Attribute";
 import { SortValue } from "../types";
 
 type Props = {
@@ -18,7 +18,6 @@ type Props = {
 
   /** Panneau rétractable contrôlé */
   sortsOpen?: boolean;
-  onSortsOpenChange?: (open: boolean) => void;
 };
 
 /** Champs “spéciaux” supportés par le backend */
@@ -34,7 +33,6 @@ const isSpecialField = (v?: SortValue) =>
 const TrombiSorts: React.FC<Props> = ({
   sortsAttributes, selectedSort, onSortChange,
   sortsOpen = false,
-  onSortsOpenChange,
 }) => {
   const activePill = useMemo(() => {
     if (!selectedSort) return undefined;

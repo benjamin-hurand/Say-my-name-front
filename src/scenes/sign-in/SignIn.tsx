@@ -9,7 +9,7 @@ import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
-import { AuthResponse, login as loginAPI, loginWithGoogle } from '../../services/security/Auth.service'; 
+import { AuthResponseDto, login as loginAPI, loginWithGoogle } from '../../services/security/Auth.service';
 import axios from 'axios';
 import { Alert, IconButton } from '@mui/material';
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
@@ -20,12 +20,33 @@ import { FooterAuth } from '../../components/layout/components/footer/Footer_aut
 import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 import { useAuth } from '../../contexts/AuthContext';
 
+const PENDING_INVITATION_KEY = 'invitation.pendingToken';
+
+function redirectAfterAuth(navigate: NavigateFunction) {
+  try {
+    const pendingToken = sessionStorage.getItem(PENDING_INVITATION_KEY);
+    if (pendingToken) {
+      sessionStorage.removeItem(PENDING_INVITATION_KEY);
+      navigate(`/invitation?token=${encodeURIComponent(pendingToken)}`);
+    } else {
+      navigate('/');
+    }
+  } catch {
+    navigate('/');
+  }
+}
+
 export default function SignIn() {
   const { theme, changeColor, randomizeColor } = useThemeColorContext();
   const { login } = useAuth();
   const [errorMessage, setErrorMessage] = React.useState('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-	const navigate: NavigateFunction = useNavigate();
+  const [hasPendingInvitation, setHasPendingInvitation] = React.useState(false);
+
+  const navigate: NavigateFunction = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
   const handleInputChange = () => {
     if (errorMessage) {
       setErrorMessage('');
@@ -40,6 +61,24 @@ export default function SignIn() {
     }
   }, [theme, changeColor]);
 
+  React.useEffect(() => {
+    // Si on arrive avec un token en query, on le stocke comme invitation en cours
+    if (token) {
+      try {
+        sessionStorage.setItem(PENDING_INVITATION_KEY, token);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    try {
+      const stored = sessionStorage.getItem(PENDING_INVITATION_KEY);
+      setHasPendingInvitation(!!(token || stored));
+    } catch {
+      setHasPendingInvitation(!!token);
+    }
+  }, [token]);
+
   const handleTogglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const handleSuccess = async (googleResponse: CredentialResponse) => {
@@ -51,13 +90,13 @@ export default function SignIn() {
     }
 
     try {
-      const apiResponse: AuthResponse = await loginWithGoogle(googleResponse);
-      console.log("Response back after google:", apiResponse);
+      const apiResponse: AuthResponseDto = await loginWithGoogle(googleResponse);
+      console.log('Response back after google:', apiResponse);
       login(apiResponse);
       notifySuccess('Successfully connected.');
       console.log('Successfully connected with Google:', apiResponse);
       randomizeColor();
-      navigate('/');
+      redirectAfterAuth(navigate);
     } catch (error) {
       let message = 'An error occurred. Please try again.';
       if (axios.isAxiosError(error) && error.response) {
@@ -80,27 +119,18 @@ export default function SignIn() {
     setErrorMessage('Google login failed. Please try again.');
   };
 
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
-
-  React.useEffect(() => {
-    if (token) {
-      console.log('Token received:', token);
-    }
-  }, [token]);
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     try {
-      const response: AuthResponse = await loginAPI({
-        identifier: data.get('identifier') as string,
+      const response: AuthResponseDto = await loginAPI({
+        email: data.get('identifier') as string,
         password: data.get('password') as string,
       });
       login(response);
       notifySuccess('Successfully connected.');
       randomizeColor();
-      navigate('/');
+      redirectAfterAuth(navigate);
     } catch (error) {
       let message = 'An error occurred. Please try again.';
       if (axios.isAxiosError(error) && error.response) {
@@ -109,7 +139,8 @@ export default function SignIn() {
           message = 'Authentication failed: Incorrect email or password.';
         } else if (statusCode === 500) {
           message = 'Server error. Please try again later.';
-        } else if (statusCode === 418) { // Handle the 418 I_AM_A_TEAPOT status code
+        } else if (statusCode === 418) {
+          // Handle the 418 I_AM_A_TEAPOT status code
           message = 'Email not verified. Please check your inbox for a verification link.';
         }
       } else {
@@ -121,7 +152,7 @@ export default function SignIn() {
   };
 
   return (
-    <Container component="main" maxWidth="xs" style={{ border: "3px", borderColor: '#ffffff' }}>
+    <Container component="main" maxWidth="xs" style={{ border: '3px', borderColor: '#ffffff' }}>
       <CssBaseline />
       <Box
         sx={{
@@ -131,24 +162,32 @@ export default function SignIn() {
           alignItems: 'center',
         }}
       >
-         <Avatar
-         className="auth"
+        <Avatar
+          className="auth"
           sx={{
             m: 1,
-            }}
+          }}
         >
-            <LockOutlinedIcon />
+          <LockOutlinedIcon />
         </Avatar>
         <Typography component="h1" variant="h5" className="title">
           Log in
         </Typography>
+
+        {hasPendingInvitation && (
+          <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
+            You followed an invitation link. Once logged in, we’ll bring you back to your invitation so you can join the
+            organisation.
+          </Alert>
+        )}
+
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
           <TextField
             onChange={handleInputChange}
             margin="normal"
             fullWidth
             id="identifier"
-            label="Email or Username"
+            label="Email"
             name="identifier"
             autoComplete="email"
             autoFocus
@@ -164,30 +203,29 @@ export default function SignIn() {
             autoComplete="current-password"
             InputProps={{
               endAdornment: (
-                <IconButton
-                  onClick={handleTogglePasswordVisibility}
-                  sx={{ color: '#ffffff90', boxShadow: 'none' }}
-                >
+                <IconButton onClick={handleTogglePasswordVisibility} sx={{ color: '#ffffff90', boxShadow: 'none' }}>
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
               ),
             }}
           />
-            {errorMessage && (
-              <div id="errorMessage">
-                <Alert severity="error" sx={{ bgcolor: '#362424', color: 'rgb(255, 187, 0)', boxShadow: '0 0 1px #a50000, 0 0 2px #a50000, 0 0 3px #a50000, 0 0 4px #a50000', border: '1px solid #a50000' }}>
-                  <Typography color="error">
-                    {errorMessage}
-                  </Typography>
-                </Alert>
-              </div>
-            )}
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ my: 2 }}
-          >
+          {errorMessage && (
+            <div id="errorMessage">
+              <Alert
+                severity="error"
+                sx={{
+                  bgcolor: '#362424',
+                  color: 'rgb(255, 187, 0)',
+                  boxShadow:
+                    '0 0 1px #a50000, 0 0 2px #a50000, 0 0 3px #a50000, 0 0 4px #a50000',
+                  border: '1px solid #a50000',
+                }}
+              >
+                <Typography color="error">{errorMessage}</Typography>
+              </Alert>
+            </div>
+          )}
+          <Button type="submit" fullWidth variant="contained" sx={{ my: 2 }}>
             Sign In
           </Button>
           <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
@@ -197,7 +235,7 @@ export default function SignIn() {
             onSuccess={handleSuccess}
             onError={handleError}
             type="standard"
-            theme={theme === "dark" ? "outline" : "filled_black"}
+            theme={theme === 'dark' ? 'outline' : 'filled_black'}
             size="large"
             text="signin_with"
             shape="rectangular"
@@ -215,7 +253,7 @@ export default function SignIn() {
           <Grid container sx={{ mt: 2 }}>
             <Grid item xs>
               <a
-                onClick={() => navigate("/forgot-password")}
+                onClick={() => navigate('/forgot-password')}
                 style={{ textDecoration: 'underline', cursor: 'pointer' }}
               >
                 Forgot password?
@@ -223,7 +261,7 @@ export default function SignIn() {
             </Grid>
             <Grid item>
               <a
-                onClick={() => navigate("/signup")}
+                onClick={() => navigate('/signup')}
                 style={{ textDecoration: 'underline', cursor: 'pointer' }}
               >
                 Don't have an account? Sign Up

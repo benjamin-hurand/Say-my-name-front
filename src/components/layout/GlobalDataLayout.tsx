@@ -1,18 +1,18 @@
 // GlobalDataLayout.tsx
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { GlobalDataProvider } from '../../contexts/GlobalDataContext';
+import { OrgDataProvider } from '../../contexts/OrgDataContext';
 import { PersonsDirectoryProvider } from '../../contexts/PersonsDirectoryContext';
 import { useRouteHistoryTracker } from './hooks/usePreviousRoute';
 
 const GlobalDataLayout: React.FC = () => {
   useRouteHistoryTracker();
   return (
-    <GlobalDataProvider>
+    <OrgDataProvider>
       <PersonsDirectoryProvider>
         <Outlet />
       </PersonsDirectoryProvider>
-    </GlobalDataProvider>
+    </OrgDataProvider>
   );
 };
 

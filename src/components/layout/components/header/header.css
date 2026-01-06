@@ -1,0 +1,13 @@
+/* ta classe .header existante reste inchangée (position absolute, etc.) */
+
+/* Variante verre dépoli pour l’admin */
+.header--glass {
+  background: rgba(12, 12, 16, 0.48);           /* semi-opaque pour voir les particules */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  z-index: 1000;                                 /* garde le header au-dessus du contenu */
+  padding-top: 4px;            /* micro-élévation du contenu interne */
+  padding-bottom: 6px;
+}

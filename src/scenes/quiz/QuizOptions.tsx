@@ -16,8 +16,8 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuizOptions } from '../../contexts/QuizOptionsContext';
-import { useThemeColorContext } from '../../contexts/ThemeColorContext';
 import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
+import { populationScopes } from '../../models/commons/Game/GameOptions/GamePopulationScope.model';
 import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
 import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
 import AddFilterModal from './components/AddFilterModal';
@@ -25,7 +25,6 @@ import { AddSortModal } from './components/AddSortModal';
 import { DraggableSortingMethods } from './components/DraggableSortingMethods';
 import ModeCard from './components/ModeCard';
 import OptionCard from './components/OptionCard';
-import { populationScopes } from '../../models/commons/Game/GameOptions/GamePopulationScope.model';
 
 interface QuizOptionsProps {
 }

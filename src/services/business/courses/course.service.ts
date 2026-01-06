@@ -11,18 +11,19 @@ import { CourseStatsDto } from "../../dto/courses/CourseStatsDto";
 const endpoint = "/courses";
 
 /** Dernier cours focal (ou null si 204) */
-export async function getCurrentCourse(userId: number): Promise<CourseDto | null> {
-  const res = await API.get<CourseDto>(`${endpoint}/${userId}/current`, {
+export async function getCurrentCourse(): Promise<CourseDto | null> {
+  const res = await API.get<CourseDto>(`${endpoint}/me/current`, {
     validateStatus: (s) => s === 200 || s === 204,
   });
   return res.status === 204 ? null : res.data;
 }
 
 /** Tous les cours ACTIFS de l’utilisateur */
-export async function getUserCourses(userId: number): Promise<CourseDto[]> {
-  const res = await API.get<CourseDto[]>(`${endpoint}/user/${userId}`, {
+export async function getUserCourses(): Promise<CourseDto[]> {
+  const res = await API.get<CourseDto[]>(`${endpoint}/me`, {
     validateStatus: (s) => s === 200 || s === 204,
   });
+  console.log("course list: ", res);
   return res.status === 204 ? [] : res.data;
 }
 
@@ -33,10 +34,11 @@ export async function getCourseStats(courseId: number): Promise<CourseStatsDto> 
 }
 
 /** Stats de tous les cours ACTIFS d’un utilisateur */
-export async function getUserCourseStats(userId: number): Promise<CourseStatsDto[]> {
-  const res = await API.get<CourseStatsDto[]>(`${endpoint}/user/${userId}/stats`, {
+export async function getUserCourseStats(): Promise<CourseStatsDto[]> {
+  const res = await API.get<CourseStatsDto[]>(`${endpoint}/me/stats`, {
     validateStatus: (s) => s === 200 || s === 204,
   });
+  console.log("course stats: ", res);
   return res.status === 204 ? [] : res.data;
 }
 

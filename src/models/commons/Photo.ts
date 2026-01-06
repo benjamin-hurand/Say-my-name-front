@@ -1,11 +1,11 @@
-import { UserDto } from "../../services/dto/UserDto";
+import { UserShortDto } from "../../services/dto/UserShortDto";
 
 export interface Photo {
   id: number;
   url: string;
   status: "PENDING" | "APPROVED"; // aligné avec enum PhotoStatus
   submittedAt: string; // ISO string (vient du LocalDateTime backend)
-  submittedBy: UserDto;
+  submittedBy: UserShortDto;
   approvedAt?: string;
-  approvedBy?: UserDto;
+  approvedBy?: UserShortDto;
 }

@@ -1,6 +1,6 @@
 import { PersonAttributeLite } from "../../../models/commons/PersonAttribute";
 import API from "../../api/apiUtils";
-import { PersonCardDto } from "../../dto/person/search/PersonCardDtos";
+import { UserPersonCardDto } from "../../dto/person/search/PersonCardDtos";
 import { PersonSearchRequestDto } from "../../dto/person/search/PersonSearchRequestDto";
 import { Page } from "../subscriptions/subscriptions.service";
 
@@ -39,9 +39,9 @@ export async function searchPersons(
   body: PersonSearchRequestDto,
   page = 0,
   size = 24
-): Promise<Page<PersonCardDto>> {
+): Promise<Page<UserPersonCardDto>> {
   try {
-    const { data } = await API.post<Page<PersonCardDto>>(
+    const { data } = await API.post<Page<UserPersonCardDto>>(
       `${BASE}/search`,
       body ?? {},
       { params: { page, size } } // Pageable Spring
@@ -52,3 +52,5 @@ export async function searchPersons(
     throw error;
   }
 }
+
+

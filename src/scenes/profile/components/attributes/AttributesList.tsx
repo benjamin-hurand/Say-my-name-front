@@ -1,13 +1,13 @@
 import React from "react";
 import { Stack, Divider } from "@mui/material";
 import AttributeRow, { RowStatus } from "./rows/AttributeRow";
-import { Attribute } from "../../../../models/commons/Attribute";
-import { PersonAttributeFull } from "../../../../models/commons/PersonAttribute";
+import { Attribute } from "../../../../models/commons/Attribute/Attribute";
+import { PersonAttribute } from "../../../../models/commons/PersonAttribute";
 import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 
 type Props = {
   allAttributes: Attribute[];
-  profileAttributes: PersonAttributeFull[];
+  profileAttributes: PersonAttribute[];
 
   editingKey: string | null;
   statusByKey: Record<string, RowStatus>;
@@ -67,8 +67,8 @@ const AttributesList: React.FC<Props> = ({
     <Stack spacing={2} divider={<Divider light />}>
       {allAttributes.map((attrDef) => {
         // Toutes les PA (full) pour cet attribut
-        const userAttrsFull: PersonAttributeFull[] = profileAttributes.filter(
-          (pa) => pa.attribute?.id === attrDef.id
+        const userAttrsFull: PersonAttribute[] = profileAttributes.filter(
+          (pa) => pa.attributeId === attrDef.id
         );
 
         // Normalisation chips → ce que consomme AttributeRow

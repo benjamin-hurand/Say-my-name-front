@@ -33,7 +33,7 @@ type CourseStatsContextValue = {
     opts?: { force?: boolean; ttlMs?: number }
   ) => Promise<CourseStatsDto>;
   prefetch: (courseIds: number[], opts?: { ttlMs?: number }) => Promise<void>;
-  refreshForUser: (userId: number, opts?: { ttlMs?: number }) => Promise<void>;
+  refreshForUser: (opts?: { ttlMs?: number }) => Promise<void>;
   invalidate: (courseId?: number) => void;
   set: (courseId: number, stats: CourseStatsDto) => void;
 
@@ -126,9 +126,9 @@ export const CourseStatsProvider: React.FC<{ children: ReactNode }> = ({ childre
     await Promise.all(courseIds.map(id => refresh(id, { ttlMs: opts?.ttlMs })));
   }, [refresh]);
 
-  const refreshForUser = useCallback(async (userId: number, opts?: { ttlMs?: number }) => {
+  const refreshForUser = useCallback(async (opts?: { ttlMs?: number }) => {
     const ttlMs = opts?.ttlMs ?? DEFAULT_TTL;
-    const list = await getUserCourseStats(userId);
+    const list = await getUserCourseStats();
     for (const s of list) {
       const entry = cache[s.courseId];
       const expired = !entry || (Date.now() - entry.fetchedAt > ttlMs);

@@ -14,7 +14,7 @@ import {
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
 import { Close as CloseIcon, Save as SaveIcon } from "@mui/icons-material";
-import { Attribute } from "../../../../../models/commons/Attribute";
+import { Attribute } from "../../../../../models/commons/Attribute/Attribute";
 
 export type RowStatus = "idle" | "saving" | "success" | "error";
 

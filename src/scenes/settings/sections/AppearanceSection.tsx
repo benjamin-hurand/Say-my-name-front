@@ -1,12 +1,13 @@
-import * as React from "react";
 import {
-  Box, Chip, Divider, FormControlLabel, FormHelperText, Grid, MenuItem, Slider, Switch, TextField, Tooltip, Typography
+  Box, Chip,
+  FormControlLabel, FormHelperText, Grid, MenuItem, Slider, Switch, TextField, Tooltip, Typography
 } from "@mui/material";
+import * as React from "react";
 import { useTranslation } from "react-i18next";
-import SectionCard from "../SectionCard";
-import AdvancedBlock from "../AdvancedBlock";
 import { useThemeColorContext } from "../../../contexts/ThemeColorContext";
-import { neonColors, lightThemeColors } from "../../../models/commons/NeonColors";
+import { lightThemeColors, neonColors } from "../../../models/commons/NeonColors";
+import AdvancedBlock from "../AdvancedBlock";
+import SectionCard from "../SectionCard";
 
 type Props = {
   showAdvanced: boolean;

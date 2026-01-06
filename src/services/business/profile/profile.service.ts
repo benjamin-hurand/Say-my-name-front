@@ -13,6 +13,31 @@ export async function getProfile(): Promise<ProfileResponseDto> {
   return res.data;
 }
 
+// -----------------------------
+// Update display name (User account)
+// -----------------------------
+export type UpdateDisplayNameRequestDto = {
+  displayName: string;
+};
+
+export type UpdateDisplayNameResponseDto = {
+  displayName: string;
+};
+
+/**
+ * Met à jour le displayName du compte utilisateur (User).
+ * Endpoint: PATCH /api/profile/display-name
+ */
+export async function updateDisplayName(
+  dto: UpdateDisplayNameRequestDto
+): Promise<UpdateDisplayNameResponseDto> {
+  const { data } = await API.patch<UpdateDisplayNameResponseDto>(
+    `${PROFILE_ENDPOINT}/display-name`,
+    dto
+  );
+  return data;
+}
+
 /**
  * Écritures canoniques (bulk) + renvoie l'état normalisé de l'attribut ciblé.
  * Le back déduit la Person depuis l'utilisateur courant.

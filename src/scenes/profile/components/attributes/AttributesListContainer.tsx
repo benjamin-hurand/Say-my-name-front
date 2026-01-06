@@ -3,14 +3,14 @@ import "dayjs/locale/fr";          // << ajoute cette ligne
 dayjs.locale("fr");
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { useGlobalData } from "../../../../contexts/GlobalDataContext";
+import { useOrgData } from "../../../../contexts/OrgDataContext";
 import { useProfile } from "../../../../contexts/ProfileContext";
-import { Attribute } from "../../../../models/commons/Attribute";
-import { PersonAttributeFull } from "../../../../models/commons/PersonAttribute";
+import { Attribute } from "../../../../models/commons/Attribute/Attribute";
+import { PersonAttribute } from "../../../../models/commons/PersonAttribute";
 import { saveAttributeChanges } from "../../../../services/business/profile/profile.service";
 import { notifyError, notifySuccess } from "../../../../services/notification/toast.service";
 import AttributesList from "./AttributesList";
-import ChangeRequestDialog from "./dialogs/ChangeRequestDialog";
+import ChangeRequestDialog from "./dialogs/ProfileChangeRequestCreationDialog";
 import { submitChangeRequest } from "../../../../services/business/change-requests/change-requests.service";
 import { SubmitChangeRequestDto, SubmitChangeRequestItemDto } from "../../../../services/dto/ChangeRequestsDto";
 import { useOptimisticPersonAttributes } from "./useOptimisticPersonAttributes";
@@ -19,16 +19,16 @@ import {
   ChangeRequestSummary,
 } from "../../../../models/commons/Profile/ChangeRequest";
 
-import ChangeRequestViewerDialog from "./dialogs/ChangeRequestViewerDialog";
+import ChangeRequestViewerDialog from "./dialogs/ProfileChangeRequestViewerDialog";
 
 const AttributesListContainer: React.FC = () => {
-  const allAttributes = (useGlobalData().attributes ?? []) as Attribute[];
+  const allAttributes = (useOrgData().attributes ?? []) as Attribute[];
   const { profile, changeRequests, refreshProfile } = useProfile();
-  const rawAttributes = (profile?.attributes ?? []) as PersonAttributeFull[];
+  const rawAttributes = (profile?.attributes ?? []) as PersonAttribute[];
 
   // Hook overlay optimiste
   const { profileAttributes, applyOptimisticDelta, replaceAttrValues, revertAttrOverride } =
-    useOptimisticPersonAttributes(allAttributes, rawAttributes);
+    useOptimisticPersonAttributes(rawAttributes);
 
   // --- Modale “Créer une demande …”
   const [crModalOpen, setCrModalOpen] = useState(false);
@@ -197,7 +197,7 @@ const AttributesListContainer: React.FC = () => {
 
     // chips actuels (profil) pour cet attribut
     const chips = (rawAttributes ?? [])
-      .filter((pa) => pa.attribute?.id === targetAttrId)
+      .filter((pa) => pa.attributeId === targetAttrId && !pa.pendingDelete)
       .map((pa) => ({ id: pa.id, value: pa.value }));
 
     setViewerChips(chips);

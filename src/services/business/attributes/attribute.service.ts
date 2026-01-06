@@ -1,5 +1,5 @@
 // services/business/attributes/attribute.service.ts
-import { Attribute } from "../../../models/commons/Attribute";
+import { Attribute } from "../../../models/commons/Attribute/Attribute";
 import API from "../../api/apiUtils";
 
 /** Construit la query string expand=... de façon homogène */

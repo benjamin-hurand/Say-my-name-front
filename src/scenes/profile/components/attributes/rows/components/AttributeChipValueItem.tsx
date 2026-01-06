@@ -6,14 +6,14 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import dayjs from "dayjs";
 import { alpha } from "@mui/material/styles";
-import { Attribute } from "../../../../../../models/commons/Attribute";
-import { isFuture, PersonAttributeFull } from "../../../../../../models/commons/PersonAttribute";
+import { Attribute } from "../../../../../../models/commons/Attribute/Attribute";
+import { isFuture, PersonAttribute } from "../../../../../../models/commons/PersonAttribute";
 import TypedValueInput from "../../inputs/TypedValueInput";
 
 /** Gardé local ici pour éviter un 3ᵉ fichier "types". */
 export type RowStatus = "idle" | "saving" | "success" | "error";
 
-type ChipPA = Pick<PersonAttributeFull, "id" | "value" | "validFrom" | "validTo" | "pendingDelete">;
+type ChipPA = Pick<PersonAttribute, "id" | "value" | "validFrom" | "validTo" | "pendingDelete">;
 const isFutureChip = (pa: ChipPA) => isFuture({ validFrom: pa.validFrom });
 
 export type ChipValueItemProps = {

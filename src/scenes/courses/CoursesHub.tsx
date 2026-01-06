@@ -1,47 +1,58 @@
-import * as React from 'react';
+import PeopleAltRounded from '@mui/icons-material/PeopleAltRounded';
+import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded';
 import {
   Box,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControlLabel,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
   Stack,
-  Typography,
   TextField,
+  Typography,
 } from '@mui/material';
-import PeopleAltRounded from '@mui/icons-material/PeopleAltRounded';
-import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded';
-import { useNavigate } from 'react-router-dom';
+import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import { useGlobalData } from '../../contexts/GlobalDataContext';
 import { useCourse } from '../../contexts/CoursesContext';
 import { useCourseStats } from '../../contexts/CourseStatsContext';
+import { useOrgData } from '../../contexts/OrgDataContext';
 import { restartCourse } from '../../services/business/courses/course.service';
 import type { CourseStatsDto } from '../../services/dto/courses/CourseStatsDto';
-import { useAuth } from '../../contexts/AuthContext';
 import CourseQuickStart from '../menu/components/CourseQuickStart';
 
 export default function CoursesHub() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { modes } = useGlobalData();
+  const { modes } = useOrgData();
   const { findCourseByModeId, refreshUserCourses, createOrResume, focus } = useCourse();
   const { get, isLoading, refresh, refreshForUser } = useCourseStats();
 
   React.useEffect(() => {
-    if (!user) return;
+    let cancelled = false;
+
     (async () => {
-      const list = await refreshUserCourses(user.id);
-      if (list.length > 0) await refreshForUser(user.id);
+      try {
+        const list = await refreshUserCourses();
+        if (!cancelled && list.length > 0) {
+          await refreshForUser();
+        }
+      } catch (e) {
+        console.error(e);
+      }
     })();
+
+    return () => {
+      cancelled = true;
+    };
+
+    // On le déclenche une seule fois : l'utilisateur de session ne change pas sur ce screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, []);
 
   // Helper local (au cas où le contexte ne l’expose pas)
   const computeProgressPercent = (s: CourseStatsDto | null | undefined) => {
@@ -88,7 +99,7 @@ export default function CoursesHub() {
   const canConfirm = confirmChecked && confirmText.trim().toUpperCase() === 'RESET';
 
   const doConfirmReset = async () => {
-    if (!courseToReset || !user) return;
+    if (!courseToReset) return;
     setConfirmLoading(true);
     try {
       await restartCourse(courseToReset.id);
@@ -142,8 +153,8 @@ export default function CoursesHub() {
           if (hasCourse && course) {
             await focus(course.id);
             navigate('/course');
-          } else if (user) {
-            const created = await createOrResume(user.id, mode.id, 'FOLLOWED');
+          } else {
+            const created = await createOrResume(mode.id, 'FOLLOWED');
             await refresh(created.id, { force: true });
             navigate('/course');
           }

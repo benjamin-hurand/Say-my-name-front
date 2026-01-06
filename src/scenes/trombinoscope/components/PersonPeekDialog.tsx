@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"; // ✓ Suivi
+import CloseIcon from "@mui/icons-material/Close";
+import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded"; // + Suivre
 import {
   Box,
   Button,
@@ -16,20 +18,18 @@ import {
   useMediaQuery
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";      // ✓ Suivi
-import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";  // + Suivre
-import CloseIcon from "@mui/icons-material/Close";
+import { useEffect, useMemo, useState } from "react";
 
-import { useGlobalData } from "../../../contexts/GlobalDataContext";
-import { Attribute } from "../../../models/commons/Attribute";
-import {
-  PersonCardDto,
-  PersonAttributeExtraDto
-} from "../../../services/dto/person/search/PersonCardDtos";
+import { useOrgData } from "../../../contexts/OrgDataContext";
+import { Attribute } from "../../../models/commons/Attribute/Attribute";
 import { getPersonAttributesById } from "../../../services/business/persons/person.service";
+import {
+  PersonAttributeExtraDto,
+  PersonCardDto
+} from "../../../services/dto/person/search/PersonCardDtos";
 
-import PhotoResponsive from "./personPeek/PhotoResponsive";
 import AttributeGrid, { AttributeGroup } from "./personPeek/AttributeGrid";
+import PhotoResponsive from "./personPeek/PhotoResponsive";
 import { displayName, mapLiteToExtra, useAttributeMeta } from "./personPeek/utils";
 
 type Props = {
@@ -57,9 +57,10 @@ export default function PersonPeekDialog({
   onToggleFollow,
   attributes: attributesProp,
 }: Props) {
+  if (!person) return null;
   const theme = useTheme();
   const downSm = useMediaQuery(theme.breakpoints.down("sm"));
-  const { attributes: ctxAttributes } = useGlobalData();
+  const { attributes: ctxAttributes } = useOrgData();
   const attributes = attributesProp ?? ctxAttributes;
 
   const p = person;
@@ -71,7 +72,6 @@ export default function PersonPeekDialog({
     getAttrLabel,
     getAttrOrder,
     prettyValue,
-    isCategoryAttr,
     isPrimaryAttr,     // ← utilisé pour ne pas ré-afficher les primaires en bas
     isLongTextAttr
   } = useAttributeMeta(attributes);
@@ -248,8 +248,7 @@ export default function PersonPeekDialog({
             isLongTextAttr={isLongTextAttr}
           />
         </Box>
-      </DialogContent>
-
+      </DialogContent>         
       <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose}>Fermer</Button>
       </DialogActions>

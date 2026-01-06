@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip, Box } from '@mui/material';
-import { Attribute } from '../../../models/commons/Attribute';
+import { Attribute } from '../../../models/commons/Attribute/Attribute';
 import { GameSortBy } from '../../../models/commons/Game/GameOptions/GameSortBy.model';
 
 const AttributeCard = ({

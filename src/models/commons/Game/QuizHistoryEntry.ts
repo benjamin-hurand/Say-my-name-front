@@ -8,9 +8,4 @@ export interface QuizHistoryEntry {
     repetitionData: SpacedRepetitionData;
   }
 
-export interface ChallengeHistoryEntry {
-  questionNumber: number;
-  personId: number;
-  answer: string;
-}
   

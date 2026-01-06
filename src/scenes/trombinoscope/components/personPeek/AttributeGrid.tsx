@@ -1,4 +1,3 @@
-import React from "react";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Chip, Grid, Paper, Stack, Typography } from "@mui/material";
 import ValueClamp from "./ValueClamp";

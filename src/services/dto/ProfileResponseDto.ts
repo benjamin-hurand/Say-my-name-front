@@ -1,12 +1,19 @@
-import { Profile } from "../../models/commons/Profile";
+import { PersonDto } from "../../models/commons/PersonDto";
 import { ChangeRequestSummary } from "../../models/commons/Profile/ChangeRequest";
+import { User } from "../../models/commons/User";
+import { ProfileXpSummaryDto } from "./leaderboard/XpSummaryDto";
 
-/**
- * DTO de la réponse du profil de l'utilisateur connecté.
- * Pour l'instant, ne contient que la Person associée.
- * À enrichir ultérieurement avec d'autres propriétés (stats, préférences, historique, etc.).
- */
+export type PersonLinkAction = "DISABLED" | "DIRECT" | "REQUEST";
+
+export interface ProfileOnboardingDto {
+  createPerson: PersonLinkAction;
+  pickPerson: PersonLinkAction;
+}
+
 export interface ProfileResponseDto {
-  person: Profile | null;
+  user: User;
+  person: PersonDto | null;
   changeRequests: ChangeRequestSummary[];
+  onboarding?: ProfileOnboardingDto; // présent surtout quand person == null
+  xpSummary: ProfileXpSummaryDto;
 }

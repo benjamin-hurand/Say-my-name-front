@@ -1,13 +1,26 @@
-import { UserOrganizationDto } from "../../services/dto/organization/UserOrganizationDto";
-import { UserOrganization } from "../organizations/UserOrganization";
+import { OrgRole } from "../organizations/UserOrganization";
 
 export interface User {
-    id: number;
-    username: string;
-    email: string;
-    roles: string;
-    srsAlgorithm: SrsAlgorithm;
-    organizations: UserOrganizationDto[];
+  publicId: string;
+  displayName: string;
+  primaryEmail: string;            // le back en envoie toujours une (primaire)
+  emails: UserEmailDto[];
+  srsAlgorithm: SrsAlgorithm;
+  roles: string;                   // ex: "ROLE_USER,ROLE_ADMIN"
+  active: boolean;
+  organizationRole: OrgRole;       // rôle dans l'orga courante
+}
+
+export interface UserEmailDto {
+  id: number;
+  email: string;
+  primary: boolean;
+  loginAllowed: boolean;
+  recoveryAllowed: boolean;
+  verifiedAt: string | null;
+  addedAt: string | null;
+  recoveryEligibleAt: string | null;
+  updatedAt: string | null;
 }
 
 export enum SrsAlgorithm {

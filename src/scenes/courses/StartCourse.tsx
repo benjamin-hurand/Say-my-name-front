@@ -1,5 +1,10 @@
 // src/scenes/courses/StartCourse.tsx
-import React, { useEffect, useState } from "react";
+import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
+import CheckRounded from "@mui/icons-material/CheckRounded";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
+import OpenInNewRounded from "@mui/icons-material/OpenInNewRounded";
+import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
+import StarRounded from "@mui/icons-material/StarRounded";
 import {
   Alert,
   Box,
@@ -12,32 +17,25 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import CheckRounded from "@mui/icons-material/CheckRounded";
-import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
-import PeopleAltRounded from "@mui/icons-material/PeopleAltRounded";
-import StarRounded from "@mui/icons-material/StarRounded";
-import OpenInNewRounded from "@mui/icons-material/OpenInNewRounded";
-import InfoOutlined from "@mui/icons-material/InfoOutlined";
-import { useNavigate, Link as RouterLink, useSearchParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useGlobalData } from "../../contexts/GlobalDataContext";
-import { useAuth } from "../../contexts/AuthContext";
+import { useOrgData } from "../../contexts/OrgDataContext";
 
 import { GameMode } from "../../models/commons/Game/GameMode/GameMode.model";
-import { notifyError, notifySuccess } from "../../services/notification/toast.service";
-import { searchPersons } from "../../services/business/persons/person.service";
-import { PersonCardDto } from "../../services/dto/person/search/PersonCardDtos";
 import { createCourse } from "../../services/business/courses/course.service";
+import { searchPersons } from "../../services/business/persons/person.service";
 import { CreateCourseDto } from "../../services/dto/courses/CourseDto";
+import { PersonCardDto } from "../../services/dto/person/search/PersonCardDtos";
+import { notifyError, notifySuccess } from "../../services/notification/toast.service";
 
 // PopulationScope côté front = "FOLLOWED" | "ALL". On force "FOLLOWED" ici.
 const StartCourse: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams(); 
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { modes } = useGlobalData();
+  const { modes } = useOrgData();
 
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [followedCount, setFollowedCount] = useState<number>(0);
@@ -87,16 +85,15 @@ const StartCourse: React.FC = () => {
     fetchFollowed();
   }, []);
 
-  const canStart = Boolean(user && selectedMode && followedCount > 0);
+  const canStart = Boolean(selectedMode && followedCount > 0);
 
   const handleCreate = async () => {
-    if (!canStart || !selectedMode || !user) {
+    if (!canStart || !selectedMode) {
       notifyError(t("COURSE_CREATE_FILL_ALL", "Veuillez compléter la configuration"));
       return;
     }
 
     const dto: CreateCourseDto = {
-      userId: user.id,
       gameModeId: selectedMode.id,
       populationScope: "FOLLOWED",
     };
@@ -123,7 +120,6 @@ const StartCourse: React.FC = () => {
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Box
-        className="scrollable-content"
         sx={{
           flex: 1,
           overflow: "auto",

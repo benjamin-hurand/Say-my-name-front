@@ -16,8 +16,8 @@ import {
   Badge,
 } from "@mui/material";
 
-import { Attribute } from "../../../../../models/commons/Attribute";
-import { PersonAttributeFull } from "../../../../../models/commons/PersonAttribute";
+import { Attribute } from "../../../../../models/commons/Attribute/Attribute";
+import { PersonAttribute } from "../../../../../models/commons/PersonAttribute";
 
 import AttributeChipValueItem, {
   RowStatus as ChipRowStatus,
@@ -25,7 +25,7 @@ import AttributeChipValueItem, {
 
 import {
   ChangeRequestSummary,
-  ChangeStatus,
+  ChangeRequestStatus,
 } from "../../../../../models/commons/Profile/ChangeRequest";
 import AttributeRowLayout from "../layout/AttributeRowLayout";
 import TypedValueInput from "../inputs/TypedValueInput";
@@ -33,7 +33,7 @@ import TypedValueInput from "../inputs/TypedValueInput";
 /** Types locaux */
 export type RowStatus = ChipRowStatus;
 
-type ChipPA = Pick<PersonAttributeFull, "id" | "value" | "validFrom" | "validTo" | "pendingDelete">;
+type ChipPA = Pick<PersonAttribute, "id" | "value" | "validFrom" | "validTo" | "pendingDelete">;
 
 type Props = {
   attrDef: Attribute;
@@ -77,7 +77,7 @@ type Props = {
 
 const ROW_HOVER_SCOPE = "row-hover-scope";
 
-const statusLabel = (s: ChangeStatus): string => {
+const statusLabel = (s: ChangeRequestStatus): string => {
   switch (s) {
     case "PENDING":  return "En attente";
     case "APPROVED": return "Approuvée";
@@ -271,12 +271,12 @@ const AttributeRow: React.FC<Props> = ({
     const map = new Map<number, string>();
     if (!existingCrForAttr) return map;
     for (const it of existingCrForAttr.items ?? []) {
-      if (!it.personAttributeId) continue;
+      if (!it.personAttribute?.id) continue;
       if (it.action === "UPDATE") {
         const pv = (it.proposedValue ?? "").toString();
-        map.set(it.personAttributeId, `Demande : mettre à jour cette valeur → « ${pv} »`);
+        map.set(it.personAttribute.id, `Demande : mettre à jour cette valeur → « ${pv} »`);
       } else if (it.action === "DELETE") {
-        map.set(it.personAttributeId, "Demande : supprimer cette valeur");
+        map.set(it.personAttribute.id, "Demande : supprimer cette valeur");
       }
     }
     return map;
@@ -396,8 +396,8 @@ const AttributeRow: React.FC<Props> = ({
             const cr = (changeRequests ?? []).find((cr) => (cr as any).attributeId === attrDef.id);
             if (!cr) return undefined;
             for (const it of (cr.items ?? [])) {
-              if (!it.personAttributeId) continue;
-              if (it.personAttributeId === pa.id) {
+              if (!it.personAttribute?.id) continue;
+              if (it.personAttribute?.id === pa.id) {
                 if (it.action === "UPDATE") {
                   const pv = (it.proposedValue ?? "").toString();
                   return `Demande : mettre à jour cette valeur → « ${pv} »`;

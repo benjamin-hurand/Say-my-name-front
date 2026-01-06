@@ -16,6 +16,8 @@ import {
   Tooltip,
   Typography,
   Container,
+  Stack,
+  Chip,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -24,24 +26,40 @@ import {
   RotateLeft as RotateLeftIcon,
   RotateRight as RotateRightIcon,
   ZoomOutMap as ZoomIcon,
+  AddAPhotoRounded as AddAPhotoRoundedIcon,
+  PersonSearchRounded as PersonSearchRoundedIcon,
+  InfoOutlined as InfoOutlinedIcon,
+  LockRounded as LockRoundedIcon,
 } from "@mui/icons-material";
 import { useDropzone } from "react-dropzone";
 import Cropper from "react-easy-crop";
+import { useNavigate } from "react-router-dom";
 
 import { useProfile } from "../../../contexts/ProfileContext";
 import { Photo } from "../../../models/commons/Photo";
 import { submitPhotoForApproval } from "../../../services/business/photos/photo.service";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 import getCroppedImg from "../../../utils/getCroppedImg";
-import { getApiErrorMessage } from "../../../utils/apiError"; // ⬅️ NEW
+import { getApiErrorMessage } from "../../../utils/apiError";
 
 const MIN_UPLOAD_SIZE = 1024 * 1; // 1 KB
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 5; // 5 MB
 
-const PhotoAvatarSection: React.FC = () => {
-  const { user, profile, loading, refreshProfile, setProfile } = useProfile();
+type PersonLinkAction = "DISABLED" | "DIRECT" | "REQUEST";
 
-  const username = user?.username ?? "Moi";
+function isEnabled(action: PersonLinkAction) {
+  return action !== "DISABLED";
+}
+
+function getCtaLabel(base: string, action: PersonLinkAction) {
+  return action === "REQUEST" ? `Demander ${base}` : base;
+}
+
+const PhotoAvatarSection: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, profile, onboarding, loading, refreshProfile, setProfile } = useProfile();
+
+  const displayName = user?.displayName ?? "Moi";
   const profileCurrentPhotoUrl =
     profile?.photos?.find((p) => p.status === "APPROVED")?.url ?? undefined;
 
@@ -86,7 +104,6 @@ const PhotoAvatarSection: React.FC = () => {
         setPendingPhoto(alreadyPending);
         setConfirmReplaceOpen(true);
       }
-      // on ouvre le cropper ; l'annulation fermera et resettera l'input
       setCropModalOpen(true);
     },
     [profile?.photos]
@@ -153,15 +170,12 @@ const PhotoAvatarSection: React.FC = () => {
     if (!rawFile || !croppedAreaPixels || !imageUrl || !profile) return;
     setUploading(true);
     try {
-      // 1) crée l'image recadrée côté client
       const blob = await getCroppedImg(imageUrl, croppedAreaPixels, rotation);
       const mime = (blob as any).type || rawFile.type || "image/jpeg";
       const fileToSend = new File([blob], rawFile.name || `photo-${Date.now()}.jpg`, { type: mime });
 
-      // 2) envoie au back — retourne la nouvelle Photo (status = PENDING)
       const newPhoto = await submitPhotoForApproval(profile.id, fileToSend);
 
-      // 3) patch local ciblé : remplace la PENDING existante ou ajoute la nouvelle
       setProfile((prev) => {
         if (!prev) return prev;
         const alreadyPending = prev.photos.find((p) => p.status === "PENDING");
@@ -171,7 +185,6 @@ const PhotoAvatarSection: React.FC = () => {
         return { ...prev, photos: updatedPhotos };
       });
 
-      // 4) reset UI
       setCropModalOpen(false);
       setRawFile(null);
       setZoom(1);
@@ -181,7 +194,7 @@ const PhotoAvatarSection: React.FC = () => {
 
       notifySuccess("Photo soumise à vérification !");
     } catch (err: any) {
-      const msg = getApiErrorMessage(err, "Erreur lors de la soumission de la photo."); // ⬅️ NEW
+      const msg = getApiErrorMessage(err, "Erreur lors de la soumission de la photo.");
       setErrorMsg(msg);
       notifyError(msg);
     } finally {
@@ -189,28 +202,120 @@ const PhotoAvatarSection: React.FC = () => {
     }
   };
 
-  // --- Loading / profil indisponible : UX locale
+  // --- Loading ---
   if (loading) {
     return (
-      <Container maxWidth="sm" sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 4 }}>
+      <Container maxWidth="sm" sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 3 }}>
         <CircularProgress />
       </Container>
     );
   }
 
+  // --- État onboarding (pas de Person liée) : CTA subtil + avatar placeholder ---
   if (!profile) {
+    const createAction: PersonLinkAction = (onboarding?.createPerson as PersonLinkAction) ?? "DISABLED";
+    const pickAction: PersonLinkAction = (onboarding?.pickPerson as PersonLinkAction) ?? "DISABLED";
+
+    const nothingAllowed = createAction === "DISABLED" && pickAction === "DISABLED";
+    const hasApproval = createAction === "REQUEST" || pickAction === "REQUEST";
+
+    const onCreate = () => {
+      if (!isEnabled(createAction)) return;
+      navigate(createAction === "REQUEST" ? "/profile/create/request" : "/profile/create");
+    };
+
+    const onPick = () => {
+      if (!isEnabled(pickAction)) return;
+      navigate(pickAction === "REQUEST" ? "/profile/pick/request" : "/profile/pick");
+    };
+
     return (
-      <Container maxWidth="sm" sx={{ py: 2 }}>
-        <Typography color="text.secondary">Profil indisponible pour l’instant.</Typography>
-        <Box sx={{ mt: 2, textAlign: "right" }}>
-          <Button variant="contained" onClick={refreshProfile}>
-            Réessayer
-          </Button>
-        </Box>
+      <Container maxWidth="sm" sx={{ py: 1 }}>
+        <Stack spacing={1.25} alignItems="center">
+          <Box sx={{ position: "relative", width: 120, height: 120 }}>
+            <Avatar
+              sx={{
+                width: "100%",
+                height: "100%",
+                bgcolor: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.10)",
+              }}
+            >
+              <PhotoCameraIcon sx={{ opacity: 0.8 }} />
+            </Avatar>
+
+            {/* icône “+” subtile (non cliquable tant que pas de person) */}
+            <Tooltip title={nothingAllowed ? "Profil requis" : "Créer/choisir un profil pour ajouter une photo"}>
+              <span>
+                <IconButton
+                  size="small"
+                  disabled
+                  sx={{
+                    position: "absolute",
+                    bottom: 4,
+                    right: 4,
+                    bgcolor: "rgba(0,0,0,0.55)",
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <AddAPhotoRoundedIcon sx={{ color: "#fff" }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+
+          <Stack spacing={0.5} alignItems="center" sx={{ textAlign: "center" }}>
+            <Typography sx={{ fontWeight: 800 }}>{displayName}</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              Ajoute un profil pour apparaître dans le trombinoscope.
+            </Typography>
+
+            {hasApproval ? (
+              <Chip size="small" icon={<InfoOutlinedIcon />} label="Validation possible" variant="outlined" />
+            ) : null}
+          </Stack>
+
+          {nothingAllowed ? (
+            <Chip
+              icon={<LockRoundedIcon />}
+              label="Action non autorisée — contacte un administrateur"
+              variant="outlined"
+            />
+          ) : (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: "100%", mt: 0.5 }}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<AddAPhotoRoundedIcon />}
+                disabled={!isEnabled(createAction)}
+                onClick={onCreate}
+              >
+                {getCtaLabel("Créer mon profil", createAction)}
+              </Button>
+
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<PersonSearchRoundedIcon />}
+                disabled={!isEnabled(pickAction)}
+                onClick={onPick}
+              >
+                {getCtaLabel("Choisir un profil", pickAction)}
+              </Button>
+            </Stack>
+          )}
+
+          <Box sx={{ width: "100%", display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
+            <Button variant="text" onClick={refreshProfile}>
+              Rafraîchir
+            </Button>
+          </Box>
+        </Stack>
       </Container>
     );
   }
 
+  // --- Profil OK : avatar + actions photo ---
   return (
     <>
       {/* Zone Avatar + actions (dropzone cliquable) */}
@@ -224,7 +329,8 @@ const PhotoAvatarSection: React.FC = () => {
       >
         <input {...getInputProps()} />
         <Box sx={{ position: "relative", width: 120, height: 120 }}>
-          <Avatar alt={`Avatar de ${username}`} src={profileCurrentPhotoUrl} sx={{ width: "100%", height: "100%" }} />
+          <Avatar alt={`Avatar de ${displayName}`} src={profileCurrentPhotoUrl} sx={{ width: "100%", height: "100%" }} />
+
           <Tooltip title="Changer la photo">
             <IconButton
               size="small"
@@ -243,6 +349,7 @@ const PhotoAvatarSection: React.FC = () => {
               {uploading ? <CircularProgress size={20} color="inherit" /> : <PhotoCameraIcon sx={{ color: "#fff" }} />}
             </IconButton>
           </Tooltip>
+
           <Tooltip title="Voir en grand">
             <IconButton
               size="small"
@@ -270,9 +377,14 @@ const PhotoAvatarSection: React.FC = () => {
           <IconButton aria-label="actions" onClick={handleMenuOpen} sx={{ position: "absolute", right: 40, top: 8 }}>
             <MoreVertIcon />
           </IconButton>
-          <IconButton aria-label="close" onClick={() => setLightboxOpen(false)} sx={{ position: "absolute", right: 8, top: 8 }}>
+          <IconButton
+            aria-label="close"
+            onClick={() => setLightboxOpen(false)}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
             <CloseIcon />
           </IconButton>
+
           <Menu anchorEl={anchorEl} open={openMenu} onClose={handleMenuClose}>
             <MenuItem
               onClick={() => {
@@ -284,14 +396,16 @@ const PhotoAvatarSection: React.FC = () => {
             </MenuItem>
           </Menu>
         </DialogTitle>
+
         <DialogContent sx={{ textAlign: "center", pt: 0 }}>
           <Box
             component="img"
             src={profileCurrentPhotoUrl}
-            alt={`Avatar de ${username}`}
+            alt={`Avatar de ${displayName}`}
             sx={{ maxWidth: "100%", maxHeight: "calc(70vh - 100px)", objectFit: "contain" }}
           />
         </DialogContent>
+
         <DialogActions sx={{ justifyContent: "flex-end", px: 3, py: 2 }}>
           <Button variant="outlined" onClick={() => setLightboxOpen(false)}>
             Fermer
@@ -318,9 +432,11 @@ const PhotoAvatarSection: React.FC = () => {
               />
             </Box>
           )}
+
           <Box sx={{ mt: 2 }}>
             <Typography gutterBottom>Zoom</Typography>
             <Slider value={zoom} min={1} max={3} step={0.1} onChange={(_, v) => setZoom(v as number)} />
+
             <Typography gutterBottom>Rotation</Typography>
             <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
               <IconButton onClick={() => setRotation((r) => r - 90)}>
@@ -331,12 +447,14 @@ const PhotoAvatarSection: React.FC = () => {
               </IconButton>
             </Box>
           </Box>
+
           {errorMsg && (
             <Typography color="error" sx={{ mt: 1 }}>
               {errorMsg}
             </Typography>
           )}
         </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setCropModalOpen(false)} disabled={uploading}>
             Annuler
@@ -369,7 +487,6 @@ const PhotoAvatarSection: React.FC = () => {
         <DialogActions>
           <Button
             onClick={() => {
-              // Annuler complètement : ferme la confirmation + le cropper et reset le fichier
               setConfirmReplaceOpen(false);
               setCropModalOpen(false);
               setRawFile(null);
@@ -383,7 +500,6 @@ const PhotoAvatarSection: React.FC = () => {
           </Button>
           <Button
             onClick={() => {
-              // Continuer : on ferme juste la confirmation et on laisse l'utilisateur recadrer puis "Valider"
               setConfirmReplaceOpen(false);
             }}
             color="error"

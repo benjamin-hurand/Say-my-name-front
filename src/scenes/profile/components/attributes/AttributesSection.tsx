@@ -22,7 +22,6 @@ const AttributesSection: React.FC = () => {
       </CardContent>
 
       <CardContent
-        className="scrollable-content"
         sx={{
           flex: 1,
           minHeight: 0,

@@ -9,6 +9,7 @@ type Props = {
   maxVh?: number;
   minShortEdge?: number;
   maxUpscale?: number;
+  maxHeightPx?: number;
 };
 
 export default function PhotoResponsive({
@@ -18,6 +19,7 @@ export default function PhotoResponsive({
   maxVh = 62,
   minShortEdge = 320,
   maxUpscale = 2.0,
+  maxHeightPx,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerW, setContainerW] = useState<number>(0);
@@ -37,7 +39,8 @@ export default function PhotoResponsive({
   useEffect(() => {
     if (!natural || !containerW) return;
     const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-    const maxH = (maxVh / 100) * vh;
+    const maxHFromVh = (maxVh / 100) * vh;
+    const maxH = maxHeightPx ? Math.min(maxHFromVh, maxHeightPx) : maxHFromVh;
 
     const { w: nw, h: nh } = natural;
     const sMaxSpace   = Math.min(containerW / nw, maxH / nh);
@@ -45,7 +48,12 @@ export default function PhotoResponsive({
     const s           = Math.min(sMaxSpace, maxUpscale, Math.max(1, sMinWanted));
 
     setSize({ w: Math.round(nw * s), h: Math.round(nh * s) });
-  }, [natural, containerW, maxVh, minShortEdge, maxUpscale]);
+  }, [natural, containerW, maxVh, minShortEdge, maxUpscale, maxHeightPx]);
+
+  const resolvedMaxHeight =
+    maxHeightPx != null
+      ? `${maxHeightPx}px`
+      : `${maxVh}vh`;
 
   return (
     <Box ref={containerRef} sx={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "transparent" }}>
@@ -63,7 +71,7 @@ export default function PhotoResponsive({
             width: size?.w ?? "auto",
             height: size?.h ?? "auto",
             maxWidth: "100%",
-            maxHeight: `${maxVh}vh`,
+            maxHeight: resolvedMaxHeight,
             display: "block",
             borderRadius: 2,
             boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
@@ -77,7 +85,7 @@ export default function PhotoResponsive({
           justifyContent="center"
           sx={{
             width: "100%",
-            height: `min(${maxVh}vh, 420px)`,
+            height: maxHeightPx ? `${maxHeightPx}px` : `min(${maxVh}vh, 420px)`,
             borderRadius: 2,
             border: 1,
             borderColor: "divider",

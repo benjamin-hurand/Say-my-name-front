@@ -4,63 +4,69 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from "react";
-import { Page, listFollowedPersonIds, subscribeOne, unsubscribeOne } from "../services/business/subscriptions/subscriptions.service";
+import {
+  Page,
+  listFollowedPersonIds,
+  subscribeOne,
+  unsubscribeOne,
+} from "../services/business/subscriptions/subscriptions.service";
 import { PersonCardDto } from "../services/dto/person/search/PersonCardDtos";
 import { PersonSearchRequestDto } from "../services/dto/person/search/PersonSearchRequestDto";
-import { searchPersons } from "../services/business/persons/person.service";
+import {
+  DirectoryDataSource,
+  userDataSource,
+} from "./personsDirectory.dataSource";
 
-/** État "annulé/remplacé" basique pour éviter les races sur les requêtes en vol */
-let seqGlobal = 0;
+// --- Cache partagé module-scope (persiste pour toutes les pages) ---
+type CachePerPage = Map<number, Page<PersonCardDto>>;
+const globalCache: Map<string, CachePerPage> = new Map();
 
-/** Clé de cache basée sur le body + taille de page */
-function makeSearchKey(body: PersonSearchRequestDto | undefined, size: number) {
-  return JSON.stringify({ body: body ?? {}, size });
+// clé de cache: inclure la source pour éviter les collisions
+function makeCacheKey(
+  source: DirectoryDataSource,
+  body: PersonSearchRequestDto | undefined,
+  size: number
+) {
+  return JSON.stringify({ src: source.name, body: body ?? {}, size });
 }
 
-type CachePerPage = Map<number, Page<PersonCardDto>>;
+// Séquence anti-race partagée
+let seqGlobal = 0;
 
-type PersonsDirectoryState = {
+// ---------- TYPES EXPLICITES (important !) ----------
+export type PersonsDirectoryState = {
   loading: boolean;
   error: string | null;
 
-  /** Derniers critères et pagination */
   lastBody?: PersonSearchRequestDto;
   pageSize: number;
   currentPage: number;
 
-  /** Données de la page courante */
   page?: Page<PersonCardDto>;
   items: PersonCardDto[];
   totalPages: number;
   totalElements: number;
 
-  /** Suivis */
   followedIds: Set<number>;
   followedLoading: boolean;
 };
 
-type PersonsDirectoryActions = {
-  /** Lance une recherche (réinitialise en page 0 par défaut) */
-  search: (body: PersonSearchRequestDto, page?: number, size?: number) => Promise<void>;
-
-  /** Va à une page (en réutilisant lastBody) */
+export type PersonsDirectoryActions = {
+  search: (
+    body: PersonSearchRequestDto,
+    page?: number,
+    size?: number
+  ) => Promise<void>;
   goto: (page: number) => Promise<void>;
-
-  /** Relance la dernière recherche (utile après follow/unfollow, etc.) */
   refresh: () => Promise<void>;
-
-  /** Met à jour la taille de page et recharge */
   setPageSize: (size: number) => Promise<void>;
 
-  /** Abonnements */
   refreshFollowed: () => Promise<void>;
   follow: (personId: number) => Promise<void>;
   unfollow: (personId: number) => Promise<void>;
 
-  /** Helpers */
   isFollowed: (personId: number) => boolean;
 };
 
@@ -68,43 +74,50 @@ type PersonsDirectoryContextType = PersonsDirectoryState & PersonsDirectoryActio
 
 const CTX = createContext<PersonsDirectoryContextType | undefined>(undefined);
 
-export const PersonsDirectoryProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+export const PersonsDirectoryProvider: React.FC<
+  React.PropsWithChildren<{ dataSource?: DirectoryDataSource }>
+> = ({ children, dataSource = userDataSource }) => {
   // ---- State principal ----
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [lastBody, setLastBody] = useState<PersonSearchRequestDto | undefined>(undefined);
+  const [lastBody, setLastBody] = useState<PersonSearchRequestDto | undefined>(
+    undefined
+  );
   const [pageSize, setPageSizeState] = useState<number>(24);
   const [currentPage, setCurrentPage] = useState<number>(0);
 
-  const [page, setPage] = useState<Page<PersonCardDto> | undefined>(undefined);
-
-  // ---- Cache : par (key = body+size) => Map<pageNumber, Page> ----
-  const cacheRef = useRef<Map<string, CachePerPage>>(new Map());
-
-  // ---- Suivis ----
-  const [followedIds, setFollowedIds] = useState<Set<number>>(new Set());
-  const [followedLoading, setFollowedLoading] = useState(false);
+  const [page, setPage] = useState<Page<PersonCardDto>>();
 
   const items = useMemo(() => page?.content ?? [], [page]);
   const totalPages = page?.totalPages ?? 0;
   const totalElements = page?.totalElements ?? 0;
 
+  // ---- Suivis ----
+  const [followedIds, setFollowedIds] = useState<Set<number>>(new Set());
+  const [followedLoading, setFollowedLoading] = useState(false);
   const isFollowed = useCallback((pid: number) => followedIds.has(pid), [followedIds]);
 
-  const fillFromCache = useCallback((key: string, pageNumber: number): Page<PersonCardDto> | undefined => {
-    const byPage = cacheRef.current.get(key);
-    return byPage?.get(pageNumber);
-  }, []);
+  // ---- Cache helpers ----
+  const fillFromCache = useCallback(
+    (key: string, pageNumber: number): Page<PersonCardDto> | undefined => {
+      const byPage = globalCache.get(key);
+      return byPage?.get(pageNumber);
+    },
+    []
+  );
 
-  const writeCache = useCallback((key: string, pageNumber: number, value: Page<PersonCardDto>) => {
-    let byPage = cacheRef.current.get(key);
-    if (!byPage) {
-      byPage = new Map<number, Page<PersonCardDto>>();
-      cacheRef.current.set(key, byPage);
-    }
-    byPage.set(pageNumber, value);
-  }, []);
+  const writeCache = useCallback(
+    (key: string, pageNumber: number, value: Page<PersonCardDto>) => {
+      let byPage = globalCache.get(key);
+      if (!byPage) {
+        byPage = new Map<number, Page<PersonCardDto>>();
+        globalCache.set(key, byPage);
+      }
+      byPage.set(pageNumber, value);
+    },
+    []
+  );
 
   const doSearch = useCallback(
     async (body: PersonSearchRequestDto, pageNumber: number, size: number) => {
@@ -112,7 +125,7 @@ export const PersonsDirectoryProvider: React.FC<React.PropsWithChildren> = ({ ch
       setError(null);
       const mySeq = ++seqGlobal;
 
-      const key = makeSearchKey(body, size);
+      const key = makeCacheKey(dataSource, body, size);
       const cached = fillFromCache(key, pageNumber);
       if (cached) {
         setPage(cached);
@@ -123,8 +136,8 @@ export const PersonsDirectoryProvider: React.FC<React.PropsWithChildren> = ({ ch
       }
 
       try {
-        const result = await searchPersons(body, pageNumber, size);
-        if (mySeq !== seqGlobal) return; // une autre requête a pris le dessus
+        const result = await dataSource.search(body, pageNumber, size);
+        if (mySeq !== seqGlobal) return;
 
         writeCache(key, pageNumber, result);
         setPage(result);
@@ -137,50 +150,51 @@ export const PersonsDirectoryProvider: React.FC<React.PropsWithChildren> = ({ ch
         if (mySeq === seqGlobal) setLoading(false);
       }
     },
-    [fillFromCache, writeCache]
+    [dataSource, fillFromCache, writeCache]
   );
 
-  const search = useCallback<PersonsDirectoryActions["search"]>(
-    async (body, page = 0, size = pageSize) => {
-      // reset de pagination si on change de body/size
+  const search = useCallback(
+    async (body: PersonSearchRequestDto, pageNum = 0, size = pageSize) => {
       if (size !== pageSize) setPageSizeState(size);
-      await doSearch(body, page, size);
+      await doSearch(body, pageNum, size);
     },
     [doSearch, pageSize]
   );
 
-  const goto = useCallback<PersonsDirectoryActions["goto"]>(async (pageNumber) => {
-    if (!lastBody) return;
-    await doSearch(lastBody, pageNumber, pageSize);
-  }, [doSearch, lastBody, pageSize]);
+  const goto = useCallback(
+    async (pageNum: number) => {
+      if (!lastBody) return;
+      await doSearch(lastBody, pageNum, pageSize);
+    },
+    [doSearch, lastBody, pageSize]
+  );
 
-  const refresh = useCallback<PersonsDirectoryActions["refresh"]>(async () => {
+  const refresh = useCallback(async () => {
     if (!lastBody) return;
-    // on ne purge pas le cache global pour conserver la navigation fluide
     await doSearch(lastBody, currentPage, pageSize);
   }, [doSearch, lastBody, currentPage, pageSize]);
 
-  const setPageSize = useCallback<PersonsDirectoryActions["setPageSize"]>(async (size) => {
-    if (!lastBody) {
+  const setPageSize = useCallback(
+    async (size: number) => {
+      if (!lastBody) {
+        setPageSizeState(size);
+        return;
+      }
       setPageSizeState(size);
-      return;
-    }
-    // On change la taille => on repart page 0
-    setPageSizeState(size);
-    await doSearch(lastBody, 0, size);
-  }, [doSearch, lastBody]);
+      await doSearch(lastBody, 0, size);
+    },
+    [doSearch, lastBody]
+  );
 
-  // ---- Suivis (pagination côté API -> on récupère tout) ----
+  // ---- Suivis (user uniquement) ----
   const refreshFollowed = useCallback(async () => {
+    if (!dataSource.supportsFollow) return; // no-op en admin
     setFollowedLoading(true);
     try {
       let pageIdx = 0;
       const size = 200;
       const acc: number[] = [];
-      // boucle simple pour rapatrier toutes les pages
-      // (ton API renvoie Page<number>)
-      // on s'arrête quand on a tout.
-      // NB: côté perf, 1000 ids = OK.
+      // rapatrier toutes les pages d'IDs suivis
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const p = await listFollowedPersonIds(pageIdx, size);
@@ -189,88 +203,107 @@ export const PersonsDirectoryProvider: React.FC<React.PropsWithChildren> = ({ ch
         pageIdx++;
       }
       setFollowedIds(new Set(acc));
-    } catch (e) {
-      // si erreur, on ne jette pas l’état courant
-      // (logging éventuel)
-      // console.error(e);
     } finally {
       setFollowedLoading(false);
     }
-  }, []);
+  }, [dataSource.supportsFollow]);
 
-  const follow = useCallback<PersonsDirectoryActions["follow"]>(async (personId) => {
-    // Optimiste
-    setFollowedIds(prev => {
-      const next = new Set(prev);
-      next.add(personId);
-      return next;
-    });
-    try {
-      await subscribeOne(personId);
-      // Optionnel : rafraîchir la page courante pour refléter `followed` serveur
-      // await refresh();
-    } catch (e) {
-      // rollback
-      setFollowedIds(prev => {
+  const follow = useCallback(
+    async (personId: number) => {
+      if (!dataSource.supportsFollow) return;
+      // Optimiste
+      setFollowedIds((prev) => new Set(prev).add(personId));
+      try {
+        await subscribeOne(personId);
+      } catch {
+        // rollback
+        setFollowedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(personId);
+          return next;
+        });
+        throw new Error("subscribe failed");
+      }
+    },
+    [dataSource.supportsFollow]
+  );
+
+  const unfollow = useCallback(
+    async (personId: number) => {
+      if (!dataSource.supportsFollow) return;
+      // Optimiste
+      setFollowedIds((prev) => {
         const next = new Set(prev);
         next.delete(personId);
         return next;
       });
-      throw e;
-    }
-  }, []);
+      try {
+        await unsubscribeOne(personId);
+      } catch {
+        // rollback
+        setFollowedIds((prev) => new Set(prev).add(personId));
+        throw new Error("unsubscribe failed");
+      }
+    },
+    [dataSource.supportsFollow]
+  );
 
-  const unfollow = useCallback<PersonsDirectoryActions["unfollow"]>(async (personId) => {
-    // Optimiste
-    setFollowedIds(prev => {
-      const next = new Set(prev);
-      next.delete(personId);
-      return next;
-    });
-    try {
-      await unsubscribeOne(personId);
-      // Optionnel : await refresh();
-    } catch (e) {
-      // rollback
-      setFollowedIds(prev => new Set(prev).add(personId));
-      throw e;
-    }
-  }, []);
+  const value: PersonsDirectoryContextType = useMemo(
+    () => ({
+      // state
+      loading,
+      error,
+      lastBody,
+      pageSize,
+      currentPage,
+      page,
+      items,
+      totalPages,
+      totalElements,
+      followedIds,
+      followedLoading,
 
-  const value = useMemo<PersonsDirectoryContextType>(() => ({
-    // state
-    loading,
-    error,
-    lastBody,
-    pageSize,
-    currentPage,
-    page,
-    items,
-    totalPages,
-    totalElements,
-    followedIds,
-    followedLoading,
-
-    // actions
-    search,
-    goto,
-    refresh,
-    setPageSize,
-    refreshFollowed,
-    follow,
-    unfollow,
-    isFollowed,
-  }), [
-    loading, error, lastBody, pageSize, currentPage, page, items, totalPages, totalElements,
-    followedIds, followedLoading,
-    search, goto, refresh, setPageSize, refreshFollowed, follow, unfollow, isFollowed
-  ]);
+      // actions
+      search,
+      goto,
+      refresh,
+      setPageSize,
+      refreshFollowed,
+      follow,
+      unfollow,
+      isFollowed,
+    }),
+    [
+      loading,
+      error,
+      lastBody,
+      pageSize,
+      currentPage,
+      page,
+      items,
+      totalPages,
+      totalElements,
+      followedIds,
+      followedLoading,
+      search,
+      goto,
+      refresh,
+      setPageSize,
+      refreshFollowed,
+      follow,
+      unfollow,
+      isFollowed,
+    ]
+  );
 
   return <CTX.Provider value={value}>{children}</CTX.Provider>;
 };
 
 export function usePersonsDirectory() {
   const ctx = useContext(CTX);
-  if (!ctx) throw new Error("usePersonsDirectory must be used within a PersonsDirectoryProvider");
+  if (!ctx)
+    throw new Error(
+      "usePersonsDirectory must be used within a PersonsDirectoryProvider"
+    );
   return ctx;
 }

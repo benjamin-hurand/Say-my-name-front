@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import { alpha, useTheme } from "@mui/material/styles";
 import { Button, Paper, Typography } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Affiche un texte clampé à N lignes.

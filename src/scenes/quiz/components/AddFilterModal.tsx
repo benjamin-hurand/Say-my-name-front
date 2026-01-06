@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Box,
 } from '@mui/material';
-import { Attribute } from '../../../models/commons/Attribute';
+import { Attribute } from '../../../models/commons/Attribute/Attribute';
 import { GameFilter } from '../../../models/commons/Game/GameOptions/GameFilter.model';
 import { StyledSlider } from './StyledSlider';
 import { AttributeCard } from './AttributeCard';
