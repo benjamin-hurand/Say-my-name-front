@@ -13,7 +13,7 @@ export default function OrgProtectedRoute({
   element,
   redirectToOnboarding = "/onboarding",
 }: Props) {
-  const { isAuthenticated, isBooting, activeOrganization } = useAuth();
+  const { isAuthenticated, isBooting, activeTenant } = useAuth();
   const location = useLocation();
 
   // ⏳ Pendant le boot (refresh cookie + /session)
@@ -45,7 +45,7 @@ export default function OrgProtectedRoute({
   }
 
   // ⚠️ Auth OK mais aucune organisation → onboarding
-  if (!activeOrganization) {
+  if (!activeTenant) {
     return <Navigate to={redirectToOnboarding} replace />;
   }
 

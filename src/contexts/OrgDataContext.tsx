@@ -18,8 +18,8 @@ interface OrgDataContextType {
 const OrgDataContext = createContext<OrgDataContextType | undefined>(undefined);
 
 export const OrgDataProvider = ({ children }: { children: ReactNode }) => {
-  const { activeOrganization } = useAuth();
-  const orgId = activeOrganization?.organizationId ?? null;
+  const { activeTenant } = useAuth();
+  const orgId = activeTenant?.tenantId ?? null;
 
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [filters, setFilters] = useState<Attribute[]>([]);

@@ -55,12 +55,12 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
 
-  const { organizations, activeOrganization, switchOrganization, logout } = useAuth();
+  const { tenants, activeTenant, switchTenant, logout } = useAuth();
 
-  const hasOrgs = (organizations?.length ?? 0) > 0;
+  const hasOrgs = (tenants?.length ?? 0) > 0;
 
   // ----------------------------
-  // Organization Hub (responsive)
+  // Tenant Hub (responsive)
   // ----------------------------
   const [orgAnchorEl, setOrgAnchorEl] = React.useState<HTMLElement | null>(null);
   const [orgDrawerOpen, setOrgDrawerOpen] = React.useState(false);
@@ -80,7 +80,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
   };
 
   const handleSwitchOrg = (orgId: number) => {
-    switchOrganization(orgId);
+    switchTenant(orgId);
     closeOrgHub();
   };
 
@@ -114,7 +114,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
     setJoinLoading(true);
     try {
       // TODO (backend): appeler ton endpoint "join by code"
-      // ex: await joinOrganizationByCode(code);
+      // ex: await joinTenantByCode(code);
       // puis refresh session/orgs
       notifySuccess("Code reçu. Finalise le branchement API pour rejoindre l’organisation.");
       closeJoin();
@@ -170,8 +170,8 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
     backdropFilter: "blur(10px)",
   } as const;
 
-  const orgTooltip = activeOrganization
-    ? `Organisation : ${activeOrganization.organizationName}`
+  const orgTooltip = activeTenant
+    ? `Organisation : ${activeTenant.tenantName}`
     : "Organisation";
 
   const HubContent = (
@@ -184,14 +184,14 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
             Espace de travail
           </Typography>
           <Typography variant="body2" color="text.secondary" noWrap>
-            {activeOrganization ? `Actif : ${activeOrganization.organizationName}` : "Aucune organisation active"}
+            {activeTenant ? `Actif : ${activeTenant.tenantName}` : "Aucune organisation active"}
           </Typography>
         </Box>
 
-        {activeOrganization?.role && (
+        {activeTenant?.role && (
           <Chip
             size="small"
-            label={String(activeOrganization.role)}
+            label={String(activeTenant.role)}
             sx={{
               borderRadius: 999,
               fontWeight: 800,
@@ -204,18 +204,18 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
 
       <Divider sx={{ mb: 1.25 }} />
 
-      {/* Organizations */}
+      {/* Tenants */}
       <Typography variant="overline" sx={{ opacity: 0.75, letterSpacing: 0.8 }}>
         Organisations
       </Typography>
 
       <List dense disablePadding sx={{ mt: 0.5 }}>
-        {organizations.map((org) => {
-          const isActive = org.organizationId === activeOrganization?.organizationId;
+        {tenants.map((org) => {
+          const isActive = org.tenantId === activeTenant?.tenantId;
           return (
             <ListItemButton
-              key={org.organizationId}
-              onClick={() => handleSwitchOrg(org.organizationId)}
+              key={org.tenantId}
+              onClick={() => handleSwitchOrg(org.tenantId)}
               sx={{
                 borderRadius: 2,
                 mb: 0.5,
@@ -233,7 +233,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
                 primary={
                   <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" fontWeight={isActive ? 900 : 700} noWrap sx={{ flexGrow: 1 }}>
-                      {org.organizationName}
+                      {org.tenantName}
                     </Typography>
                     {isActive && <CheckCircle sx={{ fontSize: 18, color }} />}
                   </Stack>
@@ -279,14 +279,14 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
   return (
     <div className="footer">
       <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: "400px", padding: "5px" }}>
-        {/* Organization button hidden when no orgs */}
+        {/* Tenant button hidden when no orgs */}
         {hasOrgs && (
           <>
             <Tooltip title={orgTooltip} arrow>
               <IconButton
                 className="menu"
                 style={iconButtonStyle}
-                aria-label="organization"
+                aria-label="tenant"
                 onClick={handleOrgClick}
                 onMouseEnter={handleMouseEnter}
               >

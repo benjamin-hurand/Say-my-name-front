@@ -52,7 +52,7 @@ import {
   PersonEmailDto,
   CreatePersonEmailRequestDto,
 } from "../../../../../services/dto/person/admin/PersonEmailDto";
-import { OrgRole, formatRole } from "../../../../../models/organizations/UserOrganization";
+import { OrgRole, formatRole } from "../../../../../models/tenants/UserTenant";
 
 /* =============================================================
    Helpers

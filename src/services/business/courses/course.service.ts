@@ -1,13 +1,15 @@
-import { QuizEntry } from "../../../models/commons/Game/QuizEntry";
-import { PersonAttributeLite } from "../../../models/commons/PersonAttribute";
+// src/api/services/courses/coursesApi.ts
 import API from "../../api/apiUtils";
-import { CourseAnswerAndNextQuestionDto } from "../../dto/courses/CourseAnswerAndNextQuestionDto";
-import { CourseAnswerDto } from "../../dto/courses/CourseAnswerDto";
+import { PersonAttributeLiteDto } from "../../dto/person/PersonAttributeLiteDto";
+import { QuizEntry } from "../../../models/commons/Game/QuizEntry";
+
 import { CourseDto, CreateCourseDto } from "../../dto/courses/CourseDto";
-import { CourseQuestionDto } from "../../dto/courses/CourseQuestionDto";
 import { CourseStatsDto } from "../../dto/courses/CourseStatsDto";
 
-// Base pour /api/courses (API util préfixe déjà /api)
+import { QuizQuestionDto } from "../../dto/quiz/QuizQuestionDto";
+import { QuizAnswerRequestDto } from "../../dto/quiz/QuizAnswerRequestDto";
+import { QuizAnswerResultDto } from "../../dto/quiz/QuizAnswerResultDto";
+
 const endpoint = "/courses";
 
 /** Dernier cours focal (ou null si 204) */
@@ -18,12 +20,11 @@ export async function getCurrentCourse(): Promise<CourseDto | null> {
   return res.status === 204 ? null : res.data;
 }
 
-/** Tous les cours ACTIFS de l’utilisateur */
+/** Tous les cours de l’utilisateur */
 export async function getUserCourses(): Promise<CourseDto[]> {
   const res = await API.get<CourseDto[]>(`${endpoint}/me`, {
     validateStatus: (s) => s === 200 || s === 204,
   });
-  console.log("course list: ", res);
   return res.status === 204 ? [] : res.data;
 }
 
@@ -33,82 +34,69 @@ export async function getCourseStats(courseId: number): Promise<CourseStatsDto> 
   return res.data;
 }
 
-/** Stats de tous les cours ACTIFS d’un utilisateur */
+/** Stats de tous les cours de l’utilisateur */
 export async function getUserCourseStats(): Promise<CourseStatsDto[]> {
   const res = await API.get<CourseStatsDto[]>(`${endpoint}/me/stats`, {
     validateStatus: (s) => s === 200 || s === 204,
   });
-  console.log("course stats: ", res);
   return res.status === 204 ? [] : res.data;
 }
 
-/** Crée un nouveau cours (échoue si déjà un IN_PROGRESS pour user/mode/scope) */
+/** Crée un nouveau cours */
 export async function createCourse(dto: CreateCourseDto): Promise<CourseDto> {
   const res = await API.post<CourseDto>(`${endpoint}/create`, dto);
   return res.data;
 }
 
-/** Crée ou reprend l’IN_PROGRESS existant (user/mode/scope) */
+/** Crée ou reprend l’existant */
 export async function createOrResumeCourse(dto: CreateCourseDto): Promise<CourseDto> {
   const res = await API.post<CourseDto>(`${endpoint}/create-or-resume`, dto);
   return res.data;
 }
 
-/** Redémarre un cours (purge progression + reseed) */
+/** Redémarre un cours */
 export async function restartCourse(courseId: number): Promise<CourseDto> {
   const res = await API.post<CourseDto>(`${endpoint}/${courseId}/restart`);
   return res.data;
 }
 
-/** Marque un cours comme “focus” (lastAccessedAt = now) */
+/** Focus (lastAccessedAt = now) */
 export async function focusCourse(courseId: number): Promise<void> {
   await API.post<void>(`${endpoint}/${courseId}/focus`);
 }
 
-/** Démarre/continue un cours (renvoie la question) */
-export async function continueCourse(courseId: number): Promise<CourseQuestionDto> {
-  const res = await API.get<CourseQuestionDto>(`${endpoint}/${courseId}/continue`);
+/**
+ * Continue course: renvoie QuizQuestionDto (Option A).
+ * IMPORTANT: idéalement tu ne passes pas preferredFormat/timed/timeLimitMs ici sauf si tu assumes le “soft preference”.
+ */
+export async function continueCourse(courseId: number): Promise<QuizQuestionDto> {
+  const res = await API.get<QuizQuestionDto>(`${endpoint}/${courseId}/continue`);
   return res.data;
 }
 
-export class NoMoreQuestionsError extends Error {
-  constructor(message = "Plus de nouveaux items disponibles") {
-    super(message);
-    this.name = "NoMoreQuestionsError";
-  }
-}
-
-/** Soumet une réponse et récupère la suivante */
-export async function answerCourse(
-  courseId: number,
-  answerDto: CourseAnswerDto
-): Promise<CourseAnswerAndNextQuestionDto> {
-  const res = await API.post<CourseAnswerAndNextQuestionDto>(
+/**
+ * Soumet une réponse COURSE et récupère le résultat + nextQuestion.
+ */
+export async function answerCourse(courseId: number, req: QuizAnswerRequestDto): Promise<QuizAnswerResultDto> {
+  const res = await API.post<QuizAnswerResultDto>(
     `${endpoint}/${courseId}/answer`,
-    answerDto,
+    req,
     { validateStatus: (status) => status < 500 }
   );
 
-  if (res.status === 206) {
-    throw new NoMoreQuestionsError();
-  }
   return res.data;
 }
 
 /** Marque l’aide et récupère des attributs utiles */
-export async function useHelp(
-  courseId: number,
-  questionId: number
-): Promise<PersonAttributeLite[]> {
-  const res = await API.post<PersonAttributeLite[]>(
+export async function useHelp(courseId: number, questionId: number): Promise<PersonAttributeLiteDto[]> {
+  const res = await API.post<PersonAttributeLiteDto[]>(
     `${endpoint}/${courseId}/questions/${questionId}/help`
   );
   return res.data;
 }
 
-/** Liste d’entraînement à partir d’un cours */
+/** Liste d’entraînement à partir d’un cours (si tu la gardes) */
 export async function getTrainingList(courseId: number): Promise<QuizEntry[]> {
   const res = await API.get<QuizEntry[]>(`${endpoint}/${courseId}/training`);
   return res.data;
 }
-

@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
       setDone(true);
       notifySuccess('Your password has been reset. You can now log in.');
       // Donne un souffle visuel puis redirige
-      setTimeout(() => navigate('/login'), 800);
+      setTimeout(() => navigate('/signin'), 800);
     } catch (err) {
       setError('This link is invalid or expired. Please request a new one.');
     } finally {

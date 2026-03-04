@@ -1,4 +1,4 @@
-import { OrgRole } from "../organizations/UserOrganization";
+import { OrgRole } from "../tenants/UserTenant";
 
 export interface User {
   publicId: string;
@@ -8,7 +8,7 @@ export interface User {
   srsAlgorithm: SrsAlgorithm;
   roles: string;                   // ex: "ROLE_USER,ROLE_ADMIN"
   active: boolean;
-  organizationRole: OrgRole;       // rôle dans l'orga courante
+  tenantRole: OrgRole;       // rôle dans l'orga courante
 }
 
 export interface UserEmailDto {

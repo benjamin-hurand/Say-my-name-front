@@ -1,6 +1,6 @@
 // src/services/dto/admin/members/OrgMemberRowDto.ts
 
-import { OrgRole } from "../../../../models/organizations/UserOrganization";
+import { OrgRole } from "../../../../models/tenants/UserTenant";
 
 /**
  * Statut synthétique d'un membre dans un espace.

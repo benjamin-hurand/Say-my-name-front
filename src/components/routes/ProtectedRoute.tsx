@@ -19,6 +19,12 @@ const ProtectedRoute: React.FC<Props> = ({ element }) => {
   const { isAuthenticated, isBooting } = useAuth();
   const location = useLocation();
 
+  console.log("🛡️ [ProtectedRoute]", {
+    isBooting,
+    isAuthenticated,
+    path: location.pathname
+  });
+
   if (isBooting) {
     return (
       <Box

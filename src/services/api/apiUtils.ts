@@ -19,6 +19,7 @@ const readCookie = (name: string): string | null => {
 const API: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true, // IMPORTANT: refresh cookie HttpOnly + cookie XSRF
+  timeout: 30000, // 30s timeout global (backend down/lent)
 });
 
 // Pour éviter boucles infinies de refresh
@@ -33,6 +34,12 @@ declare module "axios" {
 // --------------------
 API.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    console.log("📤 [API] Request", {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      retry: config._retry
+    });
+
     // Access token (mémoire-only)
     const accessToken = getAccessToken();
     if (accessToken) {
@@ -42,8 +49,8 @@ API.interceptors.request.use(
     }
 
     // Org context (préférence UX non sensible)
-    const orgId = localStorage.getItem("orgId");
-    if (orgId) config.headers["X-Org-Id"] = orgId;
+    const orgId = localStorage.getItem("tenantId");
+    if (orgId) config.headers["X-Tenant-Id"] = orgId;
 
     // CSRF Double Submit:
     // cookie XSRF-TOKEN (non HttpOnly) => header X-XSRF-TOKEN
@@ -68,7 +75,46 @@ API.interceptors.request.use(
 // Response interceptor (401 -> refresh -> retry)
 // --------------------
 API.interceptors.response.use(
-  (res) => res,
+  async (res) => {
+    console.log("📥 [API] Response", {
+      status: res.status,
+      url: res.config.url
+    });
+
+    // CRITICAL: Intercepte les 401 MÊME si validateStatus les accepte
+    // (ex: validateStatus: (s) => s < 500 accepte 401 sans créer d'error)
+    if (res.status === 401) {
+      const original = res.config as InternalAxiosRequestConfig;
+      const url = original.url ?? "";
+
+      // Ne jamais refresh/retry sur endpoints auth (dont /auth/refresh), sinon boucle.
+      if (shouldSkipAuthRetry(url)) {
+        return res; // Retourne le 401 tel quel
+      }
+
+      // Un seul retry par requête
+      if (original._retry) {
+        return res; // Retourne le 401 tel quel
+      }
+      original._retry = true;
+
+      // Tentative refresh centralisée (anti-storm géré dans authRuntime)
+      const newToken = await ensureFreshAccessToken("api-401");
+
+      if (!newToken) {
+        // Refresh impossible -> on retourne le 401 original
+        return res;
+      }
+
+      // Rejouer la requête initiale avec le nouveau token
+      original.headers = original.headers ?? {};
+      original.headers.Authorization = `Bearer ${newToken}`;
+
+      return API.request(original);
+    }
+
+    return res;
+  },
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig | undefined;
     const status = error.response?.status;

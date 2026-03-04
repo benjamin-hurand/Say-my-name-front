@@ -2,8 +2,9 @@
 import { CredentialResponse } from "@react-oauth/google";
 import axios from "axios";
 import API from "../api/apiUtils";
-import { UserOrganizationDto } from "../dto/organization/UserOrganizationDto";
+import { UserTenantDto } from "../dto/tenant/UserTenantDto";
 import { EmailVerificationKind } from "../dto/auth/EmailVerificationDtos";
+import { ensureXsrfCookie } from "./csrf.service";
 
 // =====================
 // Types
@@ -25,7 +26,7 @@ export interface SessionDto {
   publicUserId: string | null;
   displayName: string | null;
   isAdmin: boolean;
-  organizations: UserOrganizationDto[];
+  tenants: UserTenantDto[];
   emails: string[];
 }
 
@@ -103,10 +104,16 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 
 /**
  * Logout côté serveur : révoque le refresh token (cookie) et clear cookies.
+ * IMPORTANT : En cas d'erreur (403/401/500), ne remonte AUCUNE exception
+ * car le logout côté client doit TOUJOURS réussir (best effort).
  */
 export const logoutServer = async (): Promise<void> => {
-  // Si ton back exige un body JSON (consumes=application/json), envoie {} :
-  await API.post("/auth/logout", {});
+  try {
+    await ensureXsrfCookie(API);
+    await API.post("/auth/logout", {});
+  } catch (error) {
+    console.warn("[Auth.service] logoutServer failed (non-blocking):", error);
+  }
 };
 
 // =====================
@@ -175,19 +182,43 @@ export const loginWithGoogle = async (
 };
 
 export const silentGoogleSignIn = (): Promise<CredentialResponse> => {
+  console.log("🔐 [silentGoogle] START");
+
   return new Promise((resolve, reject) => {
-    const client = (window as any).google?.accounts.oauth2.initTokenClient({
+    const timeout = setTimeout(() => {
+      console.error("⏰ [silentGoogle] TIMEOUT after 10s");
+      reject(new Error("Google silent sign-in timeout after 10s"));
+    }, 10000);
+
+    const googleApi = (window as any).google;
+    if (!googleApi?.accounts?.oauth2) {
+      console.error("❌ [silentGoogle] Google API not loaded");
+      clearTimeout(timeout);
+      reject(new Error("Google API not available"));
+      return;
+    }
+
+    const client = googleApi.accounts.oauth2.initTokenClient({
       client_id: getGoogleClientIdOrThrow(),
       scope: "profile email",
       callback: (response: CredentialResponse) => {
-        if (!response.credential) reject(new Error("No credential received from Google."));
-        else resolve(response);
+        clearTimeout(timeout);
+        console.log("✅ [silentGoogle] Callback received", { hasCredential: !!response.credential });
+
+        if (!response.credential) {
+          reject(new Error("No credential received from Google."));
+        } else {
+          resolve(response);
+        }
       },
     });
 
     try {
+      console.log("🔄 [silentGoogle] Requesting access token...");
       client.requestAccessToken({ prompt: "none" });
     } catch (error) {
+      clearTimeout(timeout);
+      console.error("❌ [silentGoogle] requestAccessToken failed", error);
       reject(error);
     }
   });
@@ -203,7 +234,7 @@ export const silentGoogleSignIn = (): Promise<CredentialResponse> => {
  * - réponse = AuthResponseDto (accessToken + session)
  */
 export const refreshAccessToken = async (): Promise<AuthResponseDto> => {
-  // Si ton back exige consumes=application/json, envoie {} :
+  await ensureXsrfCookie(API);
   const response = await API.post<AuthResponseDto>("/auth/refresh", {});
   return response.data;
 };

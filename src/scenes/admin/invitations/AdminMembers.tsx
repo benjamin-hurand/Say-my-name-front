@@ -58,8 +58,8 @@ import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 
 import QRCode from "react-qr-code";
 
-import { OrgRole } from "../../../models/organizations/UserOrganization";
-import type { MemberStatus, OrgMemberRow } from "../../../models/organizations/AdminMembers";
+import { OrgRole } from "../../../models/tenants/UserTenant";
+import type { MemberStatus, OrgMemberRow } from "../../../models/tenants/AdminMembers";
 
 import type {
   InvitationDto,
@@ -275,10 +275,10 @@ const AdminMembers: React.FC = () => {
   const qrSize = isSmallScreen ? 180 : 220;
   const navigate = useNavigate();
 
-  const { activeOrganization } = useAuth();
+  const { activeTenant } = useAuth();
 
   // Rôle org courant (pour permissions UI)
-  const myOrgRole = (activeOrganization?.role ?? null) as OrgRole | null;
+  const myOrgRole = (activeTenant?.role ?? null) as OrgRole | null;
 
   const [loading, setLoading] = useState(false);
 

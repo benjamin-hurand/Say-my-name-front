@@ -19,7 +19,7 @@ import { OrgDataProvider } from "../../contexts/OrgDataContext";
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeOrganization } = useAuth();
+  const { activeTenant } = useAuth();
 
   const [showAdvanced, setShowAdvanced] = React.useState<boolean>(() => {
     const v = localStorage.getItem("settings_showAdvanced");
@@ -75,7 +75,7 @@ const SettingsPage: React.FC = () => {
         <AppearanceSection showAdvanced={showAdvanced} />
 
         {/* ✅ Progression (Courses) uniquement si org active + provider monté */}
-        {activeOrganization ? (
+        {activeTenant ? (
           <OrgDataProvider>
             <CoursesSection showAdvanced={showAdvanced} />
           </OrgDataProvider>

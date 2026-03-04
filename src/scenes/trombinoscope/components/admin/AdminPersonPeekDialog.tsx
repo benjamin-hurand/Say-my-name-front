@@ -45,7 +45,7 @@ import {
 } from "../../../../services/dto/person/search/PersonCardDtos";
 import { getAdminPersonDetails } from "../../../../services/business/admin/admin.service";
 import { AdminPersonDetailsDto } from "../../../../services/dto/person/admin/AdminPersonDetailsDto";
-import { formatRole } from "../../../../models/organizations/UserOrganization";
+import { formatRole } from "../../../../models/tenants/UserTenant";
 import AdminChangeRequestReviewDialog from "../personPeek/AdminChangeRequestReviewDialog";
 import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 import AdminChangeRequestCard from "./AdminChangeRequestCard";
@@ -591,8 +591,8 @@ export default function AdminPersonPeekDialog({
                   >
                     <Chip color="success" size="small" label="Compte lié" />
                     <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                      {linkedUser.organizationRole
-                        ? `${formatRole(linkedUser.organizationRole)} `
+                      {linkedUser.tenantRole
+                        ? `${formatRole(linkedUser.tenantRole)} `
                         : ""}
                       {linkedUser.displayName}
                       {linkedUser.primaryEmail

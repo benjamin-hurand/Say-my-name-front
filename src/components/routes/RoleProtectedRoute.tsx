@@ -13,13 +13,13 @@ const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   allowedRoles,
   redirectPath = "/", // fallback par défaut
 }) => {
-  const { isAuthenticated, activeOrganization } = useAuth();
+  const { isAuthenticated, activeTenant } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/signin" />;
   }
 
-  const orgRole = activeOrganization?.role;
+  const orgRole = activeTenant?.role;
 
   if (!orgRole || !allowedRoles.includes(orgRole)) {
     return <Navigate to={redirectPath} replace />;

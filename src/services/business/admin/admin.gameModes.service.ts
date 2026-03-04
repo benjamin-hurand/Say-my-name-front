@@ -13,7 +13,7 @@ export async function createAdminGameMode(payload: CreateGameModePayload): Promi
   return data;
 }
 
-/** PUT /api/admin/gamemodes/{id} */
+/** PUT /api/admin  /{id} */
 export async function updateAdminGameMode(
   id: number,
   payload: UpdateGameModePayload,

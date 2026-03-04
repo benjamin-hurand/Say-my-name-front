@@ -1,136 +1,89 @@
 # Design system implicite (SayMyName UI)
 
 ## Typo
-- `Titillium Web` (CssBaseline), fallback Roboto/Helvetica/Arial.
-- Base 16px, poids 400; titres plus denses, lisibilité prioritaire (usage quotidien).
+- `Titillium Web` (CssBaseline), fallback sans-serif.
+- Base 16px, poids 400; titres denses pour lisibilite quotidienne.
 
 ## Couleurs
 - Light/Dark via `ThemeColorContext`.
-- Accent dynamique via CSS var `--theme-color`.
-- Les composants MUI utilisent `color="accent"` (Buttons/Chips/TextFields).
-- Fond body : #f5f5dc (light) ou #242424 (dark).
+- Accent dynamique stockee en CSS var `--theme-color`; variants accent pour Buttons/Chips/TextFields.
+- Fond body : #f5f5dc (light) ou #242424 (dark) depuis `theme.ts`.
 
 ## Surfaces
-- Glassmorphism léger (backdrop-filter 6–12px) sur cards, boutons, inputs.
-- Radius 12–16.
-- Ombres discrètes; accent glow ponctuel (top ranks / CTA).
+- Cards/boutons/inputs avec blur leger (6–12px), radius ~16.
+- Ombres discretes; glow accent ponctuel (menu/CTA).
+- Containers frequents `Container maxWidth="sm"` pour les pages hub (leaderboard, XP, profile).
 
 ## Spacing & Layout
 - Grille 8px; paddings 16–24.
-- Shell `Layout` : Header + content + Footer.
-- Header sticky avec logique “back”.
-- Footer dock : centré (max width ~400px), actions globales (org switch, thème, langue, settings, home/logout).
+- `Layout` : Header optionnel + content + Footer dock; content flex/scroll interne.
+- Footer dock centree (~400px) avec actions globales; back logic dans Header (onBack string).
 
 ## Iconographie
-- MUI Icons (ArrowBack, Settings, Business, Language, Logout, etc.) + héritage de couleur accent.
+- MUI Icons (Settings, Business, Language, Logout, EmojiEvents, Bolt, etc.), couleur accent via theme.
 
 ---
 
-# Patterns récurrents (UX)
+# Patterns recurrents (UX)
 
 ## Navigation
-- `Layout` : pages standard (headerTitle, onBack).
-- `WithOrgLayout` / routes protégées : auth/org/role.
-- Back logic : historique → previous route → fallback `/`.
+- `Layout` pour toutes les pages internes; `WithOrgLayout` injecte data annuaire/modes; `ProtectedRoute` / `OrgProtectedRoute` / `RoleProtectedRoute` pour guards.
+- Footer : org switch hub + join-by-code dialog, theme toggle, langue, settings, home/logout.
+- Back : onBack fourni dans Layout (string) sinon historique browser.
 
 ## Feedback
-- Toasts (react-toastify) pour actions globales (save/reset/login/join).
-- Alerts inline pour erreurs de formulaires / informations contextualisées.
-- Règle recommandée :
-  - Form / validation = inline
-  - Action globale / async = toast (+ loader visible)
+- Toasts (react-toastify) pour actions globales (save/reset/signin/join).
+- Alerts inline pour erreurs de formulaire ou etats error/empty (leaderboard, trombi, profile).
+- Rappel : validation → inline; actions async globales → toast + loader visible.
 
 ## Loading / skeleton
-- `SkeletonBlock` / placeholders avec délai min (éviter flash).
-- Toujours un empty state explicite + CTA.
+- Skeletons sur leaderboard, XP, profile (avatar), courses stats; spinner avec delai min dans trombi.
+- Empty states explicites + CTA (leaderboard "Aucun score", XP "Aucun gain", courses hub, trombi selection).
 
 ## Listes / Cards
-- `CourseQuickStart` : CTA principal + progression.
-- `SectionCard` : titre + sous-texte + actions à droite; surface glass.
-- `FilterBar` : search + chips + badge counts + reset; réutilisable.
+- `CourseQuickStart` : CTA principal + progression + menu reset.
+- `SectionCard` / blocs parametres (settings).
+- `Trombi*` : grid/table, filtres/sorts sticky, selection toolbar, peek dialog/drawer, infinite scroll sentinel ou pagination.
+- Hub XP/Leaderboard : cartes sombres avec blur + chips (rank/XP/date), listes denses (ListItem + Chip).
 
 ---
 
-# Leaderboard (V1) — Patterns à standardiser
-
-## Objectif produit
-- Offrir un comparatif motivant sans complexité.
-- Un **score monotone** (ne diminue jamais) comme métrique primaire.
-- Afficher le score partout de la même façon (format, label, hiérarchie).
-
-## Primitives
-- `LeaderboardMiniCard` (Menu)
-  - Affiche : “Your rank”, score, mini tip “Train to gain points”, CTA “View leaderboard”.
-  - States : loading skeleton / empty (no activity) / error (retry).
-
-- `LeaderboardPodium`
-  - Top 3 : avatars, noms, scores; #1 plus grand; glow accent léger.
-  - State : si <3 users, layout adaptatif sans casser la symétrie.
-
-- `RankRow`
-  - Colonnes : rank, avatar, name, score (mono), (optionnel) delta/trend.
-  - “You row” highlight (background plus clair + border accent).
-
-- `ScoreChip`
-  - Une seule info primaire : le score.
-  - Le breakdown (ex: “correct answers”, “sessions”) est secondaire (tooltip / drawer).
-
-## Écrans
-- `LeaderboardPage`
-  - Header + timeframe (optionnel V1 all-time)
-  - “Your Rank” card
-  - Podium top 3
-  - Liste complète avec search
-  - “How it works” card (règles score simples)
-  - Empty state : CTA “Start training”
-
-## Ton visuel
-- Compétitif mais sobre.
-- Accent neon sur top ranks; le reste data-centric et lisible.
-- Éviter trop de couleurs; garder le focus sur 1–2 surfaces fortes.
+# XP / Leaderboard actuels
+- Leaderboard V1 : carte header avec rank/XP + refresh, badges XP/historique; Top 50 liste (rank/avatar/nom/XP/dernier gain), CTA profil. Etats : skeleton, empty, erreur.
+- XP Hub : resume XP/niveau/rang + progress bar, dernier gain, CTA voir classement; historique groupe par jour avec icones event et delta XP; bouton "Charger plus" + retry.
+- Absents aujourd'hui : search, filtres (suivis), timeframe; podium/mini-card legacy non utilises.
+- A harmoniser : ScoreChip/RankRow/podium si on reintroduit des variantes, et partage de composants entre leaderboard et hub XP (chips, boutons refresh/charger plus).
 
 ---
 
-# Filtres & tri — harmonisation
-- Construire un composant `FilterBar` configurable :
-  - Search input
-  - Chips (active filters)
-  - Buttons: Filters / Sort / Reset
-  - Badge counts
-- Réutiliser ce pattern sur :
-  - Trombinoscope
-  - Admin Change Requests
-  - Leaderboard (search + chips simples)
-  - Quiz options (version “config”, pas “runtime”)
+# Filtres & tri
+- Pattern complet dans Trombinoscope : barre outils + chips actifs, filtres et tri sticky (ouvrables/fermetures auto au scroll), badge counts, toggle selection; bulk actions follow/unfollow.
+- Quiz options : version config (mode, filtres, tri, population, repetition, helps) avec confirmation reset.
+- Leaderboard/XP : aucun filtre/tri; si besoins futurs, reutiliser FilterBar-lite (search + chips + reset).
+- Admin CRs : search/sort + tabs; aligner badge compte et reset avec FilterBar standard.
 
 ---
 
-# Quiz — cohérence Training / Course
-- `QuizHeader` standard :
-  - back + title + progress (x/y)
-  - (optionnel) timer (plus tard)
-  - point d’entrée help/options
-- `QuizDisplay` :
-  - photo/initiales + flip help
-  - input réponse
-  - résultats (result mode)
-  - CTA primaires/secondaires cohérents
+# Quiz – coherence Training / Course
+- `QuizHeader` implicite via Layout (title/back); `QuizDisplay` partage reponses/photo/help/resultats pour Training et Progression.
+- Helps : initialGiven/typosFriendly; repetition patterns ajustent la queue.
+- Etats : loading initial, no questions (toast + CTA options), result mode, review session (reviewList) avec snapshot options dans `QuizSessionContext`.
 
 ---
 
-# Dette UX probable (après suppression challenges)
-- Certains libellés/CTA/props legacy peuvent rester (ex: “Create challenge”, “fromChallenge”).
-- Cohérence à renforcer :
-  - reset confirmations unifiées
-  - règles toast vs alert
-  - hiérarchie CTA (1 primaire/section)
+# Dette UX probable
+- Leaderboard/XP : manque de search/filtres/timeframe, pas de breakdown score; composants podium/mini-card legacy non aligns avec l'UI actuelle.
+- Profile : CTAs vers `/profile/create` et `/profile/pick` sans routes definies; risque de navigation 404.
+- Training review : `goBackFromReview` pointe `/menu` (route absente, fallback via redirect).
+- Join-by-code (footer/onboarding) encore stub cote back.
+- StartCourse : redirection sur `/course/{id}/continue` non declaree dans le router (potentiel 404).
+- Harmonisation manquante des confirmations reset (courses, options) et des regles toast vs alert selon ecran.
 
 ---
 
-# Recommandations structurelles (primitives à standardiser en priorité)
-1) `Button` variants (primary/secondary/danger) + focus styles cohérents.
-2) `SectionCard` standard (header/actions/states).
-3) `FilterBar` standard.
-4) `ConfirmDialog` harmonisé (checklist + type RESET optionnel).
-5) `SkeletonBlock` + empty states systématiques.
-6) `Leaderboard` primitives (MiniCard/Podium/RankRow/ScoreChip).
+# Recommandations structurelles (priorite)
+1) Standardiser primitives leaderboard/XP (ScoreChip/RankRow/Podium/mini card) et ajouter au moins search ou filtre suivi si besoin.
+2) Clarifier routes manquantes (`/profile/create|pick`, `/course/{id}/continue`, `/menu`) ou ajuster les CTAs pour pointer vers des routes existantes.
+3) Factoriser un `FilterBar` reutilisable (trombi/admin/leaderboard futur) + focus styles coherents.
+4) Unifier confirmations reset (courses/options) et etats loading/empty/erreur documentes par ecran.
+5) Garder `CourseQuickStart` / `SectionCard` et patterns cards blur/glass comme references visuelles pour de nouveaux ecrans.

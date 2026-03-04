@@ -16,10 +16,10 @@ const Menu: React.FC = () => {
   const { color } = useThemeColorContext();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { activeOrganization } = useAuth();
+  const { activeTenant } = useAuth();
   const theme = useTheme();
 
-  const canSeeAdmin = !!activeOrganization && ["ADMIN","OWNER"].includes(activeOrganization.role);
+  const canSeeAdmin = !!activeTenant && ["ADMIN","OWNER"].includes(activeTenant.role);
 
   // Responsive
   const smallWidth = useMediaQuery(theme.breakpoints.down('sm'));
@@ -41,7 +41,7 @@ const Menu: React.FC = () => {
   useEffect(() => {
     (async () => {
       // 🚫 Si aucune organisation active, on ne tente pas de charger le cours
-      if (!activeOrganization) {
+      if (!activeTenant) {
         setLoadingCourse(false);
         return;
       }
@@ -56,7 +56,7 @@ const Menu: React.FC = () => {
         setLoadingCourse(false);
       }
     })();
-  }, [activeOrganization, refreshCurrentCourse, setSelectedCourse, refresh]);
+  }, [activeTenant, refreshCurrentCourse, setSelectedCourse, refresh]);
 
   const rawStats = selectedCourse ? get(selectedCourse.id) : null;
   const statsLoading = selectedCourse ? isLoading(selectedCourse.id) : false;
@@ -91,7 +91,7 @@ const Menu: React.FC = () => {
   const accent = theme.palette.accent?.main ?? theme.palette.primary.main;
 
   // 🧩 ÉTAT ONBOARDING : pas d’organisation → pas de menu normal
-  if (!activeOrganization) {
+  if (!activeTenant) {
     return (
       <Box
         sx={{

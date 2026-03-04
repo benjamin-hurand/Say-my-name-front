@@ -1,4 +1,4 @@
-// src/models/organizations/AdminMembers.ts
+// src/models/tenants/AdminMembers.ts
 
 export type {
   OrgMemberRow,

@@ -38,7 +38,7 @@ export default function Onboarding() {
     setJoinLoading(true);
     try {
       // TODO (backend): appeler ton endpoint "join by code"
-      // ex: await joinOrganizationByCode(code);
+      // ex: await joinTenantByCode(code);
       // puis refresh session/orgs si nécessaire
       notifySuccess("Code reçu. Finalise le branchement API pour rejoindre l’organisation.");
       closeJoin();

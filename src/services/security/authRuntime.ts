@@ -4,7 +4,7 @@ export type SessionDto = {
   publicUserId: string | null;
   displayName: string | null;
   isAdmin: boolean;
-  organizations: any[];
+  tenants: any[];
 };
 
 export type AuthResponseDto = {
@@ -58,21 +58,41 @@ export const shouldSkipAuthRetry = (url?: string) => {
     url.includes("/auth/register") ||
     url.includes("/auth/google") ||
     url.includes("/auth/refresh") ||
-    url.includes("/auth/logout")
+    url.includes("/auth/logout") ||
+    url.includes("/auth/csrf") ||
+    url.includes("/auth/session")
   );
+};
+
+type EnsureOptions = {
+  /**
+   * Mode silencieux:
+   * - ne déclenche PAS de logout()
+   * - retourne simplement null si refresh impossible
+   *
+   * À utiliser pour le BOOT (absence de cookie refresh = utilisateur non connecté).
+   */
+  silent?: boolean;
 };
 
 /**
  * Assure qu'on a un access token frais.
  * - 1 seul refresh concurrent (anti storm)
- * - en cas d'échec: clear token + onLogout(best effort)
+ * - en cas d'échec:
+ *   - silent=true  => clear token + return null (PAS de logout)
+ *   - silent=false => clear token + onLogout()
  */
-export const ensureFreshAccessToken = async (reason?: string): Promise<string | null> => {
+export const ensureFreshAccessToken = async (
+  reason?: string,
+  opts?: EnsureOptions
+): Promise<string | null> => {
   if (!_refreshAccessToken) {
     throw new Error("authRuntime not initialized: missing refreshAccessToken()");
   }
 
   if (_refreshPromise) return _refreshPromise;
+
+  const silent = !!opts?.silent;
 
   _refreshPromise = (async () => {
     try {
@@ -81,15 +101,20 @@ export const ensureFreshAccessToken = async (reason?: string): Promise<string | 
 
       setAccessToken(newToken);
 
-      if (!newToken && _onLogout) {
-        await _onLogout({ reason: reason ?? "refresh-returned-empty-token" });
+      // Token vide = état incohérent => traité comme échec
+      if (!newToken) {
+        if (!silent && _onLogout) {
+          await _onLogout({ reason: reason ?? "refresh-returned-empty-token" });
+        }
+        return null;
       }
 
       return newToken;
     } catch (e) {
+      // Échec 401/403 du refresh token (cookie absent / expiré / révoqué / DB reset)
       setAccessToken(null);
 
-      if (_onLogout) {
+      if (!silent && _onLogout) {
         try {
           await _onLogout({ reason: reason ?? "refresh-failed" });
         } catch {

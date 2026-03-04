@@ -1,6 +1,6 @@
 // src/services/business/admin/admin.members.service.ts
-import { OrgMemberRow } from "../../../models/organizations/AdminMembers";
-import { OrgRole } from "../../../models/organizations/UserOrganization";
+import { OrgMemberRow } from "../../../models/tenants/AdminMembers";
+import { OrgRole } from "../../../models/tenants/UserTenant";
 import API from "../../api/apiUtils";
 
 const ADMIN_ENDPOINT = "/admin";

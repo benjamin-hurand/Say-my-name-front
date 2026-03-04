@@ -1,9 +1,9 @@
-import { OrgRole } from "../../../models/organizations/UserOrganization";
+import { OrgRole } from "../../../models/tenants/UserTenant";
 
-export interface UserOrganizationDto {
-  organizationId: number;
-  organizationKey: string;
-  organizationName: string;
+export interface UserTenantDto {
+  tenantId: number;
+  tenantKey: string;
+  tenantName: string;
   role: OrgRole;
   createdAt: string; // ISO string, à parser si besoin en Date
 }

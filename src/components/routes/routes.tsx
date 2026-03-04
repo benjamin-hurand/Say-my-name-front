@@ -1,4 +1,5 @@
 // src/components/routes/routes.tsx
+import React from "react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
 import { AdminDataLayout } from "../../contexts/AdminDataContext";
@@ -29,36 +30,44 @@ import { Layout } from "../layout/Layout";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleProtectedRoute from "./RoleProtectedRoute";
 
-// ⬇️ Providers annuaire & dataSource admin
 import { PersonsDirectoryProvider } from "../../contexts/PersonsDirectoryContext";
 import { adminDataSource } from "../../contexts/personsDirectory.dataSource";
-
-// ⬇️ Provider cache CR
 import { AdminCRCacheProvider } from "../../contexts/AdminCRCacheContext";
 
 import { ProfileProvider } from "../../contexts/ProfileContext";
 import AdminAttributesPage from "../../scenes/admin/attributes/AdminAttributesPage";
 import AdminChangeRequestsPage from "../../scenes/admin/change-requests/AdminChangeRequestsPage";
 
-// ⬇️ Page publique d’invitation
 import AdminMembers from "../../scenes/admin/invitations/AdminMembers";
 import InvitationPreviewPage from "../../scenes/invitations/InvitationPreviewPage";
 import VerifyEmailPage from "../../scenes/sign-up/VerifyEmailPage";
 
-// ✅ Onboarding / Orga guard
 import LeaderboardPage from "../../scenes/leaderboard/LeaderboardPage";
 import XpHubPage from "../../scenes/leaderboard/XpHubPage";
 import Onboarding from "../../scenes/onboarding/Onboarding";
 import WithOrgLayout from "../layout/WithOrgLayout";
 import OrgProtectedRoute from "./OrgProtectedRoute";
 
+import { useQuizOptions } from "../../contexts/QuizOptionsContext";
+
+const TrainingQuizRoute: React.FC = () => {
+  const { optionsFingerprint } = useQuizOptions();
+
+  return (
+    <Layout headerTitle="Training" onBack="/">
+      <TrainingQuiz key={optionsFingerprint} />
+    </Layout>
+  );
+};
+
 const router = createBrowserRouter([
-  // =========================
-  // ROUTES PUBLIQUES
-  // =========================
   {
     path: "/",
+    element: <Outlet />,
     children: [
+      // =========================
+      // ROUTES PUBLIQUES
+      // =========================
       { path: "signin", element: <SignIn /> },
       { path: "signup", element: <SignUp /> },
       { path: "signup/verify-email", element: <VerifyEmailPage /> },
@@ -66,224 +75,202 @@ const router = createBrowserRouter([
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "reset-password", element: <ResetPasswordPage /> },
 
-      // 🔓 Preview d’invitation (publique)
       { path: "invitation", element: <InvitationPreviewPage /> },
       { path: "invite", element: <Navigate to="/invitation" replace /> },
-    ],
-  },
 
-  // =========================
-  // ZONE AUTHENTIFIÉE
-  // =========================
-  {
-    path: "/",
-    element: (
-      <ProfileProvider>
-        <CourseProvider>
-          <CourseStatsProvider>
-            {/* ✅ Un seul guard AUTH pour toute la zone */}
-            <ProtectedRoute element={<Outlet />} />
-          </CourseStatsProvider>
-        </CourseProvider>
-      </ProfileProvider>
-    ),
-    children: [
-      // -----------------------------------------
-      // AUTH OK, MAIS PAS D'ORGANISATION → ONBOARDING
-      // -----------------------------------------
+      // =========================
+      // ZONE AUTHENTIFIÉE
+      // =========================
       {
-        path: "onboarding",
         element: (
-          <Layout isMenu>
-            <Onboarding />
-          </Layout>
+          <ProfileProvider>
+            <CourseProvider>
+              <CourseStatsProvider>
+                <ProtectedRoute element={<Outlet />} />
+              </CourseStatsProvider>
+            </CourseProvider>
+          </ProfileProvider>
         ),
-      },
-
-      // Settings: auth ok requis, mais PAS org requise
-      {
-        path: "settings",
-        element: (
-          <Layout headerTitle="Settings" onBack="/">
-            <SettingsPage />
-          </Layout>
-        ),
-      },
-
-      // -----------------------------------------
-      // AUTH OK + ORGA REQUISE
-      // -----------------------------------------
-      {
-        element: <OrgProtectedRoute element={<WithOrgLayout />} />,
         children: [
-          // ----- MENU -----
           {
-            index: true,
+            path: "onboarding",
             element: (
               <Layout isMenu>
-                <Menu />
+                <Onboarding />
               </Layout>
             ),
           },
 
-          // ----- LEADERBOARD -----
           {
-            path: "leaderboard",
+            path: "settings",
+            element: (
+              <Layout headerTitle="Settings" onBack="/">
+                <SettingsPage />
+              </Layout>
+            ),
+          },
+
+          {
+            element: <OrgProtectedRoute element={<WithOrgLayout />} />,
             children: [
               {
                 index: true,
                 element: (
-                  <Layout headerTitle="Classement" onBack="/">
-                    <LeaderboardPage />
+                  <Layout isMenu>
+                    <Menu />
                   </Layout>
                 ),
               },
-            ],
-          },
 
-          {
-            path: "xp",
-            element: (
-              <Layout headerTitle="XP" onBack="/leaderboard">
-                <XpHubPage />
-              </Layout>
-            ),
-          },
-
-          // ----- ADMIN -----
-          {
-            path: "admin",
-            element: (
-              <RoleProtectedRoute
-                allowedRoles={["VIEWER", "EDITOR", "ADMIN", "OWNER"]}
-                element={
-                  <AdminCRCacheProvider>
-                    <AdminDataLayout>
-                      <PersonsDirectoryProvider dataSource={adminDataSource}>
-                        <AdminLayout />
-                      </PersonsDirectoryProvider>
-                    </AdminDataLayout>
-                  </AdminCRCacheProvider>
-                }
-                redirectPath="/"
-              />
-            ),
-            children: [
-              { index: true, element: <AdminHome /> },
-              { path: "persons", element: <PersonAdminPage /> },
-              { path: "persons/:id", element: <PersonAdminPage /> },
-              { path: "change-requests", element: <AdminChangeRequestsPage /> },
-              { path: "change-requests/:id", element: <AdminChangeRequestsPage /> },
-              { path: "attributes", element: <AdminAttributesPage /> },
-              { path: "members", element: <AdminMembers /> },
-            ],
-          },
-
-          // ----- TROMBINOSCOPE -----
-          {
-            path: "trombinoscope",
-            element: (
-              <Layout headerTitle="Trombinoscope">
-                <TrombinoscopePage />
-              </Layout>
-            ),
-          },
-          {
-            path: "trombinoscope/:id",
-            element: (
-              <Layout headerTitle="Trombinoscope">
-                <TrombinoscopePage />
-              </Layout>
-            ),
-          },
-
-          // ----- PROFIL -----
-          {
-            path: "profile",
-            element: (
-              <Layout headerTitle="Profile">
-                <ProfilePage />
-              </Layout>
-            ),
-          },
-
-          // ----- QUIZ SESSION WRAPPER -----
-          {
-            element: (
-              <QuizSessionProvider>
-                <Outlet />
-              </QuizSessionProvider>
-            ),
-            children: [
-              // ——— Training ———
               {
-                path: "training",
+                path: "leaderboard",
+                children: [
+                  {
+                    index: true,
+                    element: (
+                      <Layout headerTitle="Classement" onBack="/">
+                        <LeaderboardPage />
+                      </Layout>
+                    ),
+                  },
+                ],
+              },
+
+              {
+                path: "xp",
                 element: (
-                  <QuizOptionsProvider>
+                  <Layout headerTitle="XP" onBack="/leaderboard">
+                    <XpHubPage />
+                  </Layout>
+                ),
+              },
+
+              {
+                path: "admin",
+                element: (
+                  <RoleProtectedRoute
+                    allowedRoles={["VIEWER", "EDITOR", "ADMIN", "OWNER"]}
+                    element={
+                      <AdminCRCacheProvider>
+                        <AdminDataLayout>
+                          <PersonsDirectoryProvider dataSource={adminDataSource}>
+                            <AdminLayout />
+                          </PersonsDirectoryProvider>
+                        </AdminDataLayout>
+                      </AdminCRCacheProvider>
+                    }
+                    redirectPath="/"
+                  />
+                ),
+                children: [
+                  { index: true, element: <AdminHome /> },
+                  { path: "persons", element: <PersonAdminPage /> },
+                  { path: "persons/:id", element: <PersonAdminPage /> },
+                  { path: "change-requests", element: <AdminChangeRequestsPage /> },
+                  { path: "change-requests/:id", element: <AdminChangeRequestsPage /> },
+                  { path: "attributes", element: <AdminAttributesPage /> },
+                  { path: "members", element: <AdminMembers /> },
+                ],
+              },
+
+              {
+                path: "trombinoscope",
+                element: (
+                  <Layout headerTitle="Trombinoscope">
+                    <TrombinoscopePage />
+                  </Layout>
+                ),
+              },
+              {
+                path: "trombinoscope/:id",
+                element: (
+                  <Layout headerTitle="Trombinoscope">
+                    <TrombinoscopePage />
+                  </Layout>
+                ),
+              },
+
+              {
+                path: "profile",
+                element: (
+                  <Layout headerTitle="Profile">
+                    <ProfilePage />
+                  </Layout>
+                ),
+              },
+
+              {
+                element: (
+                  <QuizSessionProvider>
                     <Outlet />
-                  </QuizOptionsProvider>
+                  </QuizSessionProvider>
                 ),
                 children: [
                   {
-                    index: true,
+                    path: "training",
                     element: (
-                      <Layout headerTitle="Training" onBack="/">
-                        <TrainingQuiz />
-                      </Layout>
+                      <QuizOptionsProvider>
+                        <Outlet />
+                      </QuizOptionsProvider>
                     ),
+                    children: [
+                      { index: true, element: <TrainingQuizRoute /> },
+                      {
+                        path: "options",
+                        element: (
+                          <Layout headerTitle="Training Options" onBack="/training">
+                            <QuizOptions />
+                          </Layout>
+                        ),
+                      },
+                    ],
                   },
+
                   {
-                    path: "options",
-                    element: (
-                      <Layout headerTitle="Training Options" onBack="/training">
-                        <QuizOptions />
-                      </Layout>
-                    ),
+                    path: "course",
+                    element: <Outlet />,
+                    children: [
+                      {
+                        index: true,
+                        element: (
+                          <Layout headerTitle="Course">
+                            <ProgressionQuiz />
+                          </Layout>
+                        ),
+                      },
+                      {
+                        path: "hub",
+                        element: (
+                          <Layout headerTitle="Mes parcours" onBack="/">
+                            <CoursesHub />
+                          </Layout>
+                        ),
+                      },
+                      {
+                        path: "new",
+                        element: (
+                          <Layout headerTitle="Start Course" onBack="/course/hub">
+                            <StartCourse />
+                          </Layout>
+                        ),
+                      },
+                    ],
                   },
                 ],
               },
 
-              // --- Mes cours ---
-              {
-                path: "course",
-                element: <Outlet />,
-                children: [
-                  {
-                    index: true,
-                    element: (
-                      <Layout headerTitle="Course">
-                        <ProgressionQuiz />
-                      </Layout>
-                    ),
-                  },
-                  {
-                    path: "hub",
-                    element: (
-                      <Layout headerTitle="Mes parcours" onBack="/">
-                        <CoursesHub />
-                      </Layout>
-                    ),
-                  },
-                  {
-                    path: "new",
-                    element: (
-                      <Layout headerTitle="Start Course" onBack="/course/hub">
-                        <StartCourse />
-                      </Layout>
-                    ),
-                  },
-                ],
-              },
+              // fallback ORG zone
+              { path: "*", element: <Navigate to="/" replace /> },
             ],
           },
 
-          // fallback ORG zone
+          // fallback AUTH zone
           { path: "*", element: <Navigate to="/" replace /> },
         ],
       },
 
-      // fallback AUTH zone
-      { path: "*", element: <Navigate to="/" replace /> },
+      // fallback global: renvoie vers signin (optionnel mais pratique)
+      { path: "*", element: <Navigate to="/signin" replace /> },
     ],
   },
 ]);

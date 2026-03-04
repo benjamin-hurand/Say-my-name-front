@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
   const handleBack = () => {
     // Retour à la page précédente si possible, sinon vers la page de login
     if (window.history.length > 1) navigate(-1);
-    else navigate('/login'); // ajuste si ta route de connexion est différente
+    else navigate('/signin'); // ajuste si ta route de connexion est différente
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
                 fullWidth
                 variant="contained"
                 sx={{ mt: 1 }}
-                onClick={() => navigate('/login')} // CTA direct vers login
+                onClick={() => navigate('/signin')} // CTA direct vers login
               >
                 Back to sign in
               </Button>
@@ -123,7 +123,7 @@ export default function ForgotPasswordPage() {
 
               {/* Lien bas de page pour revenir si l'utilisateur change d'avis */}
               <Button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/signin')}
                 fullWidth
                 variant="text"
                 sx={{ mt: 1 }}

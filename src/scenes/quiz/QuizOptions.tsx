@@ -11,68 +11,98 @@ import {
   Divider,
   FormGroup,
   Tooltip,
-  Typography
-} from '@mui/material';
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuizOptions } from '../../contexts/QuizOptionsContext';
-import { GameFilter } from '../../models/commons/Game/GameOptions/GameFilter.model';
-import { populationScopes } from '../../models/commons/Game/GameOptions/GamePopulationScope.model';
-import { GameRepetitionPattern, repetitionPatterns } from '../../models/commons/Game/GameOptions/GameRepetitionPattern.model';
-import { GameSortBy } from '../../models/commons/Game/GameOptions/GameSortBy.model';
-import AddFilterModal from './components/AddFilterModal';
-import { AddSortModal } from './components/AddSortModal';
-import { DraggableSortingMethods } from './components/DraggableSortingMethods';
-import ModeCard from './components/ModeCard';
-import OptionCard from './components/OptionCard';
+  Typography,
+} from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-interface QuizOptionsProps {
-}
+import { useQuizOptions } from "../../contexts/QuizOptionsContext";
+import { GameFilter } from "../../models/commons/Game/GameOptions/GameFilter.model";
+import { populationScopes } from "../../models/commons/Game/GameOptions/GamePopulationScope.model";
+import { GameRepetitionPattern, repetitionPatterns } from "../../models/commons/Game/GameOptions/GameRepetitionPattern.model";
+import { GameSortBy } from "../../models/commons/Game/GameOptions/GameSortBy.model";
+import { QuizPreferredFormat } from "../../services/dto/quiz/QuizEnums";
 
-const QuizOptions: React.FC<QuizOptionsProps> = ({
-}) => {
-  // Navigation
+import AddFilterModal from "./components/AddFilterModal";
+import { AddSortModal } from "./components/AddSortModal";
+import { DraggableSortingMethods } from "./components/DraggableSortingMethods";
+import ModeCard from "./components/ModeCard";
+import OptionCard from "./components/OptionCard";
+
+const QuizOptions: React.FC = () => {
   const navigate = useNavigate();
-
-  // Local state for confirmation dialog
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
-  // RECUP DEPUIS CONTEXT
   const {
-    selectedPopulationScope, setSelectedPopulationScope,
-    tempSelectedPopulationScope, setTempSelectedPopulationScope,
-    modes, selectedMode, setSelectedMode, tempSelectedMode, setTempSelectedMode,
-    availableFilters, selectedFilters, setSelectedFilters, tempSelectedFilters, setTempSelectedFilters,
-    availableSorts, selectedSortingMethods, setSelectedSortingMethods, tempSelectedSortingMethods, setTempSelectedSortingMethods,
-    selectedRepetitionPattern, setSelectedRepetitionPattern, tempSelectedRepetitionPattern, setTempSelectedRepetitionPattern,
-    saveProgress, setSaveProgress,
-    selectedHelps, setSelectedHelps, tempSelectedHelps, setTempSelectedHelps, hasCriticalChanges
+    selectedPopulationScope,
+    setSelectedPopulationScope,
+    tempSelectedPopulationScope,
+    setTempSelectedPopulationScope,
+
+    modes,
+    selectedMode,
+    setSelectedMode,
+    tempSelectedMode,
+    setTempSelectedMode,
+
+    availableFilters,
+    selectedFilters,
+    setSelectedFilters,
+    tempSelectedFilters,
+    setTempSelectedFilters,
+
+    availableSorts,
+    selectedSortingMethods,
+    setSelectedSortingMethods,
+    tempSelectedSortingMethods,
+    setTempSelectedSortingMethods,
+
+    selectedRepetitionPattern,
+    setSelectedRepetitionPattern,
+    tempSelectedRepetitionPattern,
+    setTempSelectedRepetitionPattern,
+
+    saveProgress,
+    setSaveProgress,
+
+    selectedHelps,
+    setSelectedHelps,
+    tempSelectedHelps,
+    setTempSelectedHelps,
+
+    selectedFormat,
+    setSelectedFormat,
+    tempSelectedFormat,
+    setTempSelectedFormat,
+
+    hasCriticalChanges,
   } = useQuizOptions();
 
   useEffect(() => {
-    // Au premier rendu, on aligne tous les ‘temps’ sur les ‘selecteds’
+    // Align temps with committed values at first render
     setTempSelectedMode(selectedMode);
     setTempSelectedFilters(selectedFilters);
     setTempSelectedSortingMethods(selectedSortingMethods);
-    setTempSelectedRepetitionPattern(selectedRepetitionPattern);
+    setTempSelectedRepetitionPattern(selectedRepetitionPattern ?? repetitionPatterns.optimal);
     setTempSelectedHelps({
       typosFriendly: selectedHelps.typosFriendly,
-      initialGiven:  selectedHelps.initialGiven
+      initialGiven: selectedHelps.initialGiven,
     });
     setTempSelectedPopulationScope(selectedPopulationScope);
-  }, []);  // <-- vide : ne tourne qu’une seule fois
-  
+    setTempSelectedFormat(selectedFormat);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // MODES
   const renderModes = () => {
-      return modes.map((mode) => (
-          <ModeCard
-              key={mode.id}
-              mode={mode}
-              isSelected={tempSelectedMode?.id === mode.id}
-              onSelect={() => setTempSelectedMode(mode)}
-          />
-      ));
+    return modes.map((mode) => (
+      <ModeCard
+        key={mode.id}
+        mode={mode}
+        isSelected={tempSelectedMode?.id === mode.id}
+        onSelect={() => setTempSelectedMode(mode)}
+      />
+    ));
   };
 
   // FILTERS
@@ -80,155 +110,149 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
   const [openFilterModal, setOpenFilterModal] = useState(false);
 
   const renderFilters = () => {
-      if (tempSelectedFilters.length === 0) {
-          return <Chip label="No filters" disabled />;
-      }
-      return tempSelectedFilters.map((filter, index) => (
-          <Chip
-              key={index}
-              label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
-              onClick={() => handleEditFilter(index)}
-              onDelete={() => handleDeleteFilter(filter.id)}
-          />
-      ));
+    if (tempSelectedFilters.length === 0) return <Chip label="No filters" disabled />;
+    return tempSelectedFilters.map((filter, index) => (
+      <Chip
+        key={index}
+        label={`${filter.attribute.name} [${filter.minValue} - ${filter.maxValue}]`}
+        onClick={() => handleEditFilter(index)}
+        onDelete={() => handleDeleteFilter(filter.id)}
+      />
+    ));
   };
 
   const handleSaveFilter = (filter: GameFilter) => {
-      if (editingFilter) {
-        // Update existing filter based on its id.
-        setTempSelectedFilters(prevFilters =>
-          prevFilters.map(f => (f.id === editingFilter.id ? filter : f))
-        );
-        setEditingFilter(undefined);
-      } else {
-        // Add new filter.
-        setTempSelectedFilters(prevFilters => [...prevFilters, filter]);
-      }
-      setOpenFilterModal(false);
+    if (editingFilter) {
+      setTempSelectedFilters((prev) => prev.map((f) => (f.id === editingFilter.id ? filter : f)));
+      setEditingFilter(undefined);
+    } else {
+      setTempSelectedFilters((prev) => [...prev, filter]);
+    }
+    setOpenFilterModal(false);
   };
 
   const handleEditFilter = (index: number) => {
-    // Retrieve the filter to be edited (from tempSelectedFilters)
     const filterToEdit = tempSelectedFilters[index];
-    // Set a state that indicates “editing mode” and which filter is being edited
     setEditingFilter(filterToEdit);
-    // Open the addFilterModal with the editing prop populated
     setOpenFilterModal(true);
   };
 
   const handleDeleteFilter = (filterId: number) => {
-    const newFilters = tempSelectedFilters.filter(filter => filter.id !== filterId);
-    setTempSelectedFilters(newFilters);
+    setTempSelectedFilters((prev) => prev.filter((f) => f.id !== filterId));
   };
 
   const closeFilterModal = () => {
     setOpenFilterModal(false);
-    if (editingFilter) {
-      setEditingFilter(undefined);
-    }
+    setEditingFilter(undefined);
   };
-
 
   // SORTS
   const [editingSort, setEditingSort] = useState<GameSortBy | undefined>();
   const [openSortModal, setOpenSortModal] = useState(false);
 
   const handleSaveSortingMethod = (sortBy: GameSortBy) => {
-      // console.log('Save : ', JSON.stringify(sortBy));
-      // console.log('With editingSort: ', JSON.stringify(editingSort));
-      // console.log('With tempSelectedSortingMethods: ', JSON.stringify(tempSelectedSortingMethods));
-      if (editingSort) {
-          // console.log('ya editingSort, on remplace celui de base');
-          // Update existing sort based on its id.
-          setTempSelectedSortingMethods(prevSorts =>
-            prevSorts.map(s => (s.id === editingSort.id ? sortBy : s))
-          );
-          setEditingSort(undefined);
-        } else {
-          // console.log('ya pas editingSort, on rajoute normalement');
-          // Add new sort.
-          setTempSelectedSortingMethods(prevSorts => [...prevSorts, sortBy]);
-        }
-        setOpenSortModal(false);
+    if (editingSort) {
+      setTempSelectedSortingMethods((prev) => prev.map((s) => (s.id === editingSort.id ? sortBy : s)));
+      setEditingSort(undefined);
+    } else {
+      setTempSelectedSortingMethods((prev) => [...prev, sortBy]);
+    }
+    setOpenSortModal(false);
   };
 
   const handleEditSort = (index: number) => {
     const sortToEdit = tempSelectedSortingMethods[index];
     setEditingSort(sortToEdit);
     setOpenSortModal(true);
-  }; 
+  };
 
   const handleDeleteSortingMethod = (sortId: number) => {
-    const newSorts = tempSelectedSortingMethods.filter(sort => sort.id !== sortId);
-    setTempSelectedSortingMethods(newSorts);
-};  
+    setTempSelectedSortingMethods((prev) => prev.filter((s) => s.id !== sortId));
+  };
 
   const closeSortModal = () => {
     setOpenSortModal(false);
-    if (editingSort) {
-      setEditingSort(undefined);
-    }
+    setEditingSort(undefined);
   };
 
   // REPETITIONS
   const renderRepetitionOptions = () => {
     return Object.keys(repetitionPatterns).map((option) => (
-        <Tooltip key={option} title={
-        option.toLowerCase() === 'optimal'
-            ? 'Optimal: We will automatically schedule reviews based on your performance.'
-            : option.toLowerCase() === 'immediate'
-            ? 'Immediate: The question will repeat right away if answered incorrectly.'
-            : 'Never: Do not repeat this question.'
-        }>
+      <Tooltip
+        key={option}
+        title={
+          option.toLowerCase() === "optimal"
+            ? "Optimal: scheduling auto selon performance."
+            : option.toLowerCase() === "immediate"
+            ? "Immediate: repeat rapidement si erreur."
+            : "Never: pas de répétition."
+        }
+      >
         <OptionCard
-            option={option.charAt(0).toUpperCase() + option.slice(1)}
-            isSelected={tempSelectedRepetitionPattern.patternName === option.toLowerCase()}
-            onSelect={() => handleSelectRepetition(option)}
+          option={option.charAt(0).toUpperCase() + option.slice(1)}
+          isSelected={tempSelectedRepetitionPattern?.patternName === option.toLowerCase()}
+          onSelect={() => handleSelectRepetition(option)}
         />
-        </Tooltip>
+      </Tooltip>
     ));
   };
 
   const handleSelectRepetition = (option: string) => {
-      const pattern: GameRepetitionPattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
-      setTempSelectedRepetitionPattern(pattern);
-  }; 
+    const pattern: GameRepetitionPattern = repetitionPatterns[option.toLowerCase() as keyof typeof repetitionPatterns];
+    setTempSelectedRepetitionPattern(pattern);
+  };
 
   // HELPS
-  const helpOptions: {
-    key: string;
-    label: string;
-  }[] = [
-    { key: 'typosFriendly', label: 'Typos friendly' },
-    { key: 'initialGiven', label: 'Initial given' }
+  const helpOptions: { key: "typosFriendly" | "initialGiven"; label: string }[] = [
+    { key: "typosFriendly", label: "Typos friendly" },
+    { key: "initialGiven", label: "Initial given" },
   ];
+
   const renderHelpsOptions = () => {
     return helpOptions.map((option) => (
       <OptionCard
         key={option.key}
         option={option.label}
-        isSelected={tempSelectedHelps[option.key]}
-        onSelect={() => handleSelectHelps(option.key)}
+        isSelected={Boolean(tempSelectedHelps[option.key])}
+        onSelect={() => setTempSelectedHelps((prev) => ({ ...prev, [option.key]: !prev[option.key] }))}
       />
     ));
   };
-  
-  const handleSelectHelps = (key: string) => {
-    // Toggle the boolean for the specific help option.
-    setTempSelectedHelps((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // FORMATS
+  const formatOptions: { value: QuizPreferredFormat; label: string; description: string }[] = [
+    { value: "AUTO", label: "Auto", description: "Format choisi automatiquement selon le contexte" },
+    { value: "MCQ", label: "QCM", description: "Questions à choix multiples" },
+    { value: "TEXT_INPUT", label: "Texte", description: "Saisie libre de texte" },
+    { value: "CLOZE", label: "Texte à trous", description: "Compléter les lettres manquantes" },
+    { value: "HANGMAN", label: "Pendu", description: "Deviner lettre par lettre" },
+    { value: "BINARY_SWIPE", label: "Vrai/Faux", description: "Swipe binaire" },
+    { value: "ORDERING", label: "Ordre", description: "Remettre dans le bon ordre" },
+    { value: "ASSOCIATION", label: "Association", description: "Associer les éléments" },
+    { value: "WORD_PUZZLE", label: "Wordle Like", description: "Devinez le mot en utilisant les indices" },
+  ];
+
+  const renderFormatOptions = () => {
+    return formatOptions.map((option) => (
+      <Tooltip key={option.value} title={option.description} placement="top">
+        <Box>
+          <OptionCard
+            option={option.label}
+            isSelected={tempSelectedFormat === option.value}
+            onSelect={() => setTempSelectedFormat(option.value)}
+          />
+        </Box>
+      </Tooltip>
+    ));
   };
 
-  //GLOBAL SAVE
+  // GLOBAL SAVE
   const handleSaveClick = () => {
-    if (hasCriticalChanges) {
-      setOpenConfirmDialog(true);
-    } else {
-      goToQuiz(true);
-    }
+    if (hasCriticalChanges) setOpenConfirmDialog(true);
+    else goToQuiz(true);
   };
 
   const handleConfirmSave = () => {
-    console.log('handleConfirmSave called and ', );
     setOpenConfirmDialog(false);
     goToQuiz(true);
   };
@@ -243,38 +267,31 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
       setSelectedMode(tempSelectedMode);
       setSelectedFilters(tempSelectedFilters);
       setSelectedSortingMethods(tempSelectedSortingMethods);
-      setSelectedRepetitionPattern(tempSelectedRepetitionPattern);
+      setSelectedRepetitionPattern(tempSelectedRepetitionPattern ?? repetitionPatterns.optimal);
       setSelectedHelps(tempSelectedHelps);
+      setSelectedFormat(tempSelectedFormat);
     } else {
-        // Revert interim states to last committed state if changes were made but user cancelled
-        setTempSelectedPopulationScope(selectedPopulationScope);
-        setTempSelectedMode(selectedMode);
-        setTempSelectedFilters(selectedFilters);
-        setTempSelectedSortingMethods(selectedSortingMethods);
-        setTempSelectedRepetitionPattern(selectedRepetitionPattern);
-        setTempSelectedHelps(selectedHelps);
+      // revert temps to committed
+      setTempSelectedPopulationScope(selectedPopulationScope);
+      setTempSelectedMode(selectedMode);
+      setTempSelectedFilters(selectedFilters);
+      setTempSelectedSortingMethods(selectedSortingMethods);
+      setTempSelectedRepetitionPattern(selectedRepetitionPattern ?? repetitionPatterns.optimal);
+      setTempSelectedHelps(selectedHelps);
+      setTempSelectedFormat(selectedFormat);
     }
-    navigate("/training" , { replace: true });
-  }
+    navigate("/training", { replace: true });
+  };
 
   return (
-    <Box
-      sx={{
-        padding: '20px',
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
-    >
-      <FormGroup sx={{ width: '100%' }}>
-        {/* Population */}
+    <Box sx={{ padding: "20px", width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <FormGroup sx={{ width: "100%" }}>
         <Divider sx={{ mt: 2 }}>
           <Typography variant="h6">Population</Typography>
         </Divider>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', mt: '8px' }}>
-          {(['ALL','FOLLOWED','UNFOLLOWED'] as const).map(key => (
+
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", mt: "8px" }}>
+          {(["ALL", "FOLLOWED", "UNFOLLOWED"] as const).map((key) => (
             <OptionCard
               key={key}
               option={populationScopes[key].label}
@@ -283,56 +300,35 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
             />
           ))}
         </Box>
-        {/* Mode */}
+
         <Divider>
           <Typography variant="h6">Mode</Typography>
         </Divider>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-          {renderModes()}
-        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderModes()}</Box>
 
-        {/* Filters */}
         <Divider>
           <Typography variant="h6">Filters</Typography>
         </Divider>
-        {/* 
-          Sépare la zone des chips (avec flexWrap) et le bouton (avec whiteSpace: 'nowrap').
-        */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '16px',
-            width: '100%',
-          }}
-        >
-          <Box
-            sx={{
-              flexGrow: 1,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-              marginTop: '8px',
-            }}
-          >
-            {renderFilters()}
-          </Box>
-          <Box sx={{ flexShrink: 0, marginTop: '8px' }}>
-          <Tooltip title={availableFilters.length === 0 ? "Aucun filtre disponible" : ""}>
-            <span>
-              <Button
-                onClick={() => setOpenFilterModal(true)}
-                variant="contained"
-                size="small"
-                disabled={availableFilters.length === 0}
-                sx={{ whiteSpace: 'nowrap' }}
-              >
-                Add filter
-              </Button>
-            </span>
-          </Tooltip>
+
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: "16px", width: "100%" }}>
+          <Box sx={{ flexGrow: 1, display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderFilters()}</Box>
+          <Box sx={{ flexShrink: 0, marginTop: "8px" }}>
+            <Tooltip title={availableFilters.length === 0 ? "Aucun filtre disponible" : ""}>
+              <span>
+                <Button
+                  onClick={() => setOpenFilterModal(true)}
+                  variant="contained"
+                  size="small"
+                  disabled={availableFilters.length === 0}
+                  sx={{ whiteSpace: "nowrap" }}
+                >
+                  Add filter
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
         </Box>
+
         <AddFilterModal
           open={openFilterModal}
           attributes={availableFilters}
@@ -342,27 +338,12 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           handleDeleteFilter={handleDeleteFilter}
         />
 
-        {/* Sorting Methods */}
         <Divider>
           <Typography variant="h6">Sorting Methods</Typography>
         </Divider>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '16px',
-            width: '100%',
-          }}
-        >
-          <Box
-            sx={{
-              flexGrow: 1,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-              marginTop: '8px',
-            }}
-          >
+
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: "16px", width: "100%" }}>
+          <Box sx={{ flexGrow: 1, display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
             <DraggableSortingMethods
               tempSelectedSortingMethods={tempSelectedSortingMethods}
               setTempSelectedSortingMethods={setTempSelectedSortingMethods}
@@ -370,16 +351,14 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
               handleDeleteSortingMethod={handleDeleteSortingMethod}
             />
           </Box>
-          <Box sx={{ flexShrink: 0, marginTop: '8px' }}>
+          <Box sx={{ flexShrink: 0, marginTop: "8px" }}>
             <Tooltip title={availableSorts.length === 0 ? "Aucun tri disponible" : ""}>
               <span>
                 <Button
                   onClick={() => setOpenSortModal(true)}
                   variant="contained"
                   size="small"
-                  sx={{
-                    whiteSpace: 'nowrap', // Empêche le texte de passer à la ligne
-                  }}
+                  sx={{ whiteSpace: "nowrap" }}
                   disabled={availableSorts.length === 0}
                 >
                   Add Sorting Method
@@ -388,6 +367,7 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
             </Tooltip>
           </Box>
         </Box>
+
         <AddSortModal
           open={openSortModal}
           availableAttributes={availableSorts}
@@ -397,62 +377,32 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
           handleDeleteSort={handleDeleteSortingMethod}
         />
 
-        {/* Learning repetition */}
         <Divider>
           <Typography variant="h6">Learning repetition</Typography>
         </Divider>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-          {renderRepetitionOptions()}
-        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderRepetitionOptions()}</Box>
 
         <Divider sx={{ marginTop: 2, marginBottom: 1 }}>
           <Typography variant="h6">Sauvegarde de la progression</Typography>
         </Divider>
-        <Box
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '8px',
-            marginTop: '8px',
-          }}
-        >
-          <OptionCard
-            option="Enregistrer la progression"
-            isSelected={saveProgress}
-            onSelect={() => setSaveProgress(true)}
-          />
-          <OptionCard
-            option="Ne pas enregistrer"
-            isSelected={!saveProgress}
-            onSelect={() => setSaveProgress(false)}
-          />
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
+          <OptionCard option="Enregistrer la progression" isSelected={saveProgress} onSelect={() => setSaveProgress(true)} />
+          <OptionCard option="Ne pas enregistrer" isSelected={!saveProgress} onSelect={() => setSaveProgress(false)} />
         </Box>
 
-        {/* Helps */}
         <Divider>
           <Typography variant="h6">Helps</Typography>
         </Divider>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-          {renderHelpsOptions()}
-        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderHelpsOptions()}</Box>
+
+        <Divider sx={{ marginTop: 2, marginBottom: 1 }}>
+          <Typography variant="h6">Format de question</Typography>
+        </Divider>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderFormatOptions()}</Box>
       </FormGroup>
 
-      {/* Footer Buttons */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          width: '100%',
-          height: '7vh',
-          marginTop: '15px',
-        }}
-      >
-        <Button
-          variant="outlined"
-          className="menu nobg"
-          onClick={() => goToQuiz(false)}
-          sx={{ marginRight: '1vw' }}
-        >
+      <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", height: "7vh", marginTop: "15px" }}>
+        <Button variant="outlined" className="menu nobg" onClick={() => goToQuiz(false)} sx={{ marginRight: "1vw" }}>
           Cancel
         </Button>
         <Button variant="contained" className="menu" onClick={handleSaveClick}>
@@ -460,18 +410,11 @@ const QuizOptions: React.FC<QuizOptionsProps> = ({
         </Button>
       </Box>
 
-      {/* Confirmation Dialog */}
-      <Dialog
-        open={openConfirmDialog}
-        onClose={handleCancelSave}
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-description"
-      >
+      <Dialog open={openConfirmDialog} onClose={handleCancelSave} aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description">
         <DialogTitle id="confirm-dialog-title">Reset Quiz Progress?</DialogTitle>
         <DialogContent>
           <DialogContentText id="confirm-dialog-description">
-            Changing the mode, filters, or sorting methods will reset your current progress and history.
-            Are you sure you want to apply these new options? This action cannot be undone.
+            Changer mode / filtres / tris réinitialise la session. Voulez-vous appliquer ces options ?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
