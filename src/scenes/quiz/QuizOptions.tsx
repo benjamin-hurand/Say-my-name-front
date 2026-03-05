@@ -26,7 +26,7 @@ import { QuizPreferredFormat } from "../../services/dto/quiz/QuizEnums";
 import AddFilterModal from "./components/AddFilterModal";
 import { AddSortModal } from "./components/AddSortModal";
 import { DraggableSortingMethods } from "./components/DraggableSortingMethods";
-import ModeCard from "./components/ModeCard";
+import TargetAttributeCard from "./components/TargetAttributeCard";
 import OptionCard from "./components/OptionCard";
 
 const QuizOptions: React.FC = () => {
@@ -39,11 +39,11 @@ const QuizOptions: React.FC = () => {
     tempSelectedPopulationScope,
     setTempSelectedPopulationScope,
 
-    modes,
-    selectedMode,
-    setSelectedMode,
-    tempSelectedMode,
-    setTempSelectedMode,
+    targetAttributes,
+    selectedTargetAttribute,
+    setSelectedTargetAttribute,
+    tempSelectedTargetAttribute,
+    setTempSelectedTargetAttribute,
 
     availableFilters,
     selectedFilters,
@@ -80,7 +80,7 @@ const QuizOptions: React.FC = () => {
 
   useEffect(() => {
     // Align temps with committed values at first render
-    setTempSelectedMode(selectedMode);
+    setTempSelectedTargetAttribute(selectedTargetAttribute);
     setTempSelectedFilters(selectedFilters);
     setTempSelectedSortingMethods(selectedSortingMethods);
     setTempSelectedRepetitionPattern(selectedRepetitionPattern ?? repetitionPatterns.optimal);
@@ -93,14 +93,14 @@ const QuizOptions: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // MODES
-  const renderModes = () => {
-    return modes.map((mode) => (
-      <ModeCard
-        key={mode.id}
-        mode={mode}
-        isSelected={tempSelectedMode?.id === mode.id}
-        onSelect={() => setTempSelectedMode(mode)}
+  // TargetAttributes
+  const renderTargetAttributes = () => {
+    return targetAttributes.map((attr) => (
+      <TargetAttributeCard
+        key={attr.id}
+        attribute={attr}
+        isSelected={tempSelectedTargetAttribute?.id === attr.id}
+        onSelect={() => setTempSelectedTargetAttribute(attr)}
       />
     ));
   };
@@ -264,7 +264,7 @@ const QuizOptions: React.FC = () => {
   const goToQuiz = (saveChanges: boolean) => {
     if (saveChanges) {
       setSelectedPopulationScope(tempSelectedPopulationScope);
-      setSelectedMode(tempSelectedMode);
+      setSelectedTargetAttribute(tempSelectedTargetAttribute);
       setSelectedFilters(tempSelectedFilters);
       setSelectedSortingMethods(tempSelectedSortingMethods);
       setSelectedRepetitionPattern(tempSelectedRepetitionPattern ?? repetitionPatterns.optimal);
@@ -273,7 +273,7 @@ const QuizOptions: React.FC = () => {
     } else {
       // revert temps to committed
       setTempSelectedPopulationScope(selectedPopulationScope);
-      setTempSelectedMode(selectedMode);
+      setTempSelectedTargetAttribute(selectedTargetAttribute);
       setTempSelectedFilters(selectedFilters);
       setTempSelectedSortingMethods(selectedSortingMethods);
       setTempSelectedRepetitionPattern(selectedRepetitionPattern ?? repetitionPatterns.optimal);
@@ -302,9 +302,9 @@ const QuizOptions: React.FC = () => {
         </Box>
 
         <Divider>
-          <Typography variant="h6">Mode</Typography>
+          <Typography variant="h6">Attribut ciblé</Typography>
         </Divider>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderModes()}</Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>{renderTargetAttributes()}</Box>
 
         <Divider>
           <Typography variant="h6">Filters</Typography>
@@ -414,7 +414,7 @@ const QuizOptions: React.FC = () => {
         <DialogTitle id="confirm-dialog-title">Reset Quiz Progress?</DialogTitle>
         <DialogContent>
           <DialogContentText id="confirm-dialog-description">
-            Changer mode / filtres / tris réinitialise la session. Voulez-vous appliquer ces options ?
+            Changer attribut ciblé / filtres / tris réinitialise la session. Voulez-vous appliquer ces options ?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

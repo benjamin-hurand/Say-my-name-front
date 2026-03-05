@@ -9,7 +9,7 @@ export interface QuizQuestionRequestDto {
 }
 
 export interface TrainingOptionsDto {
-  gameModeId: number | null;
+  targetAttributeId: number | null;
   populationScope: FollowFilter | null;
   category: TrainingCategorySelectionDto | null;
   trackKnowledge: boolean | null;
@@ -21,7 +21,7 @@ export interface TrainingCategorySelectionDto {
 }
 
 const emptyTrainingOptions: TrainingOptionsDto = {
-  gameModeId: null,
+  targetAttributeId: null,
   populationScope: null,
   category: null,
   trackKnowledge: null,

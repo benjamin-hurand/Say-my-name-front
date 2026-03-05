@@ -28,7 +28,7 @@ import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import { useLocation, useNavigate } from "react-router-dom";
 import { listAdminChangeRequests } from "../../../../services/business/admin/admin.changeRequests.service";
 import type { ChangeRequestSummary, ChangeRequestStatus } from "../../../../models/commons/Profile/ChangeRequest";
-import { useOrgData } from "../../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../../contexts/TenantDataContext";
 import { useAdminCRCache } from "../../../../contexts/AdminCRCacheContext";
 
 // UI: estimation de hauteur pour le 1er rendu (évite le jump avant mesure)
@@ -91,7 +91,7 @@ function StatusChipMini({ status }: { status: ChangeRequestStatus }) {
 export default function AdminPendingCRsCard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { attributes } = useOrgData();
+  const { attributes } = useTenantData();
 
   const { getPendingFirst, setPendingFirst, isFresh, getReservedHeight, setReservedHeight } = useAdminCRCache();
 

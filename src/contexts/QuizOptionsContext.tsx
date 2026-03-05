@@ -4,10 +4,9 @@ import { Attribute } from "../models/commons/Attribute/Attribute";
 import { GameFilter } from "../models/commons/Game/GameOptions/GameFilter.model";
 import { GameSortBy } from "../models/commons/Game/GameOptions/GameSortBy.model";
 import { GameRepetitionPattern, repetitionPatterns } from "../models/commons/Game/GameOptions/GameRepetitionPattern.model";
-import { GameMode } from "../models/commons/Game/GameMode/GameMode.model";
 import { GamePopulationScope } from "../models/commons/Game/GameOptions/GamePopulationScope.model";
 
-import { useOrgData } from "./OrgDataContext";
+import { useTenantData } from "./TenantDataContext";
 import { QuizPreferredFormat } from "../services/dto/quiz/QuizEnums";
 
 export type QuizHelps = {
@@ -30,12 +29,12 @@ interface QuizOptionsContextType {
   tempSelectedPopulationScope: GamePopulationScope;
   setTempSelectedPopulationScope: React.Dispatch<React.SetStateAction<GamePopulationScope>>;
 
-  // Modes
-  modes: GameMode[];
-  tempSelectedMode: GameMode | null;
-  setTempSelectedMode: React.Dispatch<React.SetStateAction<GameMode | null>>;
-  selectedMode: GameMode | null;
-  setSelectedMode: React.Dispatch<React.SetStateAction<GameMode | null>>;
+  // Target Attribute (replaces modes)
+  targetAttributes: Attribute[];
+  tempSelectedTargetAttribute: Attribute | null;
+  setTempSelectedTargetAttribute: React.Dispatch<React.SetStateAction<Attribute | null>>;
+  selectedTargetAttribute: Attribute | null;
+  setSelectedTargetAttribute: React.Dispatch<React.SetStateAction<Attribute | null>>;
 
   // Filters
   filters: Attribute[];
@@ -85,15 +84,28 @@ interface QuizOptionsContextType {
 const QuizOptionsContext = createContext<QuizOptionsContextType | undefined>(undefined);
 
 export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
-  const { filters, sorts, modes } = useOrgData();
+  // NOTE: we keep taking filters/sorts from org data.
+  // We also use attributes as the list of possible "targets" (replacing modes).
+  const { filters, sorts, attributes } = useTenantData() as unknown as {
+    filters: Attribute[];
+    sorts: Attribute[];
+    attributes: Attribute[];
+  };
+
+  // Target Attributes: pick from org attributes (fallback to filters if your OrgDataContext doesn’t expose `attributes` yet)
+  const targetAttributes: Attribute[] = useMemo(() => {
+    if (attributes && attributes.length > 0) return attributes;
+    // Fallback: if you don't have `attributes` in org data yet, use filters as candidates.
+    return filters ?? [];
+  }, [attributes, filters]);
 
   // Population
   const [selectedPopulationScope, setSelectedPopulationScope] = useState<GamePopulationScope>("ALL");
   const [tempSelectedPopulationScope, setTempSelectedPopulationScope] = useState<GamePopulationScope>("ALL");
 
-  // Modes
-  const [tempSelectedMode, setTempSelectedMode] = useState<GameMode | null>(null);
-  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+  // Target attribute (replaces modes)
+  const [tempSelectedTargetAttribute, setTempSelectedTargetAttribute] = useState<Attribute | null>(null);
+  const [selectedTargetAttribute, setSelectedTargetAttribute] = useState<Attribute | null>(null);
 
   // Filters
   const [selectedFilters, setSelectedFilters] = useState<GameFilter[]>([]);
@@ -141,15 +153,15 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   const hasCriticalChanges: boolean = useMemo(() => {
     return (
       tempSelectedPopulationScope !== selectedPopulationScope ||
-      JSON.stringify(tempSelectedMode) !== JSON.stringify(selectedMode) ||
+      JSON.stringify(tempSelectedTargetAttribute) !== JSON.stringify(selectedTargetAttribute) ||
       JSON.stringify(tempSelectedFilters) !== JSON.stringify(selectedFilters) ||
       JSON.stringify(tempSelectedSortingMethods) !== JSON.stringify(selectedSortingMethods)
     );
   }, [
     tempSelectedPopulationScope,
     selectedPopulationScope,
-    tempSelectedMode,
-    selectedMode,
+    tempSelectedTargetAttribute,
+    selectedTargetAttribute,
     tempSelectedFilters,
     selectedFilters,
     tempSelectedSortingMethods,
@@ -160,14 +172,14 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
   // Changes when critical options are committed (Save in QuizOptions)
   const optionsFingerprint = useMemo(() => {
     const critical = {
-      mode: selectedMode?.id ?? null,
+      targetAttribute: selectedTargetAttribute?.id ?? null,
       scope: selectedPopulationScope,
       filters: selectedFilters.map((f) => f.id).sort(),
       sorts: selectedSortingMethods.map((s) => s.id).sort(),
       format: selectedFormat,
     };
     return JSON.stringify(critical);
-  }, [selectedMode, selectedPopulationScope, selectedFilters, selectedSortingMethods, selectedFormat]);
+  }, [selectedTargetAttribute, selectedPopulationScope, selectedFilters, selectedSortingMethods, selectedFormat]);
 
   const [hasUncheckedCriticalChanges, setHasUncheckedCriticalChanges] = useState(false);
 
@@ -175,17 +187,17 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
     if (hasCriticalChanges) setHasUncheckedCriticalChanges(true);
   }, [hasCriticalChanges]);
 
-  // Init mode default once modes are available
+  // Init default target attribute once candidates are available
   useEffect(() => {
-    if (!modes || modes.length === 0) return;
+    if (!targetAttributes || targetAttributes.length === 0) return;
 
     // Only set if not already set (avoid wiping user selection when org data reloads)
     setSelectedPopulationScope((p) => p ?? "ALL");
     setTempSelectedPopulationScope((p) => p ?? "ALL");
 
-    setSelectedMode((prev) => prev ?? modes[0]);
-    setTempSelectedMode((prev) => prev ?? modes[0]);
-  }, [modes]);
+    setSelectedTargetAttribute((prev) => prev ?? targetAttributes[0]);
+    setTempSelectedTargetAttribute((prev) => prev ?? targetAttributes[0]);
+  }, [targetAttributes]);
 
   return (
     <QuizOptionsContext.Provider
@@ -202,12 +214,12 @@ export const QuizOptionsProvider = ({ children }: { children: ReactNode }) => {
         tempSelectedPopulationScope,
         setTempSelectedPopulationScope,
 
-        // modes
-        modes,
-        tempSelectedMode,
-        setTempSelectedMode,
-        selectedMode,
-        setSelectedMode,
+        // target attribute (replaces modes)
+        targetAttributes,
+        tempSelectedTargetAttribute,
+        setTempSelectedTargetAttribute,
+        selectedTargetAttribute,
+        setSelectedTargetAttribute,
 
         // filters
         filters,

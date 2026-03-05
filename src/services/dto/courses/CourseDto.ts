@@ -10,13 +10,13 @@ export type CourseStatus =
 export interface CourseDto {
   id: number;
   userId: number;
-  gameModeId: number;
+  targetAttributeId: number;
   status: CourseStatus;
   currentRound: number;
 }
 
 // Payload pour créer ou reprendre (le scope est requis à la création)
 export interface CreateCourseDto {
-  gameModeId: number;
+  targetAttributeId: number;
   populationScope: PopulationScope; // "FOLLOWED" | "ALL"
 }

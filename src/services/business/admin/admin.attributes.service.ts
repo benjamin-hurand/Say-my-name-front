@@ -3,7 +3,6 @@ import type { Attribute } from "../../../models/commons/Attribute/Attribute";
 import type {
   CreateAttributePayload,
   UpdateAttributePayload,
-  AttributeUsageDto,
 } from "../../../models/commons/Attribute/Attribute.dto";
 
 const ADMIN_ENDPOINT = "/admin";
@@ -34,9 +33,4 @@ export async function deleteAdminAttribute(id: number): Promise<void> {
 
 export async function reorderAdminAttributes(items: { id: number; displayOrder: number }[]): Promise<void> {
   await API.patch(`${ADMIN_ENDPOINT}/attributes/reorder`, items);
-}
-
-export async function getAdminAttributeUsage(id: number): Promise<AttributeUsageDto> {
-  const { data } = await API.get<AttributeUsageDto>(`${ADMIN_ENDPOINT}/attributes/usage/${id}`);
-  return data;
 }

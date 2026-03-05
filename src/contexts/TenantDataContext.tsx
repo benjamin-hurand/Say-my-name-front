@@ -1,30 +1,26 @@
 // src/contexts/OrgDataContext.tsx
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { Attribute } from "../models/commons/Attribute/Attribute";
-import { GameMode } from "../models/commons/Game/GameMode/GameMode.model";
 import { getAttributes, getFilters } from "../services/business/attributes/attribute.service";
-import { getGameModes } from "../services/business/gamemodes/gameMode.service";
 import { useAuth } from "./AuthContext";
 
-interface OrgDataContextType {
+interface TenantDataContextType {
   attributes: Attribute[];
   filters: Attribute[];
   sorts: Attribute[];
-  modes: GameMode[];
   /** utile pour l'UX (skeleton/loader) */
   loading: boolean;
 }
 
-const OrgDataContext = createContext<OrgDataContextType | undefined>(undefined);
+const TenantDataContext = createContext<TenantDataContextType | undefined>(undefined);
 
-export const OrgDataProvider = ({ children }: { children: ReactNode }) => {
+export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
   const { activeTenant } = useAuth();
   const orgId = activeTenant?.tenantId ?? null;
 
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [filters, setFilters] = useState<Attribute[]>([]);
   const [sorts, setSorts] = useState<Attribute[]>([]);
-  const [modes, setModes] = useState<GameMode[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   // 1) Reset data quand il n'y a plus d'orga (logout) ou quand l'orga change
@@ -33,7 +29,6 @@ export const OrgDataProvider = ({ children }: { children: ReactNode }) => {
       setAttributes([]);
       setFilters([]);
       setSorts([]);
-      setModes([]);
       setLoading(false);
     }
   }, [orgId]);
@@ -48,18 +43,16 @@ export const OrgDataProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       try {
         // Un seul point d'orchestration, plus robuste et simple à annuler
-        const [allAttributes, filt, fetchedModes] = await Promise.all([
+        const [allAttributes, allFilterAttributes] = await Promise.all([
           getAttributes({ options: true }),
           getFilters({ stats: true, options: true }),
-          getGameModes(),
         ]);
 
         if (cancelled) return;
 
         setAttributes(allAttributes);
         setSorts(allAttributes.filter((attr) => Boolean(attr.sort)));
-        setFilters(filt);
-        setModes(fetchedModes);
+        setFilters(allFilterAttributes);
 
       } catch (error) {
         if (!cancelled) console.error("[OrgData] Error fetching org data:", error);
@@ -78,17 +71,16 @@ export const OrgDataProvider = ({ children }: { children: ReactNode }) => {
       attributes,
       filters,
       sorts,
-      modes,
       loading,
     }),
-    [attributes, filters, sorts, modes, loading]
+    [attributes, filters, sorts, loading]
   );
 
-  return <OrgDataContext.Provider value={value}>{children}</OrgDataContext.Provider>;
+  return <TenantDataContext.Provider value={value}>{children}</TenantDataContext.Provider>;
 };
 
-export const useOrgData = () => {
-  const context = useContext(OrgDataContext);
-  if (!context) throw new Error("useOrgData must be used within a OrgDataProvider");
+export const useTenantData = () => {
+  const context = useContext(TenantDataContext);
+  if (!context) throw new Error("useTenantData must be used within a TenantDataProvider");
   return context;
 };

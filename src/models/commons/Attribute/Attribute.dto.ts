@@ -37,9 +37,3 @@ export interface UpdateAttributePayload extends CreateAttributePayload {
   id: number;
   // version?: number; // décommente si tu ajoutes l’ETag côté back
 }
-
-/** (optionnel) DTO d’usage pour affichage d’impacts avant suppression */
-export interface AttributeUsageDto {
-  persons: number;
-  gamemodes: number;
-}

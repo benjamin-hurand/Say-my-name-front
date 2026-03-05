@@ -21,35 +21,35 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useOrgData } from "../../contexts/OrgDataContext";
+import { useTenantData } from "../../contexts/TenantDataContext";
 
-import { GameMode } from "../../models/commons/Game/GameMode/GameMode.model";
 import { createCourse } from "../../services/business/courses/course.service";
 import { searchPersons } from "../../services/business/persons/person.service";
 import { CreateCourseDto } from "../../services/dto/courses/CourseDto";
 import { PersonCardDto } from "../../services/dto/person/search/PersonCardDtos";
 import { notifyError, notifySuccess } from "../../services/notification/toast.service";
+import { Attribute } from "../../models/commons/Attribute/Attribute";
 
 // PopulationScope côté front = "FOLLOWED" | "ALL". On force "FOLLOWED" ici.
 const StartCourse: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams(); 
   const { t } = useTranslation();
-  const { modes } = useOrgData();
+  const { attributes } = useTenantData();
 
-  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+  const [selectedTargetAttribute, setSelectedTargetAttribute] = useState<Attribute | null>(null);
   const [followedCount, setFollowedCount] = useState<number>(0);
   const [followedPreview, setFollowedPreview] = useState<PersonCardDto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Initialisation
   useEffect(() => {
-    if (modes.length) {
-      const q = searchParams.get('modeId');
-      const found = q ? modes.find(m => m.id === Number(q)) : undefined;
-      setSelectedMode(found || modes[0]);
+    if (attributes.length) {
+      const q = searchParams.get('targetAttributeId');
+      const found = q ? attributes.find(a => a.id === Number(q)) : undefined;
+      setSelectedTargetAttribute(found || attributes[0]);
     }
-  }, [modes, searchParams]);
+  }, [attributes, searchParams]);
 
   // Récupération suivis via searchPersons (count + preview visuelle)
   useEffect(() => {
@@ -85,16 +85,16 @@ const StartCourse: React.FC = () => {
     fetchFollowed();
   }, []);
 
-  const canStart = Boolean(selectedMode && followedCount > 0);
+  const canStart = Boolean(selectedTargetAttribute && followedCount > 0);
 
   const handleCreate = async () => {
-    if (!canStart || !selectedMode) {
+    if (!canStart || !selectedTargetAttribute) {
       notifyError(t("COURSE_CREATE_FILL_ALL", "Veuillez compléter la configuration"));
       return;
     }
 
     const dto: CreateCourseDto = {
-      gameModeId: selectedMode.id,
+      targetAttributeId: selectedTargetAttribute.id,
       populationScope: "FOLLOWED",
     };
 
@@ -218,17 +218,17 @@ const StartCourse: React.FC = () => {
           />
           <CardContent sx={{ pt: 0 }}>
             <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
-              {modes.map((m) => {
-                const selected = m.id === selectedMode?.id;
+              {attributes.map((a) => {
+                const selected = a.id === selectedTargetAttribute?.id;
                 return (
                   <Chip
-                    key={m.id}
+                    key={a.id}
                     clickable
-                    onClick={() => setSelectedMode(m)}
+                    onClick={() => setSelectedTargetAttribute(a)}
                     color={selected ? "primary" : undefined}
                     variant={selected ? "filled" : "outlined"}
                     icon={selected ? <CheckRounded /> : undefined}
-                    label={m.title}
+                    label={a.name}
                     sx={{ minHeight: 36 }}
                     aria-pressed={selected}
                   />

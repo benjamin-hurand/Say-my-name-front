@@ -6,7 +6,7 @@ const ADMIN_ENDPOINT = "/admin";
 
 // --- API
 
-/** Liste toutes les invitations de l’organisation courante (OrgContext). */
+/** Liste toutes les invitations de le tenant courant (TenantContext). */
 export async function listInvitations(): Promise<InvitationDto[]> {
   const { data } = await API.get<InvitationDto[]>(`${ADMIN_ENDPOINT}/invitations`);
   return data;

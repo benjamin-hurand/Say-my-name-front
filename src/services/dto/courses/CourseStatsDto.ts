@@ -2,7 +2,7 @@
 
 export interface CourseStatsDto {
   courseId: number;
-  gameModeId: number;
+  targetAttributeId: number;
 
   totalCandidates: number;
   universeEligible: number;

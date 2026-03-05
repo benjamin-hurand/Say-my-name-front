@@ -4,6 +4,7 @@ import { KnowledgeResultDto } from "../../dto/KnowledgeResultDto";
 
 const endpoint = "/knowledges";
 
+// TODO: jamais utilisé, à voir si on garde
 /**
  * Envoie un batch de résultats de quiz au backend.
  *

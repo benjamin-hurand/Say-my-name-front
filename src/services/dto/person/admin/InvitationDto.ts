@@ -1,5 +1,5 @@
 import { PersonDto } from "../../../../models/commons/PersonDto";
-import { OrgRole } from "../../../../models/tenants/UserTenant";
+import { OrgRole } from "../../../../models/organizations/UserOrganization";
 
 /** Doit refléter com.saymyname.core.model.enums.InvitationType */
 export type InvitationType = "EMAIL" | "SELF_SERVICE";

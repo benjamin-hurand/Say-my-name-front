@@ -69,7 +69,7 @@ export interface Attribute {
   id: number;
   name: string;
   displayOrder?: number | null;
-  primaryField?: boolean | null;
+  identitySource?: boolean | null;
   category?: boolean | null;
   maxValues?: number | null;
   filter?: boolean | null;
@@ -78,6 +78,7 @@ export interface Attribute {
   required?: boolean | null;
   type?: AttributeType | null;
   editPolicy?: EditPolicy | null;
+  derived?: boolean | null;
   casingStrategy?: CasingStrategy | null;
   constraintKind?: ConstraintKind | null;
   constraintPayload?: Record<string, unknown> | null;

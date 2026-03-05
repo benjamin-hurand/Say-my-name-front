@@ -79,7 +79,7 @@ export default function AttributeFormDrawer({
           casingStrategy: (initial.casingStrategy ?? "NONE") as FormInput["casingStrategy"],
           maxValues: (initial.maxValues ?? 1) as number,
 
-          primaryField: !!initial.primaryField,
+          primaryField: !!initial.identitySource,
           category: !!initial.category,
           filter: !!initial.filter,
           sort: !!initial.sort,
@@ -121,7 +121,7 @@ export default function AttributeFormDrawer({
           casingStrategy: (initial.casingStrategy ?? "NONE") as FormInput["casingStrategy"],
           maxValues: (initial.maxValues ?? 1) as number,
 
-          primaryField: !!initial.primaryField,
+          primaryField: !!initial.identitySource,
           category: !!initial.category,
           filter: !!initial.filter,
           sort: !!initial.sort,

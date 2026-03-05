@@ -3,11 +3,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCourse } from "../../contexts/CoursesContext";
-import { useOrgData } from "../../contexts/OrgDataContext";
+import { useTenantData } from "../../contexts/TenantDataContext";
 import { useQuizSession } from "../../contexts/QuizSessionContext";
 import { useThemeColorContext } from "../../contexts/ThemeColorContext";
 
-import { GameMode } from "../../models/commons/Game/GameMode/GameMode.model";
 import { repetitionPatterns } from "../../models/commons/Game/GameOptions/GameRepetitionPattern.model";
 import { QuizEntry, QuizEntryWithRepetition } from "../../models/commons/Game/QuizEntry";
 import { PersonAttributeLiteDto } from "../../services/dto/person/PersonAttributeLiteDto";
@@ -28,7 +27,8 @@ import { QuizQuestionDto } from "../../services/dto/quiz/QuizQuestionDto";
 import { notifyError } from "../../services/notification/toast.service";
 
 import QuizDisplay, { type QuizResultSnapshot } from "../quiz/QuizDisplay";
-// Machine à états pour quiz robuste
+import { Attribute } from "../../models/commons/Attribute/Attribute";
+// Machine ï¿½ ï¿½tats pour quiz robuste
 type QuizState =
   | { type: "loading" }
   | { type: "idle"; question: QuizQuestionDto }
@@ -41,7 +41,7 @@ export const ProgressionQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { color } = useThemeColorContext();
   const { selectedCourse } = useCourse();
-  const { modes } = useOrgData();
+  const { attributes } = useTenantData();
 
   const { setQuizList, setReviewList, setSessionOptions, setUncheckedNewSession } = useQuizSession();
 
@@ -58,7 +58,7 @@ export const ProgressionQuiz: React.FC = () => {
       .then((q) => setState({ type: "idle", question: q }))
       .catch((err) => {
         console.error(err);
-        notifyError("Impossible de démarrer le cours");
+        notifyError("Impossible de dï¿½marrer le cours");
       });
   }, [selectedCourse, navigate]);
 
@@ -174,14 +174,14 @@ const handleNext = useCallback(() => {
       setUncheckedNewSession(true);
       setQuizList(reviewEntries);
 
-      const mode: GameMode | undefined = modes.find((m) => m.id === selectedCourse.gameModeId);
-      if (!mode) {
-        notifyError("Mode de jeu du cours introuvable.");
+      const targetAttribute: Attribute | undefined = attributes.find((a) => a.id === selectedCourse.targetAttributeId);
+      if (!targetAttribute) {
+        notifyError("Attribut cible du cours introuvable.");
         return;
       }
 
       setSessionOptions({
-        mode,
+        targetAttribute,
         filters: [],
         sorts: [],
         populationScope: "FOLLOWED",
@@ -192,11 +192,11 @@ const handleNext = useCallback(() => {
       navigate("/training");
     } catch (e) {
       console.error(e);
-      notifyError("Impossible de charger la liste d'entraînement.");
+      notifyError("Impossible de charger la liste d'entraï¿½nement.");
     }
   }, [
     selectedCourse,
-    modes,
+    attributes,
     setReviewList,
     setUncheckedNewSession,
     setQuizList,

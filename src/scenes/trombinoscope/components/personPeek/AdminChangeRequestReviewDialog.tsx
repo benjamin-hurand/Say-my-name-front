@@ -28,7 +28,7 @@ import ThumbDownAltRoundedIcon from "@mui/icons-material/ThumbDownAltRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 
-import { useOrgData } from "../../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../../contexts/TenantDataContext";
 import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 import { ChangeResolutionDecision } from "../../../../services/dto/admin/change-requests/ChangeResolutionDecision";
 import { ResolveChangeRequestDto } from "../../../../services/dto/admin/change-requests/ResolveChangeRequestDto";
@@ -111,7 +111,7 @@ const AdminChangeRequestReviewDialog: React.FC<Props> = ({
   // Si pas de CR, on n’affiche rien (permet un appel simple avec cr nullable)
   if (!cr) return null;
 
-  const { attributes } = useOrgData();
+  const { attributes } = useTenantData();
   const attribute = React.useMemo(
     () => attributes.find((a) => a.id === cr.attributeId) ?? null,
     [attributes, cr.attributeId]

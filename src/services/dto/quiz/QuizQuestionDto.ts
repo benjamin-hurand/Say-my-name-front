@@ -11,7 +11,7 @@ import { WordPuzzleStateDto } from "./QuizMultiStepDto";
 
 export interface QuizQuestionDto {
   questionHandle: string;
-  gameModeId: number;
+  targetAttributeId: number;
   context: QuizQuestionContextDto;
   format: QuizFormat;
   payload: QuizQuestionPayloadDto;

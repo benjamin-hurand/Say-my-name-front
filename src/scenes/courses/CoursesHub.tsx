@@ -20,7 +20,7 @@ import { toast } from 'react-toastify';
 
 import { useCourse } from '../../contexts/CoursesContext';
 import { useCourseStats } from '../../contexts/CourseStatsContext';
-import { useOrgData } from '../../contexts/OrgDataContext';
+import { useTenantData } from '../../contexts/TenantDataContext';
 import { restartCourse } from '../../services/business/courses/course.service';
 import type { CourseStatsDto } from '../../services/dto/courses/CourseStatsDto';
 import CourseQuickStart from '../menu/components/CourseQuickStart';
@@ -28,8 +28,8 @@ import CourseQuickStart from '../menu/components/CourseQuickStart';
 export default function CoursesHub() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { modes } = useOrgData();
-  const { findCourseByModeId, refreshUserCourses, createOrResume, focus } = useCourse();
+  const { attributes } = useTenantData();
+  const { findCourseByTargetAttributeId, refreshUserCourses, createOrResume, focus } = useCourse();
   const { get, isLoading, refresh, refreshForUser } = useCourseStats();
 
   React.useEffect(() => {
@@ -141,8 +141,8 @@ export default function CoursesHub() {
         </Button>
       </Box>
 
-      {modes.map((mode) => {
-        const course = findCourseByModeId(mode.id);
+      {attributes.map((attr) => {
+        const course = findCourseByTargetAttributeId(attr.id);
         const hasCourse = Boolean(course);
         const stats: CourseStatsDto | null = course ? get(course.id) : null;
 
@@ -154,17 +154,17 @@ export default function CoursesHub() {
             await focus(course.id);
             navigate('/course');
           } else {
-            const created = await createOrResume(mode.id, 'FOLLOWED');
+            const created = await createOrResume(attr.id, 'FOLLOWED');
             await refresh(created.id, { force: true });
             navigate('/course');
           }
         };
 
-        const gmUpper = (mode.title || '').toLocaleUpperCase('fr-FR');
+        const gmUpper = (attr.name || '').toLocaleUpperCase('fr-FR');
 
         return (
           <CourseQuickStart
-            key={mode.id}
+            key={attr.id}
             loading={loading}
             hasCourse={hasCourse}
             headline={hasCourse ? 'CONTINUER' : 'COMMENCER'}
@@ -183,7 +183,7 @@ export default function CoursesHub() {
                       danger: true,
                       onClick: () => {
                         if (loading) return; // garde : pas de reset quand ça charge
-                        openConfirmFor({ id: course.id, title: mode.title, modeId: mode.id });
+                        openConfirmFor({ id: course.id, title: attr.name, modeId: attr.id });
                       },
                     },
                   ]

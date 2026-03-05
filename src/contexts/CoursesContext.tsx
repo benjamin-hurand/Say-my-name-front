@@ -28,13 +28,13 @@ type CoursesContextValue = {
   removeCourse: (courseId: number) => void;
   getCourseFromCache: (courseId: number) => CourseDto | undefined;
   listCourses: () => CourseDto[];
-  findCourseByModeId: (gameModeId: number) => CourseDto | undefined;
+  findCourseByTargetAttributeId: (targetAttributeId: number) => CourseDto | undefined;
 
   // chargements / API
   loading: boolean;
   refreshCurrentCourse: () => Promise<CourseDto | null>;
   refreshUserCourses: () => Promise<CourseDto[]>;
-  createOrResume: (gameModeId: number, scope?: PopulationScope) => Promise<CourseDto>;
+  createOrResume: (targetAttributeId: number, scope?: PopulationScope) => Promise<CourseDto>;
   focus: (courseId: number) => Promise<void>;
 
   // utilitaires
@@ -104,8 +104,8 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const listCourses = useCallback(() => Object.values(coursesById), [coursesById]);
 
-  const findCourseByModeId = useCallback(
-    (gameModeId: number) => Object.values(coursesById).find(c => c.gameModeId === gameModeId),
+  const findCourseByTargetAttributeId = useCallback(
+    (targetAttributeId: number) => Object.values(coursesById).find(c => c.targetAttributeId === targetAttributeId),
     [coursesById]
   );
 
@@ -146,10 +146,10 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, []);
 
-  const createOrResume = useCallback(async (gameModeId: number, scope: PopulationScope = 'FOLLOWED') => {
+  const createOrResume = useCallback(async (targetAttributeId: number, scope: PopulationScope = 'FOLLOWED') => {
     setLoading(true);
     try {
-      const payload: CreateCourseDto = { gameModeId, populationScope: scope };
+      const payload: CreateCourseDto = { targetAttributeId, populationScope: scope };
       const course = await createOrResumeCourse(payload);
       upsertCourse(course);
       setSelectedCourseId(course.id);
@@ -182,7 +182,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     removeCourse,
     getCourseFromCache,
     listCourses,
-    findCourseByModeId,
+    findCourseByTargetAttributeId: findCourseByTargetAttributeId,
     loading,
     refreshCurrentCourse,
     refreshUserCourses,
@@ -199,7 +199,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     removeCourse,
     getCourseFromCache,
     listCourses,
-    findCourseByModeId,
+    findCourseByTargetAttributeId,
     loading,
     refreshCurrentCourse,
     refreshUserCourses,

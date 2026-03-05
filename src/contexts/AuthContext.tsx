@@ -9,7 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { UserTenantDto } from "../services/dto/tenant/UserTenantDto";
+import { UserOrganizationDto } from "../services/dto/organization/UserOrganizationDto";
 
 import {
   AuthResponseDto,
@@ -42,8 +42,8 @@ interface AuthContextProps {
   /** Emails (vérifiés) retournés dans SessionDto */
   sessionEmails: string[];
 
-  tenants: UserTenantDto[];
-  activeTenant: UserTenantDto | null;
+  tenants: UserOrganizationDto[];
+  activeTenant: UserOrganizationDto | null;
 
   isAuthenticated: boolean;
   isBooting: boolean;
@@ -87,8 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [sessionEmails, setSessionEmails] = useState<string[]>([]);
 
-  const [tenants, setTenants] = useState<UserTenantDto[]>([]);
-  const [activeTenant, setActiveTenant] = useState<UserTenantDto | null>(null);
+  const [tenants, setTenants] = useState<UserOrganizationDto[]>([]);
+  const [activeTenant, setActiveTenant] = useState<UserOrganizationDto | null>(null);
 
   const setToken = useCallback((token: string | null) => {
     _setAccessTokenState(token);
@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const applySessionDto = useCallback((session: SessionDto) => {
-    const safeOrgs = session.tenants ?? [];
+    const safeOrgs = session.organizations ?? [];
     const safeEmails = Array.isArray((session as any).emails)
       ? (session as any).emails
       : (session as any).sessionEmails;
@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSessionEmails(Array.isArray(safeEmails) ? safeEmails.filter(Boolean) : []);
 
     const storedOrgId = localStorage.getItem(ORG_ID_KEY);
-    let selected: UserTenantDto | null = null;
+    let selected: UserOrganizationDto | null = null;
 
     if (storedOrgId) {
       const parsed = parseInt(storedOrgId, 10);

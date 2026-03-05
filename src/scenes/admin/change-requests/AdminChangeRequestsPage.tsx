@@ -41,7 +41,7 @@ import PendingRoundedIcon from "@mui/icons-material/PendingRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 
-import { useOrgData } from "../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../contexts/TenantDataContext";
 import type {
   ChangeRequestSummary,
   ChangeRequestItemSummary,
@@ -233,7 +233,7 @@ export default function AdminChangeRequestsPage() {
   const [q, setQ] = useState<string>(searchParams.get("q") || "");
 
   // Données
-  const { attributes } = useOrgData();
+  const { attributes } = useTenantData();
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);

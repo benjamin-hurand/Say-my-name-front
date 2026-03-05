@@ -3,7 +3,7 @@ import "dayjs/locale/fr";          // << ajoute cette ligne
 dayjs.locale("fr");
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { useOrgData } from "../../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../../contexts/TenantDataContext";
 import { useProfile } from "../../../../contexts/ProfileContext";
 import { Attribute } from "../../../../models/commons/Attribute/Attribute";
 import { PersonAttribute } from "../../../../models/commons/PersonAttribute";
@@ -22,7 +22,7 @@ import {
 import ChangeRequestViewerDialog from "./dialogs/ProfileChangeRequestViewerDialog";
 
 const AttributesListContainer: React.FC = () => {
-  const allAttributes = (useOrgData().attributes ?? []) as Attribute[];
+  const allAttributes = (useTenantData().attributes ?? []) as Attribute[];
   const { profile, changeRequests, refreshProfile } = useProfile();
   const rawAttributes = (profile?.attributes ?? []) as PersonAttribute[];
 

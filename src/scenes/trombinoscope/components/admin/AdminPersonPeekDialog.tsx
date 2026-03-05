@@ -28,7 +28,7 @@ import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
 
 import QRCode from "react-qr-code";
 
-import { useOrgData } from "../../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../../contexts/TenantDataContext";
 import { Attribute } from "../../../../models/commons/Attribute/Attribute";
 import PhotoResponsive from "../personPeek/PhotoResponsive";
 import AttributeGrid, {
@@ -45,7 +45,7 @@ import {
 } from "../../../../services/dto/person/search/PersonCardDtos";
 import { getAdminPersonDetails } from "../../../../services/business/admin/admin.service";
 import { AdminPersonDetailsDto } from "../../../../services/dto/person/admin/AdminPersonDetailsDto";
-import { formatRole } from "../../../../models/tenants/UserTenant";
+import { formatRole } from "../../../../models/organizations/UserOrganization";
 import AdminChangeRequestReviewDialog from "../personPeek/AdminChangeRequestReviewDialog";
 import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 import AdminChangeRequestCard from "./AdminChangeRequestCard";
@@ -76,7 +76,7 @@ export default function AdminPersonPeekDialog({
   if (!person) return null;
 
   const theme = useTheme();
-  const { attributes: ctxAttributes } = useOrgData();
+  const { attributes: ctxAttributes } = useTenantData();
   const attributes = attributesProp ?? ctxAttributes;
 
   const p = person;

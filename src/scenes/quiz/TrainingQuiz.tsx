@@ -163,9 +163,9 @@ export const TrainingQuiz: React.FC = () => {
   const {
     selectedPopulationScope,
     setSelectedPopulationScope,
-    modes,
-    selectedMode,
-    setSelectedMode,
+    targetAttributes,
+    selectedTargetAttribute,
+    setSelectedTargetAttribute,
     selectedFilters,
     setSelectedFilters,
     selectedSortingMethods,
@@ -191,7 +191,7 @@ export const TrainingQuiz: React.FC = () => {
   const effectivePattern = selectedRepetitionPattern ?? repetitionPatterns.optimal;
 
   const buildTrainingRequest = useCallback((): QuizQuestionRequestDto => {
-    const mode = selectedMode ?? modes?.[0] ?? null;
+    const mode = selectedTargetAttribute ?? targetAttributes?.[0] ?? null;
     const scope = selectedPopulationScope ?? "ALL";
     const formatMode = selectedFormat === "AUTO" ? "AUTO" : "FORCED";
     const format = selectedFormat === "AUTO" ? null : selectedFormat;
@@ -199,7 +199,7 @@ export const TrainingQuiz: React.FC = () => {
 
     return buildQuizQuestionRequest({
       options: {
-        gameModeId: mode?.id ?? null,
+        targetAttributeId: mode?.id ?? null,
         populationScope: scope ?? null,
         category: firstFilter
           ? { attributeId: firstFilter.attribute.id, value: firstFilter.minValue }
@@ -212,8 +212,8 @@ export const TrainingQuiz: React.FC = () => {
       timeLimitMs: null,
     });
   }, [
-    selectedMode,
-    modes,
+    selectedTargetAttribute,
+    targetAttributes,
     selectedPopulationScope,
     selectedFilters,
     selectedFormat,
@@ -285,7 +285,7 @@ export const TrainingQuiz: React.FC = () => {
 
     console.debug("[TrainingQuiz] fetchQuestions START", {
       runId: currentRunId,
-      mode: selectedMode?.id,
+      mode: selectedTargetAttribute?.id,
       scope: selectedPopulationScope,
       format: selectedFormat,
       filters: selectedFilters?.map((f) => f.id),
@@ -294,9 +294,9 @@ export const TrainingQuiz: React.FC = () => {
 
     setState({ type: "loading" });
 
-    if (!selectedMode || !modes || modes.length === 0) {
+    if (!selectedTargetAttribute || !targetAttributes || targetAttributes.length === 0) {
       setSelectedPopulationScope("ALL");
-      if (modes && modes.length > 0) setSelectedMode(modes[0]);
+      if (targetAttributes && targetAttributes.length > 0) setSelectedTargetAttribute(targetAttributes[0]);
       setSelectedRepetitionPattern(repetitionPatterns.optimal);
       setSelectedHelps({ initialGiven: true, typosFriendly: true });
       setSelectedFilters([]);
@@ -304,9 +304,9 @@ export const TrainingQuiz: React.FC = () => {
     }
 
     try {
-      const mode = selectedMode ?? modes?.[0];
-      if (!mode) {
-        notifyError("Aucun mode de jeu disponible.");
+      const targetAttribute = selectedTargetAttribute ?? targetAttributes?.[0];
+      if (!targetAttribute) {
+        notifyError("Aucun objectif disponible.");
         setQuizList([]);
         setBackupQuizList([]);
         setState({ type: "exhausted" });
@@ -359,7 +359,7 @@ export const TrainingQuiz: React.FC = () => {
         setBackupQuizList(enriched);
 
         setSessionOptions({
-          mode,
+          targetAttribute,
           filters: selectedFilters ?? [],
           sorts: selectedSortingMethods ?? [],
           populationScope: scope,
@@ -386,9 +386,9 @@ export const TrainingQuiz: React.FC = () => {
       setBackupQuizList([]);
     }
   }, [
-    modes,
+    targetAttributes,
     selectedPopulationScope,
-    selectedMode,
+    selectedTargetAttribute,
     selectedFilters,
     selectedSortingMethods,
     selectedRepetitionPattern,
@@ -396,7 +396,7 @@ export const TrainingQuiz: React.FC = () => {
     selectedFormat,
     buildTrainingRequest,
     setSelectedPopulationScope,
-    setSelectedMode,
+    setSelectedTargetAttribute,
     setSelectedRepetitionPattern,
     setSelectedHelps,
     setSelectedFilters,
@@ -419,7 +419,7 @@ export const TrainingQuiz: React.FC = () => {
       console.debug("[TrainingQuiz] INIT - restoring from reviewList");
       setSelectedRepetitionPattern(repetitionPatterns.optimal);
       setSelectedPopulationScope(sessionOptions.populationScope);
-      setSelectedMode(sessionOptions.mode);
+      setSelectedTargetAttribute(sessionOptions.targetAttribute);
       setSelectedFilters(sessionOptions.filters);
 
       setSelectedHelps({

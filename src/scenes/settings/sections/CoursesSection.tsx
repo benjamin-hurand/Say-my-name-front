@@ -37,7 +37,7 @@ import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
 
 import { useCourse } from "../../../contexts/CoursesContext";
 import { useCourseStats } from "../../../contexts/CourseStatsContext";
-import { useOrgData } from "../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../contexts/TenantDataContext";
 import API from "../../../services/api/apiUtils";
 import { getUserCourses, restartCourse } from "../../../services/business/courses/course.service";
 import { CourseDto } from "../../../services/dto/courses/CourseDto";
@@ -59,7 +59,7 @@ type Props = { showAdvanced: boolean };
 const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { modes } = useOrgData();
+  const { attributes } = useTenantData();
   const { setSelectedCourse, refreshCurrentCourse, upsertCourse, listCourses } = useCourse();
   const { get: getStats, isLoading: isStatsLoading, refresh: refreshStats, prefetch: prefetchStats } = useCourseStats();
 
@@ -260,7 +260,7 @@ const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
               const stats = getStats(c.id);
               const progress = computeProgressPercent(stats);
               const loading = isStatsLoading(c.id);
-              const modeTitle = (modes.find(m => m.id === c.gameModeId)?.title) ?? `#${c.gameModeId}`;
+              const targetAttributeName = (attributes.find(m => m.id === c.targetAttributeId)?.name) ?? `#${c.targetAttributeId}`;
 
               return (
                 <Card
@@ -284,9 +284,9 @@ const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
                     <Stack direction="row" alignItems="center" spacing={1}>
                       <SportsEsportsRounded fontSize="small" />
                       <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.2 }}>
-                        {modeTitle}
+                        {targetAttributeName}
                       </Typography>
-                      <Tooltip title={t("COURSE_HINT", "Questions liées à vos suivis + logique du mode.") as string}>
+                      <Tooltip title={t("COURSE_HINT", "Questions liées à vos suivis + logique de l'attribute ciblé.") as string}>
                         <InfoOutlined fontSize="small" color="action" />
                       </Tooltip>
 
@@ -363,7 +363,7 @@ const CoursesSection: React.FC<Props> = ({ showAdvanced }) => {
             onClick={() => {
               const id = menuCourseId; closeMenu(); if (!id) return;
               const course = activeCourses.find((c) => c.id === id);
-              const title = course ? (modes.find((m) => m.id === course.gameModeId)?.title ?? "") : "";
+              const title = course ? (attributes.find((m) => m.id === course.targetAttributeId)?.name ?? "") : "";
               openConfirmFor({ id, title });
             }}
             sx={{ color: (th) => th.palette.error.main, "& .MuiSvgIcon-root": { color: "inherit" } }}

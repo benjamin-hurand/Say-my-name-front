@@ -20,7 +20,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import { useEffect, useMemo, useState } from "react";
 
-import { useOrgData } from "../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../contexts/TenantDataContext";
 import { Attribute } from "../../../models/commons/Attribute/Attribute";
 import { getPersonAttributesById } from "../../../services/business/persons/person.service";
 import {
@@ -60,7 +60,7 @@ export default function PersonPeekDialog({
   if (!person) return null;
   const theme = useTheme();
   const downSm = useMediaQuery(theme.breakpoints.down("sm"));
-  const { attributes: ctxAttributes } = useOrgData();
+  const { attributes: ctxAttributes } = useTenantData();
   const attributes = attributesProp ?? ctxAttributes;
 
   const p = person;

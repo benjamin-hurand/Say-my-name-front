@@ -1,6 +1,9 @@
 export interface KnowledgeResultDto {
-    gameModeId: number;
-    personId: number;
+    knowledgeId: number;
+    gactId: number;
     isCorrect: boolean;
     helpUsed: boolean;
+    courseId: number | null;
+    courseQuestionAttemptId: number | null;
+    questionRound: number | null;
 }

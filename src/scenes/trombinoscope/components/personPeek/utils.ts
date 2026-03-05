@@ -58,7 +58,7 @@ export function useAttributeMeta(source: Attribute[] | undefined) {
     const getAttrOrder =
       (id: number) => map.get(id)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
     const isCategoryAttr = (id: number) => !!map.get(id)?.category;
-    const isPrimaryAttr = (id: number) => !!map.get(id)?.primaryField;
+    const isPrimaryAttr = (id: number) => !!map.get(id)?.identitySource;
 
     const isDateAttr = (id: number) => {
       const a = map.get(id);

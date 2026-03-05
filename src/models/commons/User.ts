@@ -1,4 +1,4 @@
-import { OrgRole } from "../tenants/UserTenant";
+import { OrgRole } from "../organizations/UserOrganization";
 
 export interface User {
   publicId: string;

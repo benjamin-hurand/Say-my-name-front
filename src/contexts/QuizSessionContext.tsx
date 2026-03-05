@@ -5,8 +5,8 @@ import { QuizHistoryEntry } from "../models/commons/Game/QuizHistoryEntry";
 import { GameFilter } from "../models/commons/Game/GameOptions/GameFilter.model";
 import { GameSortBy } from "../models/commons/Game/GameOptions/GameSortBy.model";
 import { GameRepetitionPattern } from "../models/commons/Game/GameOptions/GameRepetitionPattern.model";
-import { GameMode } from "../models/commons/Game/GameMode/GameMode.model";
 import { GamePopulationScope } from "../models/commons/Game/GameOptions/GamePopulationScope.model";
+import { Attribute } from "../models/commons/Attribute/Attribute";
 
 // Ce contexte gère l'exécution d'une session de quiz :
 // - quizList : file active de questions (fetch normal OU session "review/free training")
@@ -15,7 +15,7 @@ import { GamePopulationScope } from "../models/commons/Game/GameOptions/GamePopu
 // - sessionOptions : snapshot des QuizOptions au lancement
 // - uncheckedNewSession : flag permettant à TrainingQuiz d'initialiser une fois une session "review"
 export interface SessionOptions {
-  mode: GameMode | null;
+  targetAttribute: Attribute | null;
   filters: GameFilter[];
   sorts: GameSortBy[];
   populationScope: GamePopulationScope;

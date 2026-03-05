@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { fetchAdminKpis } from "../services/business/admin/admin.service";
-import { OrgDataProvider, useOrgData } from "./OrgDataContext";
+import { TenantDataProvider, useTenantData } from "./TenantDataContext";
 
 // Types du contexte
 interface AdminDataContextType {
@@ -8,13 +8,13 @@ interface AdminDataContextType {
   refreshKpis: () => Promise<void>;
 
   // On expose aussi globalData (attributes, modes, etc.)
-  globalData: ReturnType<typeof useOrgData>;
+  globalData: ReturnType<typeof useTenantData>;
 }
 
 const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined);
 
 export const AdminDataProvider = ({ children }: { children: ReactNode }) => {
-  const globalData = useOrgData();
+  const globalData = useTenantData();
 
   const [kpis, setKpis] = useState<AdminDataContextType["kpis"]>(null);
 
@@ -49,7 +49,7 @@ export const useAdminData = () => {
 
 // HOC pratique pour inclure GlobalDataProvider automatiquement
 export const AdminDataLayout = ({ children }: { children: ReactNode }) => (
-  <OrgDataProvider>
+  <TenantDataProvider>
     <AdminDataProvider>{children}</AdminDataProvider>
-  </OrgDataProvider>
+  </TenantDataProvider>
 );

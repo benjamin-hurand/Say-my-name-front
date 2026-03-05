@@ -58,8 +58,8 @@ import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 
 import QRCode from "react-qr-code";
 
-import { OrgRole } from "../../../models/tenants/UserTenant";
-import type { MemberStatus, OrgMemberRow } from "../../../models/tenants/AdminMembers";
+import { OrgRole } from "../../../models/organizations/UserOrganization";
+import type { MemberStatus, OrgMemberRow } from "../../../models/organizations/AdminMembers";
 
 import type {
   InvitationDto,

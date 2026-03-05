@@ -13,7 +13,7 @@ import PrivacyHelpSection from "./sections/PrivacyHelpSection";
 import BackgroundParticlesSection from "./sections/BackgroundParticlesSection";
 import CoursesSection from "./sections/CoursesSection";
 import { useAuth } from "../../contexts/AuthContext";
-import { OrgDataProvider } from "../../contexts/OrgDataContext";
+import { TenantDataProvider } from "../../contexts/TenantDataContext";
 
 
 const SettingsPage: React.FC = () => {
@@ -76,9 +76,9 @@ const SettingsPage: React.FC = () => {
 
         {/* ✅ Progression (Courses) uniquement si org active + provider monté */}
         {activeTenant ? (
-          <OrgDataProvider>
+          <TenantDataProvider>
             <CoursesSection showAdvanced={showAdvanced} />
-          </OrgDataProvider>
+          </TenantDataProvider>
         ) : (
           <Alert
             variant="outlined"

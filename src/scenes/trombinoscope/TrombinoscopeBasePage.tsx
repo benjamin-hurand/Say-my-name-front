@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import { useOrgData } from "../../contexts/OrgDataContext";
+import { useTenantData } from "../../contexts/TenantDataContext";
 import { usePersonsDirectory } from "../../contexts/PersonsDirectoryContext";
 import { AdminPersonCardDto, PersonAttributeExtraDto, PersonCardDto, PersonCardStub } from "../../services/dto/person/search/PersonCardDtos";
 import { AttributeFilterDto } from "../../services/dto/person/search/PersonSearchRequestDto";
@@ -76,7 +76,7 @@ const TrombinoscopeBasePage: React.FC<TrombinoscopeBaseProps> = ({
   // Contexte : admin si hideFollowFeatures === true (comme tu le passes dans PersonAdminPage)
   const basePath = hideFollowFeatures ? "/admin/persons" : "/trombinoscope";
 
-  const { attributes, filters, sorts } = useOrgData();
+  const { attributes, filters, sorts } = useTenantData();
   const {
     items, totalPages, totalElements, loading, error,
     pageSize, currentPage, search, goto, setPageSize,
@@ -318,11 +318,11 @@ const TrombinoscopeBasePage: React.FC<TrombinoscopeBaseProps> = ({
 
   // ---------- Colonnes : primaires (toujours visibles) + autres (sélectionnables) ----------
   const primaryColumns = useMemo(
-    () => (attributes || []).filter(a => a.primaryField).sort((a,b)=> (a.displayOrder ?? 1e9)-(b.displayOrder ?? 1e9)),
+    () => (attributes || []).filter(a => a.identitySource).sort((a,b)=> (a.displayOrder ?? 1e9)-(b.displayOrder ?? 1e9)),
     [attributes]
   );
   const tableColumns = useMemo(
-    () => (attributes || []).filter(a => !a.primaryField),
+    () => (attributes || []).filter(a => !a.identitySource),
     [attributes]
   );
 

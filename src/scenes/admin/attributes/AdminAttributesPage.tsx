@@ -24,15 +24,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AttributeFormDrawer from "./components/AttributeFormDrawer";
 import AttributeList from "./components/AttributeList";
-import GameModeFormDrawer from "./components/GameModeFormDrawer";
-import GameModeList from "./components/GameModeList";
 
 // ⬇️ Writes admin seulement
 import { reorderAdminAttributes } from "../../../services/business/admin/admin.attributes.service";
 
 // ⬇️ Pull ponctuel local (le Provider ne propose pas encore de refresh)
 import { getAttributes } from "../../../services/business/attributes/attribute.service";
-import { getGameModes } from "../../../services/business/gamemodes/gameMode.service";
 
 // ⬇️ Modèles domaine + constantes
 import {
@@ -40,10 +37,9 @@ import {
   ATTRIBUTE_TYPES,
   AttributeType,
 } from "../../../models/commons/Attribute/Attribute";
-import { GameMode } from "../../../models/commons/Game/GameMode/GameMode.model";
 
 // ⬇️ Contexte global (lecture seule)
-import { useOrgData } from "../../../contexts/OrgDataContext";
+import { useTenantData } from "../../../contexts/TenantDataContext";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 
 function useDebounced<T>(value: T, delay = 300) {
@@ -63,15 +59,13 @@ export type AttributeIssueInfo = {
 
 export default function AdminAttributesPage() {
   // ====== Global data (lecture) ======
-  const { attributes: globalAttributes, modes: globalModes } = useOrgData();
+  const { attributes: globalAttributes } = useTenantData();
 
   // ====== Local mirror (pour filtrer/paginer et refaire un pull ponctuel) ======
   const [attributes, setAttributes] = useState<Attribute[]>(globalAttributes ?? []);
-  const [gamemodes, setGamemodes] = useState<GameMode[]>(globalModes ?? []);
 
   // Sync quand le Provider se met à jour
   useEffect(() => setAttributes(globalAttributes ?? []), [globalAttributes]);
-  useEffect(() => setGamemodes(globalModes ?? []), [globalModes]);
 
   // ====== Filtres UI (client-side) ======
   const [q, setQ] = useState("");
@@ -83,7 +77,6 @@ export default function AdminAttributesPage() {
 
   // "loading" uniquement pour nos pulls locaux
   const [loadingA, setLoadingA] = useState(false);
-  const [loadingG, setLoadingG] = useState(false);
 
   const debounced = useDebounced({ q, type, filterable, sortable, page, pageSize }, 250);
 
@@ -97,18 +90,6 @@ export default function AdminAttributesPage() {
       notifyError(e?.message || "Erreur lors de l’actualisation des attributs");
     } finally {
       setLoadingA(false);
-    }
-  }, []);
-
-  const hardRefreshGamemodes = useCallback(async () => {
-    try {
-      setLoadingG(true);
-      const fresh = await getGameModes();
-      setGamemodes(fresh ?? []);
-    } catch (e: any) {
-      notifyError(e?.message || "Erreur lors de l’actualisation des Game Modes");
-    } finally {
-      setLoadingG(false);
     }
   }, []);
 
@@ -275,56 +256,28 @@ export default function AdminAttributesPage() {
   );
 
   // ── Health / Diagnostics (côté UI) ──────────────────────────────────────────
-  // ⚠️ Correctif important : on ne doit ajouter que l'ID d'attribut, PAS l'ID d'association
-  const gmAttrIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const gm of gamemodes ?? []) {
-      const list = (gm as any)?.attributes ?? [];
-      for (const a of list ?? []) {
-        const attributeId =
-          typeof (a as any)?.attribute?.id === "number"
-            ? (a as any).attribute.id
-            : typeof (a as any)?.attributeId === "number"
-            ? (a as any).attributeId
-            : null;
-        if (attributeId != null) ids.add(attributeId);
-      }
-    }
-    return ids;
-  }, [gamemodes]);
-
+  // On conserve des checks utiles côté attributs (category => filter, "useless" si ni filter/sort/primary).
   const health = useMemo(() => {
     const rows = attributes ?? [];
     const issues: string[] = [];
     let usefulCount = 0;
 
-    const badPrimary: Attribute[] = [];
     const badCategory: Attribute[] = [];
     const useless: Attribute[] = [];
 
     for (const a of rows) {
-      const id = (a as any).id;
       const isPrimary = !!(a as any).primaryField;
       const isCategory = !!(a as any).category;
       const isFilter = !!(a as any).filter;
       const isSort = !!(a as any).sort;
-      const isUsedInMode = gmAttrIds.has(id);
 
-      const isUseful = isUsedInMode || isFilter || isSort || isPrimary;
+      const isUseful = isFilter || isSort || isPrimary;
       if (isUseful) usefulCount++;
       else useless.push(a);
 
-      if (isPrimary && !isUsedInMode) badPrimary.push(a);
       if (isCategory && !isFilter) badCategory.push(a);
     }
 
-    if (badPrimary.length) {
-      issues.push(
-        `Attribut(s) primary non utilisés dans un Game Mode: ${badPrimary
-          .map((x) => x.name)
-          .join(", ")}`
-      );
-    }
     if (badCategory.length) {
       issues.push(
         `Attribut(s) category sans filtre activé: ${badCategory
@@ -334,7 +287,7 @@ export default function AdminAttributesPage() {
     }
     if (useless.length) {
       issues.push(
-        `Attribut(s) potentiellement “inutiles” (ni sujet, ni filtre/sort, ni primary): ${useless
+        `Attribut(s) potentiellement “inutiles” (ni filtre/sort, ni primary): ${useless
           .map((x) => x.name)
           .join(", ")}`
       );
@@ -347,11 +300,10 @@ export default function AdminAttributesPage() {
       useful: usefulCount,
       coverage,
       issues,
-      badPrimary,
       badCategory,
       useless,
     };
-  }, [attributes, gmAttrIds]);
+  }, [attributes]);
 
   // Map id → problèmes (pour mise en valeur dans la table)
   const attributeIssuesById = useMemo(() => {
@@ -369,9 +321,7 @@ export default function AdminAttributesPage() {
         map.set(id, { tags: [tag], severity });
       }
     };
-    for (const a of health.badPrimary) {
-      if ((a as any).id != null) upsert((a as any).id, "primary-unused", "warning");
-    }
+
     for (const a of health.badCategory) {
       if ((a as any).id != null) upsert((a as any).id, "category-no-filter", "warning");
     }
@@ -379,13 +329,10 @@ export default function AdminAttributesPage() {
       if ((a as any).id != null) upsert((a as any).id, "useless", "error");
     }
     return map;
-  }, [health.badPrimary, health.badCategory, health.useless]);
+  }, [health.badCategory, health.useless]);
 
   // ── Drawers/Dialogs state ───────────────────────────────────────────────────
   const [drawerA, setDrawerA] = useState<{ open: boolean; initial?: Attribute | null }>({
-    open: false,
-  });
-  const [drawerG, setDrawerG] = useState<{ open: boolean; initial?: GameMode | null }>({
     open: false,
   });
 
@@ -393,16 +340,7 @@ export default function AdminAttributesPage() {
     setDrawerA({ open: false });
     if (changed) {
       await hardRefreshAttributes();
-      await hardRefreshGamemodes();
       notifySuccess("Attribut enregistré");
-    }
-  };
-
-  const onCloseGameModeDrawer = async (changed?: boolean) => {
-    setDrawerG({ open: false });
-    if (changed) {
-      await hardRefreshGamemodes();
-      notifySuccess("Game Mode enregistré");
     }
   };
 
@@ -421,13 +359,17 @@ export default function AdminAttributesPage() {
                 <Chip
                   size="small"
                   label={`Utiles: ${health.useful}/${health.total}`}
-                  color={health.coverage === 100 ? "success" : health.coverage >= 80 ? "warning" : "error"}
+                  color={
+                    health.coverage === 100 ? "success" : health.coverage >= 80 ? "warning" : "error"
+                  }
                   variant={health.coverage === 100 ? "filled" : "outlined"}
                 />
                 <Chip
                   size="small"
                   label={`Couverture: ${health.coverage}%`}
-                  color={health.coverage === 100 ? "success" : health.coverage >= 80 ? "warning" : "error"}
+                  color={
+                    health.coverage === 100 ? "success" : health.coverage >= 80 ? "warning" : "error"
+                  }
                   variant={health.coverage === 100 ? "filled" : "outlined"}
                 />
                 <Box sx={{ flex: 1 }} />
@@ -451,10 +393,17 @@ export default function AdminAttributesPage() {
             </CardContent>
           </Card>
         </Grid>
+
         <Grid item xs={12} md={4}>
           <Card variant="outlined">
             <CardContent sx={{ py: 1.5 }}>
-              <Stack direction="row" alignItems="center" gap={1} justifyContent="flex-end" flexWrap="wrap">
+              <Stack
+                direction="row"
+                alignItems="center"
+                gap={1}
+                justifyContent="flex-end"
+                flexWrap="wrap"
+              >
                 <Tooltip title="Rafraîchir Attributs">
                   <span>
                     <Chip
@@ -466,27 +415,15 @@ export default function AdminAttributesPage() {
                     />
                   </span>
                 </Tooltip>
-                <Tooltip title="Rafraîchir Game Modes">
-                  <span>
-                    <Chip
-                      icon={<RefreshRoundedIcon />}
-                      label="Refresh Modes"
-                      onClick={hardRefreshGamemodes}
-                      variant="outlined"
-                      sx={{ cursor: "pointer" }}
-                    />
-                  </span>
-                </Tooltip>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Layout côte à côte : gauche Attributs / droite Game Modes */}
+      {/* Layout : uniquement liste Attributs */}
       <Grid container spacing={2} sx={{ minHeight: 0, flex: 1 }}>
-        {/* ======= ATTRIBUTES (gauche) ======= */}
-        <Grid item xs={12} md={7} sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <Grid item xs={12} sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
           {AttributesToolbar}
           <Divider sx={{ mb: 1 }} />
           {loadingA && attributes.length === 0 ? (
@@ -503,7 +440,6 @@ export default function AdminAttributesPage() {
               onCreate={() => setDrawerA({ open: true, initial: null })}
               onDeleted={async () => {
                 await hardRefreshAttributes();
-                await hardRefreshGamemodes();
               }}
               issuesByAttributeId={attributeIssuesById}
             />
@@ -513,45 +449,6 @@ export default function AdminAttributesPage() {
             open={drawerA.open}
             initial={drawerA.initial || undefined}
             onClose={onCloseAttributeDrawer}
-          />
-        </Grid>
-
-        {/* ======= GAMEMODES (droite) ======= */}
-        <Grid item xs={12} md={5} sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <Stack direction="row" gap={1} sx={{ mb: 1 }}>
-            <Box sx={{ flex: 1 }} />
-            <Tooltip title="Créer un Game Mode personnalisé">
-              <span>
-                <Chip
-                  icon={<AddRoundedIcon />}
-                  label="Nouveau Game Mode"
-                  color="primary"
-                  onClick={() => setDrawerG({ open: true, initial: null })}
-                  sx={{ cursor: "pointer" }}
-                />
-              </span>
-            </Tooltip>
-            <Tooltip title="Rafraîchir (pull local)">
-              <span>
-                <IconButton size="small" onClick={hardRefreshGamemodes}>
-                  <RefreshRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-          <Divider sx={{ mb: 1 }} />
-
-          <GameModeList
-            rows={gamemodes}
-            loading={loadingG}
-            onEdit={(gm) => setDrawerG({ open: true, initial: gm })}
-            onDeleted={hardRefreshGamemodes}
-          />
-
-          <GameModeFormDrawer
-            open={drawerG.open}
-            initial={drawerG.initial || undefined}
-            onClose={onCloseGameModeDrawer}
           />
         </Grid>
       </Grid>
