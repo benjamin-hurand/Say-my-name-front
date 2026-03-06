@@ -171,7 +171,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
   } as const;
 
   const orgTooltip = activeTenant
-    ? `Organisation : ${activeTenant.organizationName}`
+    ? `Organisation : ${activeTenant.tenant.name}`
     : "Organisation";
 
   const HubContent = (
@@ -184,7 +184,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
             Espace de travail
           </Typography>
           <Typography variant="body2" color="text.secondary" noWrap>
-            {activeTenant ? `Actif : ${activeTenant.organizationName}` : "Aucune organisation active"}
+            {activeTenant ? `Actif : ${activeTenant.tenant.name}` : "Aucune organisation active"}
           </Typography>
         </Box>
 
@@ -211,11 +211,11 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
 
       <List dense disablePadding sx={{ mt: 0.5 }}>
         {tenants.map((org) => {
-          const isActive = org.tenantId === activeTenant?.tenantId;
+          const isActive = org.tenant.id === activeTenant?.tenant.id;
           return (
             <ListItemButton
-              key={org.tenantId}
-              onClick={() => handleSwitchOrg(org.tenantId)}
+              key={org.tenant.id}
+              onClick={() => handleSwitchOrg(org.tenant.id)}
               sx={{
                 borderRadius: 2,
                 mb: 0.5,
@@ -233,7 +233,7 @@ const Footer: React.FC<FooterProps> = ({ isMenu, handleHomeClick }) => {
                 primary={
                   <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" fontWeight={isActive ? 900 : 700} noWrap sx={{ flexGrow: 1 }}>
-                      {org.organizationName}
+                      {org.tenant.name}
                     </Typography>
                     {isActive && <CheckCircle sx={{ fontSize: 18, color }} />}
                   </Stack>

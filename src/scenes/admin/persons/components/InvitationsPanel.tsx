@@ -25,7 +25,8 @@ import { PersonEmailDto } from "../../../../services/dto/person/admin/PersonEmai
 import { listInvitations, createInvitation, revokeInvitation, deleteInvitation } from "../../../../services/business/admin/invitations.service";
 import { listPersonEmails } from "../../../../services/business/admin/personEmails.service";
 import { InvitationDto, isInvitationExpired, CreateInvitationRequestDto } from "../../../../services/dto/person/admin/InvitationDto";
-import { OrgRole } from "../../../../models/organizations/UserOrganization";
+import { OrgRole } from "../../../../models/tenants/TenantMembership";
+
 
 
 type Props = {

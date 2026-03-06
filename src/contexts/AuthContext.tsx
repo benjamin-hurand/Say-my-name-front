@@ -9,7 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { UserOrganizationDto } from "../services/dto/organization/UserOrganizationDto";
+import { TenantMembershipDto } from "../services/dto/organization/TenantMembershipDto";
 
 import {
   AuthResponseDto,
@@ -42,8 +42,8 @@ interface AuthContextProps {
   /** Emails (vérifiés) retournés dans SessionDto */
   sessionEmails: string[];
 
-  tenants: UserOrganizationDto[];
-  activeTenant: UserOrganizationDto | null;
+  tenants: TenantMembershipDto[];
+  activeTenant: TenantMembershipDto | null;
 
   isAuthenticated: boolean;
   isBooting: boolean;
@@ -87,8 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [sessionEmails, setSessionEmails] = useState<string[]>([]);
 
-  const [tenants, setTenants] = useState<UserOrganizationDto[]>([]);
-  const [activeTenant, setActiveTenant] = useState<UserOrganizationDto | null>(null);
+  const [tenants, setTenants] = useState<TenantMembershipDto[]>([]);
+  const [activeTenant, setActiveTenant] = useState<TenantMembershipDto | null>(null);
 
   const setToken = useCallback((token: string | null) => {
     _setAccessTokenState(token);
@@ -105,10 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const applySessionDto = useCallback((session: SessionDto) => {
-    const safeOrgs = session.organizations ?? [];
+    const safeOrgs = session.memberships ?? [];
     const safeEmails = Array.isArray((session as any).emails)
       ? (session as any).emails
       : (session as any).sessionEmails;
+
+    console.log("🧩 [applySessionDto] session =", session);
+    console.log("🧩 [applySessionDto] memberships =", safeOrgs);
 
     setSessionPublicId(session.publicUserId ?? null);
     setSessionDisplayName(session.displayName ?? null);
@@ -118,17 +121,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSessionEmails(Array.isArray(safeEmails) ? safeEmails.filter(Boolean) : []);
 
     const storedOrgId = localStorage.getItem(ORG_ID_KEY);
-    let selected: UserOrganizationDto | null = null;
+    let selected: TenantMembershipDto | null = null;
 
     if (storedOrgId) {
       const parsed = parseInt(storedOrgId, 10);
-      selected = safeOrgs.find((o) => o.tenantId === parsed) || null;
+      selected = safeOrgs.find((o) => o.tenant.id === parsed) || null;
     }
 
     if (!selected && safeOrgs.length > 0) {
       selected = safeOrgs[0];
-      localStorage.setItem(ORG_ID_KEY, String(selected.tenantId));
+      localStorage.setItem(ORG_ID_KEY, String(selected.tenant.id));
     }
+
+    console.log("🧩 [applySessionDto] selected activeTenant =", selected);
 
     setActiveTenant(selected);
   }, []);
@@ -137,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (auth: AuthResponseDto) => {
       DBG("[AuthProvider] applyAuthResponse()", {
         accessToken: short(auth?.accessToken),
-        orgsLen: auth?.session?.tenants?.length ?? 0,
+        orgsLen: auth?.session?.memberships?.length ?? 0,
       });
 
       setAccessToken(auth?.accessToken ?? null);
@@ -199,9 +204,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const switchTenant = useCallback(
     (orgId: number) => {
-      const org = tenants.find((o) => o.tenantId === orgId) || null;
+      const org = tenants.find((o) => o.tenant.id === orgId) || null;
       setActiveTenant(org);
-      if (org) localStorage.setItem(ORG_ID_KEY, String(org.tenantId));
+      if (org) localStorage.setItem(ORG_ID_KEY, String(org.tenant.id));
       else localStorage.removeItem(ORG_ID_KEY);
     },
     [tenants]
@@ -317,7 +322,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (tenants.length > 0 && !activeTenant) {
       const fallback = tenants[0];
       setActiveTenant(fallback);
-      localStorage.setItem(ORG_ID_KEY, String(fallback.tenantId));
+      localStorage.setItem(ORG_ID_KEY, String(fallback.tenant.id));
     }
   }, [tenants, activeTenant]);
 

@@ -1,16 +1,6 @@
 // src/services/security/authRuntime.ts
 
-export type SessionDto = {
-  publicUserId: string | null;
-  displayName: string | null;
-  isAdmin: boolean;
-  tenants: any[];
-};
-
-export type AuthResponseDto = {
-  accessToken: string;
-  session: SessionDto;
-};
+import { AuthResponseDto } from "./Auth.service";
 
 export type SetTokenFn = (token: string | null) => void;
 export type OnLogoutFn = (opts?: { reason?: string }) => Promise<void> | void;

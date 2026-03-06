@@ -1,11 +1,12 @@
 ﻿// src/components/trombinoscope/components/AdminPersonPeekDialog.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import {
   Box,
   Button,
   Chip,
   CircularProgress,
-  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -16,41 +17,35 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import CloseIcon from "@mui/icons-material/Close";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import PersonAddAltRoundedIcon from "@mui/icons-material/PersonAddAltRounded";
-import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
-import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import QRCode from "react-qr-code";
 
 import { useTenantData } from "../../../../contexts/TenantDataContext";
 import { Attribute } from "../../../../models/commons/Attribute/Attribute";
-import PhotoResponsive from "../personPeek/PhotoResponsive";
 import AttributeGrid, {
   AttributeGroup,
 } from "../personPeek/AttributeGrid";
+import PhotoResponsive from "../personPeek/PhotoResponsive";
 import {
   displayName as buildDisplayName,
   useAttributeMeta,
 } from "../personPeek/utils";
 
+import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
+import { formatRole } from "../../../../models/tenants/TenantMembership";
+import { resolveChangeRequest } from "../../../../services/business/admin/admin.changeRequests.service";
+import { getAdminPersonDetails } from "../../../../services/business/admin/admin.service";
+import { ResolveChangeRequestDto } from "../../../../services/dto/admin/change-requests";
+import { AdminPersonDetailsDto } from "../../../../services/dto/person/admin/AdminPersonDetailsDto";
 import {
   PersonCardDto,
   PersonCardStub,
 } from "../../../../services/dto/person/search/PersonCardDtos";
-import { getAdminPersonDetails } from "../../../../services/business/admin/admin.service";
-import { AdminPersonDetailsDto } from "../../../../services/dto/person/admin/AdminPersonDetailsDto";
-import { formatRole } from "../../../../models/organizations/UserOrganization";
 import AdminChangeRequestReviewDialog from "../personPeek/AdminChangeRequestReviewDialog";
-import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 import AdminChangeRequestCard from "./AdminChangeRequestCard";
-import { ResolveChangeRequestDto } from "../../../../services/dto/admin/change-requests";
-import { resolveChangeRequest } from "../../../../services/business/admin/admin.changeRequests.service";
 
 import { PersonEmailDto } from "../../../../services/dto/person/admin/PersonEmailDto";
 

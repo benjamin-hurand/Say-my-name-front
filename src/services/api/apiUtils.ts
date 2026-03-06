@@ -49,7 +49,7 @@ API.interceptors.request.use(
     }
 
     // Org context (préférence UX non sensible)
-    const orgId = localStorage.getItem("tenantId");
+    const orgId = localStorage.getItem("tenant.id");
     if (orgId) config.headers["X-Tenant-Id"] = orgId;
 
     // CSRF Double Submit:

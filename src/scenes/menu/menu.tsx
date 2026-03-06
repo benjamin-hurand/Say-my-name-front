@@ -20,7 +20,7 @@ import { useCourseStats } from "../../contexts/CourseStatsContext";
 import { useTenantData } from "../../contexts/TenantDataContext";
 import { useThemeColorContext } from "../../contexts/ThemeColorContext";
 import { Attribute } from "../../models/commons/Attribute/Attribute";
-import { OrgRole } from "../../models/organizations/UserOrganization";
+import { OrgRole } from "../../models/tenants/TenantMembership";
 import { CourseDto } from "../../services/dto/courses/CourseDto";
 
 

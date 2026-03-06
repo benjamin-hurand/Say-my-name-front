@@ -2,7 +2,7 @@
 import { CredentialResponse } from "@react-oauth/google";
 import axios from "axios";
 import API from "../api/apiUtils";
-import { UserOrganizationDto } from "../dto/organization/UserOrganizationDto";
+import { TenantMembershipDto } from "../dto/organization/TenantMembershipDto";
 import { EmailVerificationKind } from "../dto/auth/EmailVerificationDtos";
 import { ensureXsrfCookie } from "./csrf.service";
 
@@ -23,10 +23,10 @@ interface SignupCredentials {
 
 /** DTO renvoyé par /api/auth/session */
 export interface SessionDto {
-  publicUserId: string | null;
-  displayName: string | null;
+  publicUserId: string;
+  displayName: string;
   isAdmin: boolean;
-  organizations: UserOrganizationDto[];
+  memberships: TenantMembershipDto[];
   emails: string[];
 }
 

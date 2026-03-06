@@ -10,7 +10,7 @@ import {
   TextField,
 } from "@mui/material";
 import { PersonEmailDto } from "../../../../services/dto/person/admin/PersonEmailDto";
-import { OrgRole } from "../../../../models/organizations/UserOrganization";
+import { OrgRole } from "../../../../models/tenants/TenantMembership";
 
 type Props = {
   open: boolean;

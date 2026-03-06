@@ -6,17 +6,16 @@ import { useAuth } from "../../contexts/AuthContext";
 
 type Props = {
   element: React.ReactElement;
-  redirectToOnboarding?: string; // défaut: "/onboarding"
+  redirectToOnboarding?: string;
 };
 
 export default function OrgProtectedRoute({
   element,
   redirectToOnboarding = "/onboarding",
 }: Props) {
-  const { isAuthenticated, isBooting, activeTenant } = useAuth();
+  const { isAuthenticated, isBooting, activeTenant, tenants } = useAuth();
   const location = useLocation();
 
-  // ⏳ Pendant le boot (refresh cookie + /session)
   if (isBooting) {
     return (
       <Box
@@ -33,7 +32,6 @@ export default function OrgProtectedRoute({
     );
   }
 
-  // ❌ Pas authentifié → signin
   if (!isAuthenticated) {
     return (
       <Navigate
@@ -44,11 +42,27 @@ export default function OrgProtectedRoute({
     );
   }
 
-  // ⚠️ Auth OK mais aucune organisation → onboarding
-  if (!activeTenant) {
+  // Aucun tenant réel -> onboarding
+  if (!tenants || tenants.length === 0) {
     return <Navigate to={redirectToOnboarding} replace />;
   }
 
-  // ✅ Auth + org OK
+  // On a bien des tenants, mais le tenant actif n'est pas encore fixé
+  if (!activeTenant) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100svh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 3,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return element;
 }

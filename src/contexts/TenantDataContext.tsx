@@ -16,7 +16,7 @@ const TenantDataContext = createContext<TenantDataContextType | undefined>(undef
 
 export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
   const { activeTenant } = useAuth();
-  const orgId = activeTenant?.tenantId ?? null;
+  const orgId = activeTenant?.tenant.id ?? null;
 
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [filters, setFilters] = useState<Attribute[]>([]);
