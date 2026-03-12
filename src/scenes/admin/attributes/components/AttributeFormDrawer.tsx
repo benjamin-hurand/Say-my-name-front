@@ -1,4 +1,4 @@
-import { zodResolver } from "@hookform/resolvers/zod";
+﻿import { zodResolver } from "@hookform/resolvers/zod";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
@@ -10,6 +10,7 @@ import ExtensionRoundedIcon from "@mui/icons-material/ExtensionRounded";
 import FaceRoundedIcon from "@mui/icons-material/FaceRounded";
 import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import PsychologyAltRoundedIcon from "@mui/icons-material/PsychologyAltRounded";
 import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
@@ -439,13 +440,15 @@ function ConceptPicker({
             xs: "repeat(2, minmax(0, 1fr))",
             sm: "repeat(3, minmax(0, 1fr))",
             md: "repeat(4, minmax(0, 1fr))",
+            lg: "repeat(5, minmax(0, 1fr))",
+            xl: "repeat(6, minmax(0, 1fr))",
           },
-          gap: 1.5,
+          gap: { xs: 1, sm: 1.25 },
         }}
       >
         {options.map((concept) => {
-          const selected = value === concept.id;
           const disabled = concept.blocked && concept.id !== initialConceptId;
+          const selected = !disabled && value === concept.id;
           const Icon = getConceptIcon(concept.code);
 
           return (
@@ -462,7 +465,8 @@ function ConceptPicker({
                   ...(glassCard(theme) as object),
                   aspectRatio: "1 / 1",
                   cursor: disabled ? "not-allowed" : "pointer",
-                  opacity: disabled ? 0.5 : 1,
+                  opacity: disabled ? 0.58 : 1,
+                  filter: disabled ? "grayscale(0.22) saturate(0.8)" : "none",
                   ...(disabled && {
                     "&:hover": {
                       transform: "none",
@@ -488,13 +492,19 @@ function ConceptPicker({
             >
               <Stack
                 spacing={1}
-                sx={{ height: "100%", alignItems: "center", justifyContent: "center", p: 1.5, textAlign: "center" }}
+                sx={{
+                  height: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  p: { xs: 1, sm: 1.25 },
+                  textAlign: "center",
+                }}
               >
                 <Box
                   sx={(theme) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 2.25,
+                    width: { xs: 30, sm: 34 },
+                    height: { xs: 30, sm: 34 },
+                    borderRadius: 2,
                     display: "grid",
                     placeItems: "center",
                     flexShrink: 0,
@@ -508,18 +518,35 @@ function ConceptPicker({
                 </Box>
 
                 <Typography
-                  variant="body2"
+                  variant="caption"
                   fontWeight={700}
                   noWrap
-                  sx={{ lineHeight: 1.2, width: "100%" }}
+                  sx={{
+                    lineHeight: 1.2,
+                    width: "100%",
+                    fontSize: { xs: "0.72rem", sm: "0.8rem" },
+                    letterSpacing: 0.1,
+                  }}
                 >
                   {getLabel(concept)}
                 </Typography>
 
                 {disabled && (
-                  <Typography variant="caption" color="error.main" sx={{ lineHeight: 1.1 }}>
-                    Déjà utilisé
-                  </Typography>
+                  <Chip
+                    size="small"
+                    icon={<LockRoundedIcon sx={{ fontSize: "0.9rem !important" }} />}
+                    label="Utilisé"
+                    variant="outlined"
+                    sx={{
+                      mt: 0.25,
+                      height: 20,
+                      fontWeight: 600,
+                      color: "text.secondary",
+                      borderColor: (theme) => alpha(theme.palette.text.primary, 0.18),
+                      backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.35),
+                      "& .MuiChip-label": { px: 0.8, fontSize: "0.68rem", lineHeight: 1 },
+                    }}
+                  />
                 )}
               </Stack>
             </Paper>
@@ -557,13 +584,19 @@ function ConceptPicker({
         >
           <Stack
             spacing={1}
-            sx={{ height: "100%", alignItems: "center", justifyContent: "center", p: 1.5, textAlign: "center" }}
+            sx={{
+              height: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              p: { xs: 1, sm: 1.25 },
+              textAlign: "center",
+            }}
           >
             <Box
               sx={(theme) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 2.25,
+                width: { xs: 30, sm: 34 },
+                height: { xs: 30, sm: 34 },
+                borderRadius: 2,
                 display: "grid",
                 placeItems: "center",
                 flexShrink: 0,
@@ -578,17 +611,22 @@ function ConceptPicker({
             </Box>
 
             <Typography
-              variant="body2"
+              variant="caption"
               fontWeight={700}
               noWrap
-              sx={{ lineHeight: 1.2, width: "100%" }}
+              sx={{
+                lineHeight: 1.2,
+                width: "100%",
+                fontSize: { xs: "0.72rem", sm: "0.8rem" },
+                letterSpacing: 0.1,
+              }}
             >
               Attribut personnalisé
             </Typography>
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ lineHeight: 1.1 }}
+              sx={{ lineHeight: 1.1, fontSize: "0.68rem" }}
             >
               Hors concepts standards
             </Typography>
@@ -655,6 +693,7 @@ export default function AttributeFormDrawer({
   const watchedConceptId = watch("conceptId");
   const watchedType = watch("type");
   const watchedConstraintKind = watch("constraintKind");
+  const watchedName = watch("name");
 
   const selectedConcept = useMemo(
     () => conceptOptions.find((c) => c.id === watchedConceptId) ?? null,
@@ -1172,28 +1211,37 @@ export default function AttributeFormDrawer({
                 </Alert>
               )}
 
-              <TextField
-                label={t("ATTRIBUTE_FORM.NAME_LABEL", {
-                  defaultValue: "Nom affiché",
-                })}
-                fullWidth
-                {...register("name", {
-                  onChange: () => {
-                    hasUserEditedNameRef.current = true;
-                  },
-                })}
-                error={!!errors.name}
-                helperText={
-                  errors.name?.message ||
-                  (selectedConcept
-                    ? t("ATTRIBUTE_FORM.NAME_HELP_CONCEPT", {
-                        defaultValue:
-                          "Par défaut, conserve le nom proposé par le concept. Modifie-le seulement si nécessaire.",
-                      })
-                    : t("ATTRIBUTE_FORM.NAME_HELP_CUSTOM", {
-                        defaultValue: "Nom visible dans l’admin et les écrans métier.",
-                      }))
-                }
+              <Controller
+                name="name"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label={t("ATTRIBUTE_FORM.NAME_LABEL", {
+                      defaultValue: "Nom affiché",
+                    })}
+                    fullWidth
+                    error={!!errors.name}
+                    onChange={(e) => {
+                      hasUserEditedNameRef.current = true;
+                      field.onChange(e);
+                    }}
+                    InputLabelProps={{
+                      shrink: !!watchedName,
+                    }}
+                    helperText={
+                      errors.name?.message ||
+                      (selectedConcept
+                        ? t("ATTRIBUTE_FORM.NAME_HELP_CONCEPT", {
+                            defaultValue:
+                              "Par défaut, conserve le nom proposé par le concept. Modifie-le seulement si nécessaire.",
+                          })
+                        : t("ATTRIBUTE_FORM.NAME_HELP_CUSTOM", {
+                            defaultValue: "Nom visible dans l’admin et les écrans métier.",
+                          }))
+                    }
+                  />
+                )}
               />
             </Stack>
           </FormSection>
