@@ -27,14 +27,13 @@
 
 /* Pour les écrans 'fluid' (Persons) : pas de max-width */
 .admin-content__inner--fluid {
-  max-width: none;      /* enlève la contrainte à 1600px */
+  max-width: none;
   width: 100%;
-  padding: 12px;        /* garde un peu d’air */
-  margin: 8px;          /* plus "plein cadre" */
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  padding: 12px;
+  margin: 8px;
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
 }
 
 /* ------- Utilities “glass” ------- */
@@ -136,34 +135,42 @@
 }
 
 /* ------- Contenu ------- */
-.admin-content{
-  /* le scroll ne se fait plus ici */
-  overflow: hidden !important;
+.admin-content {
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--admin-shell-padding);
   display: flex;
   flex-direction: column;
-  min-height: 0; /* indispensable pour que l’enfant puisse scroller */
+  min-height: 0;
+  min-width: 0;
 }
 
 
-.admin-content__inner{
+.admin-content__inner {
   margin: 8px auto;
   padding: 12px;
   max-width: var(--admin-max-width);
-  display: flex;          /* la page métier devient flex container */
-  flex-direction: column;
-  flex: 1 1 auto;         /* occupe toute la hauteur disponible */
-  min-height: 0;          /* … et autorise le scroll interne */
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
 }
 /* Scrollbars */
-.admin-content,
-.admin-content * {
+.admin-content {
   scrollbar-width: thin;
   scrollbar-color: var(--theme-color, #5865f2) transparent;
 }
-.admin-content *::-webkit-scrollbar { width: 10px; height: 10px; }
-.admin-content *::-webkit-scrollbar-track { background: transparent; }
-.admin-content *::-webkit-scrollbar-thumb {
+
+.admin-content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.admin-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-content::-webkit-scrollbar-thumb {
   background-color: var(--theme-color, #5865f2);
   border-radius: 6px;
   border: 2px solid transparent;

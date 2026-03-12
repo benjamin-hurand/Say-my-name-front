@@ -1,337 +1,508 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import TipsAndUpdatesOutlinedIcon from "@mui/icons-material/TipsAndUpdatesOutlined";
 import {
   Alert,
   AlertTitle,
+  alpha,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
   Divider,
-  Grid,
-  IconButton,
-  InputAdornment,
-  MenuItem,
+  LinearProgress,
   Skeleton,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import AttributeFormDrawer from "./components/AttributeFormDrawer";
 import AttributeList from "./components/AttributeList";
 
-// ⬇️ Writes admin seulement
 import { reorderAdminAttributes } from "../../../services/business/admin/admin.attributes.service";
-
-// ⬇️ Pull ponctuel local (le Provider ne propose pas encore de refresh)
 import { getAttributes } from "../../../services/business/attributes/attribute.service";
 
-// ⬇️ Modèles domaine + constantes
-import {
-  Attribute,
-  ATTRIBUTE_TYPES,
-  AttributeType,
-} from "../../../models/commons/Attribute/Attribute";
+import { Attribute, AttributeType } from "../../../models/commons/Attribute/Attribute";
 
-// ⬇️ Contexte global (lecture seule)
 import { useTenantData } from "../../../contexts/TenantDataContext";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 
-function useDebounced<T>(value: T, delay = 300) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced as T;
-}
+type ConceptValueType = "TEXT" | "ENUM" | "DATETIME" | "NUMBER" | "BOOLEAN";
 
-// Infos de problème pour l’affichage dans la table
+type AttributeIssueTag =
+  | "category-no-filter"
+  | "useless"
+  | "concept-type-mismatch"
+  | "identity-source-not-eligible"
+  | "derived-edit-policy-mismatch"
+  | "system-concept-duplicated"
+  | "enum-without-options";
+
 export type AttributeIssueInfo = {
-  tags: Array<"primary-unused" | "category-no-filter" | "useless">;
+  tags: AttributeIssueTag[];
   severity: "warning" | "error";
 };
 
+type HealthDiagnostic = {
+  tag: AttributeIssueTag;
+  severity: "warning" | "error";
+  attributeId?: number;
+  attributeName?: string;
+  message: string;
+};
+
+type ListViewMode = "all" | "essential" | "custom" | "needsAttention";
+
+const UNIQUE_SYSTEM_CONCEPT_CODES = new Set([
+  "FIRST_NAME",
+  "LAST_NAME",
+  "GENDER",
+  "IDENTITY",
+]);
+
+const RECOMMENDED_BOOTSTRAP_CONCEPT_CODES = ["FIRST_NAME", "LAST_NAME", "GENDER"];
+
+const ESSENTIAL_CONCEPT_CODES = new Set([
+  ...RECOMMENDED_BOOTSTRAP_CONCEPT_CODES,
+  "IDENTITY",
+]);
+
+const CONCEPT_TYPE_COMPATIBILITY: Record<ConceptValueType, AttributeType[]> = {
+  TEXT: ["TEXT", "EMAIL", "URL"],
+  ENUM: ["ENUM"],
+  DATETIME: ["DATE", "DATETIME"],
+  NUMBER: ["NUMBER"],
+  BOOLEAN: ["BOOLEAN"],
+};
+
+function getAttrId(a: Attribute): number | undefined {
+  return (a as any)?.id;
+}
+
+function getAttrName(a: Attribute): string {
+  return (a as any)?.name ?? "";
+}
+
+function getDisplayOrder(a: Attribute): number {
+  return (a as any)?.displayOrder ?? 0;
+}
+
+function getConceptCode(a: Attribute): string | null {
+  return (a as any)?.conceptCode ?? null;
+}
+
+function getConceptValueType(a: Attribute): ConceptValueType | null {
+  return ((a as any)?.conceptValueType as ConceptValueType | null) ?? null;
+}
+
+function isConceptDerived(a: Attribute): boolean {
+  return !!(a as any)?.conceptDerived;
+}
+
+function isIdentityComponentEligible(a: Attribute): boolean {
+  return !!(a as any)?.identityComponentEligible;
+}
+
+function getAttributeType(a: Attribute): AttributeType | null {
+  return ((a as any)?.type as AttributeType | null) ?? null;
+}
+
+function getEditPolicy(a: Attribute): string | null {
+  return ((a as any)?.editPolicy as string | null) ?? null;
+}
+
+function isFilterable(a: Attribute): boolean {
+  return !!(a as any)?.filter;
+}
+
+function isSortable(a: Attribute): boolean {
+  return !!(a as any)?.sort;
+}
+
+function isCategory(a: Attribute): boolean {
+  return !!(a as any)?.category;
+}
+
+function isIdentitySource(a: Attribute): boolean {
+  return !!(a as any)?.identitySource;
+}
+
+function getOptionsCount(a: Attribute): number {
+  return Array.isArray((a as any)?.options) ? (a as any).options.length : 0;
+}
+
+function isAttributeTypeCompatibleWithConcept(attribute: Attribute): boolean {
+  const conceptValueType = getConceptValueType(attribute);
+  const type = getAttributeType(attribute);
+
+  if (!conceptValueType || !type) return true;
+  return CONCEPT_TYPE_COMPATIBILITY[conceptValueType]?.includes(type) ?? true;
+}
+
 export default function AdminAttributesPage() {
-  // ====== Global data (lecture) ======
-  const { attributes: globalAttributes } = useTenantData();
+  const { t } = useTranslation();
+  const { attributes: globalAttributes, concepts } = useTenantData();
 
-  // ====== Local mirror (pour filtrer/paginer et refaire un pull ponctuel) ======
+  const getConceptLabel = useCallback(
+    (conceptCode: string) =>
+      t(`CONCEPTS.${conceptCode}.LABEL`, {
+        defaultValue: conceptCode,
+      }),
+    [t]
+  );
+
+  const buildIssueMessage = useCallback(
+    (tag: AttributeIssueTag, a: Attribute): string => {
+      const name = getAttrName(a);
+      const conceptCode = getConceptCode(a);
+      const type = getAttributeType(a);
+      const conceptValueType = getConceptValueType(a);
+      const conceptLabel = conceptCode ? getConceptLabel(conceptCode) : "?";
+
+      switch (tag) {
+        case "category-no-filter":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.category-no-filter", {
+            name,
+            defaultValue: `L’attribut "${name}" est marqué comme catégorie mais n’est pas filtrable.`,
+          });
+        case "useless":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.useless", {
+            name,
+            defaultValue: `L’attribut "${name}" semble peu exploitable actuellement.`,
+          });
+        case "concept-type-mismatch":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.concept-type-mismatch", {
+            name,
+            type: type ?? "?",
+            concept: conceptLabel,
+            conceptValueType: conceptValueType ?? "?",
+            defaultValue: `L’attribut "${name}" a un type "${type ?? "?"}" incompatible avec le concept "${conceptLabel}" (${conceptValueType ?? "?"}).`,
+          });
+        case "identity-source-not-eligible":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.identity-source-not-eligible", {
+            name,
+            defaultValue: `L’attribut "${name}" est défini comme source d’identité alors que son concept n’est pas éligible.`,
+          });
+        case "derived-edit-policy-mismatch":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.derived-edit-policy-mismatch", {
+            name,
+            defaultValue: `L’attribut "${name}" est lié à un concept dérivé mais son editPolicy n’est pas "DERIVED".`,
+          });
+        case "system-concept-duplicated":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.system-concept-duplicated", {
+            concept: conceptLabel,
+            defaultValue: `Le concept système "${conceptLabel}" est dupliqué dans le tenant.`,
+          });
+        case "enum-without-options":
+          return t("ATTRIBUTE_HEALTH_MESSAGES.enum-without-options", {
+            name,
+            defaultValue: `L’attribut ENUM "${name}" ne possède aucune option active.`,
+          });
+        default:
+          return t("ATTRIBUTE_HEALTH_MESSAGES.default", {
+            name,
+            defaultValue: `Problème détecté sur "${name}".`,
+          });
+      }
+    },
+    [getConceptLabel, t]
+  );
+
+  const getSetupStepLabel = useCallback(
+    (conceptCode: string) => getConceptLabel(conceptCode),
+    [getConceptLabel]
+  );
+
   const [attributes, setAttributes] = useState<Attribute[]>(globalAttributes ?? []);
-
-  // Sync quand le Provider se met à jour
-  useEffect(() => setAttributes(globalAttributes ?? []), [globalAttributes]);
-
-  // ====== Filtres UI (client-side) ======
-  const [q, setQ] = useState("");
-  const [type, setType] = useState<AttributeType | "">("");
-  const [filterable, setFilterable] = useState<"" | "true" | "false">("");
-  const [sortable, setSortable] = useState<"" | "true" | "false">("");
+  const [viewMode, setViewMode] = useState<ListViewMode>("all");
   const [page, setPage] = useState(0);
   const [pageSize] = useState(20);
-
-  // "loading" uniquement pour nos pulls locaux
   const [loadingA, setLoadingA] = useState(false);
 
-  const debounced = useDebounced({ q, type, filterable, sortable, page, pageSize }, 250);
+  useEffect(() => {
+    setAttributes(globalAttributes ?? []);
+  }, [globalAttributes]);
 
-  // ── Helpers services ─────────────────────────────────────────────────────────
   const hardRefreshAttributes = useCallback(async () => {
     try {
       setLoadingA(true);
       const fresh = await getAttributes({ options: true });
       setAttributes(fresh ?? []);
     } catch (e: any) {
-      notifyError(e?.message || "Erreur lors de l’actualisation des attributs");
+      notifyError(
+        e?.message ||
+          t("ATTRIBUTE_PAGE.REFRESH_ERROR", {
+            defaultValue: "Erreur lors de l’actualisation des attributs",
+          })
+      );
     } finally {
       setLoadingA(false);
     }
-  }, []);
+  }, [t]);
 
-  // ── Filtrage côté client (copie locale) ──────────────────────────────────────
-  const filteredAttributes = useMemo(() => {
-    const qn = debounced.q.trim().toLowerCase();
-    return (attributes ?? [])
-      .filter((a) => (qn ? (a.name ?? "").toLowerCase().includes(qn) : true))
-      .filter((a) => (debounced.type ? a.type === debounced.type : true))
-      .filter((a) =>
-        debounced.filterable === ""
-          ? true
-          : debounced.filterable === "true"
-          ? !!(a as any).filter
-          : !(a as any).filter
-      )
-      .filter((a) =>
-        debounced.sortable === ""
-          ? true
-          : debounced.sortable === "true"
-          ? !!(a as any).sort
-          : !(a as any).sort
-      )
-      .sort((x, y) => {
-        const dx = (x as any).displayOrder ?? 0;
-        const dy = (y as any).displayOrder ?? 0;
-        if (dx !== dy) return dx - dy;
-        return (x.name ?? "").localeCompare(y.name ?? "");
+  const diagnostics = useMemo(() => {
+    const rows = attributes ?? [];
+    const items: HealthDiagnostic[] = [];
+
+    const conceptGroups = new Map<string, Attribute[]>();
+    for (const a of rows) {
+      const code = getConceptCode(a);
+      if (!code) continue;
+      if (!conceptGroups.has(code)) conceptGroups.set(code, []);
+      conceptGroups.get(code)!.push(a);
+    }
+
+    for (const a of rows) {
+      const id = getAttrId(a);
+      const name = getAttrName(a);
+
+      if (isCategory(a) && !isFilterable(a)) {
+        items.push({
+          tag: "category-no-filter",
+          severity: "warning",
+          attributeId: id,
+          attributeName: name,
+          message: buildIssueMessage("category-no-filter", a),
+        });
+      }
+
+      const isUseful = isFilterable(a) || isSortable(a) || isIdentitySource(a);
+      if (!isUseful) {
+        items.push({
+          tag: "useless",
+          severity: "warning",
+          attributeId: id,
+          attributeName: name,
+          message: buildIssueMessage("useless", a),
+        });
+      }
+
+      if (!isAttributeTypeCompatibleWithConcept(a)) {
+        items.push({
+          tag: "concept-type-mismatch",
+          severity: "error",
+          attributeId: id,
+          attributeName: name,
+          message: buildIssueMessage("concept-type-mismatch", a),
+        });
+      }
+
+      if (isIdentitySource(a) && !isIdentityComponentEligible(a)) {
+        items.push({
+          tag: "identity-source-not-eligible",
+          severity: "error",
+          attributeId: id,
+          attributeName: name,
+          message: buildIssueMessage("identity-source-not-eligible", a),
+        });
+      }
+
+      if (isConceptDerived(a) && getEditPolicy(a) !== "DERIVED") {
+        items.push({
+          tag: "derived-edit-policy-mismatch",
+          severity: "error",
+          attributeId: id,
+          attributeName: name,
+          message: buildIssueMessage("derived-edit-policy-mismatch", a),
+        });
+      }
+
+      if (getAttributeType(a) === "ENUM" && getOptionsCount(a) === 0) {
+        items.push({
+          tag: "enum-without-options",
+          severity: "warning",
+          attributeId: id,
+          attributeName: name,
+          message: buildIssueMessage("enum-without-options", a),
+        });
+      }
+    }
+
+    for (const [conceptCode, rowsForConcept] of conceptGroups.entries()) {
+      if (!UNIQUE_SYSTEM_CONCEPT_CODES.has(conceptCode)) continue;
+      if (rowsForConcept.length <= 1) continue;
+
+      for (const a of rowsForConcept) {
+        items.push({
+          tag: "system-concept-duplicated",
+          severity: "error",
+          attributeId: getAttrId(a),
+          attributeName: getAttrName(a),
+          message: buildIssueMessage("system-concept-duplicated", a),
+        });
+      }
+    }
+
+    return items;
+  }, [attributes, buildIssueMessage]);
+
+  const issuesByAttributeId = useMemo(() => {
+    const map = new Map<number, AttributeIssueInfo>();
+
+    for (const diag of diagnostics) {
+      if (diag.attributeId == null) continue;
+
+      const prev = map.get(diag.attributeId);
+      if (prev) {
+        if (!prev.tags.includes(diag.tag)) prev.tags.push(diag.tag);
+        if (diag.severity === "error") prev.severity = "error";
+      } else {
+        map.set(diag.attributeId, {
+          tags: [diag.tag],
+          severity: diag.severity,
+        });
+      }
+    }
+
+    return map;
+  }, [diagnostics]);
+
+  const health = useMemo(() => {
+    const rows = attributes ?? [];
+    const warnings = diagnostics.filter((d) => d.severity === "warning");
+    const errors = diagnostics.filter((d) => d.severity === "error");
+
+    const byTagCount = diagnostics.reduce<Record<string, number>>((acc, d) => {
+      acc[d.tag] = (acc[d.tag] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const presentConceptCodes = new Set(
+      rows.map((a) => getConceptCode(a)).filter(Boolean) as string[]
+    );
+
+    const missingRecommendedConcepts = RECOMMENDED_BOOTSTRAP_CONCEPT_CODES.filter(
+      (code) => !presentConceptCodes.has(code)
+    );
+
+    return {
+      total: rows.length,
+      warningsCount: warnings.length,
+      errorsCount: errors.length,
+      byTagCount,
+      missingRecommendedConcepts,
+      hasIssues: warnings.length > 0 || errors.length > 0,
+    };
+  }, [attributes, diagnostics]);
+
+  const topIssuesSummary = useMemo(() => {
+    if (health.errorsCount > 0) {
+      if ((health.byTagCount["system-concept-duplicated"] ?? 0) > 0) {
+        return t("ATTRIBUTE_PAGE.TOP_ISSUES.system-concept-duplicated", {
+          defaultValue: "Certains concepts système sont dupliqués et doivent être corrigés.",
+        });
+      }
+      if ((health.byTagCount["concept-type-mismatch"] ?? 0) > 0) {
+        return t("ATTRIBUTE_PAGE.TOP_ISSUES.concept-type-mismatch", {
+          defaultValue: "Certains attributs ont un type incompatible avec leur concept.",
+        });
+      }
+      if ((health.byTagCount["identity-source-not-eligible"] ?? 0) > 0) {
+        return t("ATTRIBUTE_PAGE.TOP_ISSUES.identity-source-not-eligible", {
+          defaultValue: "Certaines sources d’identité ne sont pas cohérentes avec leur concept.",
+        });
+      }
+      if ((health.byTagCount["derived-edit-policy-mismatch"] ?? 0) > 0) {
+        return t("ATTRIBUTE_PAGE.TOP_ISSUES.derived-edit-policy-mismatch", {
+          defaultValue: "Certaines règles de calcul d’attribut doivent être corrigées.",
+        });
+      }
+      return t("ATTRIBUTE_PAGE.TOP_ISSUES.default-error", {
+        defaultValue: "Des attributs doivent être corrigés pour garantir un schéma cohérent.",
       });
-  }, [attributes, debounced]);
+    }
+
+    if (health.warningsCount > 0) {
+      if ((health.byTagCount["enum-without-options"] ?? 0) > 0) {
+        return t("ATTRIBUTE_PAGE.TOP_ISSUES.enum-without-options", {
+          defaultValue: "Certaines listes n’ont pas encore d’options configurées.",
+        });
+      }
+      if ((health.byTagCount["category-no-filter"] ?? 0) > 0) {
+        return t("ATTRIBUTE_PAGE.TOP_ISSUES.category-no-filter", {
+          defaultValue: "Certaines catégories ne sont pas encore exploitables comme filtres.",
+        });
+      }
+      return t("ATTRIBUTE_PAGE.TOP_ISSUES.default-warning", {
+        defaultValue: "Quelques améliorations sont recommandées pour finaliser la configuration.",
+      });
+    }
+
+    return null;
+  }, [health, t]);
+
+  const filteredAttributes = useMemo(() => {
+    return (attributes ?? [])
+      .filter((a) => {
+        if (viewMode === "all") return true;
+
+        if (viewMode === "needsAttention") {
+          const id = getAttrId(a);
+          return id != null && issuesByAttributeId.has(id);
+        }
+
+        if (viewMode === "essential") {
+          const code = getConceptCode(a);
+          return !!code && ESSENTIAL_CONCEPT_CODES.has(code);
+        }
+
+        if (viewMode === "custom") {
+          const code = getConceptCode(a);
+          return !code || !ESSENTIAL_CONCEPT_CODES.has(code);
+        }
+
+        return true;
+      })
+      .sort((x, y) => {
+        const dx = getDisplayOrder(x);
+        const dy = getDisplayOrder(y);
+        if (dx !== dy) return dx - dy;
+        return getAttrName(x).localeCompare(getAttrName(y));
+      });
+  }, [attributes, issuesByAttributeId, viewMode]);
 
   const totalA = filteredAttributes.length;
-  const pageStart = debounced.page * pageSize;
+  const pageStart = page * pageSize;
   const pageEnd = pageStart + pageSize;
   const pageRows = filteredAttributes.slice(pageStart, pageEnd);
 
-  // ── Reorder de la page courante (recalcule l’offset global) ──────────────────
   const onReorder = async (rowsOfCurrentPage: Attribute[]) => {
     const offset = page * pageSize;
     const items = rowsOfCurrentPage.map((r, i) => ({
-      id: (r as any).id,
+      id: getAttrId(r),
       displayOrder: (offset + i + 1) * 10,
     }));
+
     try {
-      await reorderAdminAttributes(items);
-      // Optimistic update local
+      await reorderAdminAttributes(items as Array<{ id: number; displayOrder: number }>);
+
       setAttributes((prev) => {
-        const map = new Map(prev.map((a) => [(a as any).id, a]));
+        const map = new Map(prev.map((a) => [getAttrId(a), { ...a }]));
+
         for (const it of items) {
-          const found = map.get(it.id) as any;
-          if (found) found.displayOrder = it.displayOrder;
+          const found = map.get(it.id);
+          if (found) (found as any).displayOrder = it.displayOrder;
         }
-        return [...map.values()].sort(
-          (x: any, y: any) => (x.displayOrder ?? 0) - (y.displayOrder ?? 0)
-        );
+
+        return [...map.values()].sort((x, y) => getDisplayOrder(x) - getDisplayOrder(y));
       });
-      notifySuccess("Ordre mis à jour");
+
+      notifySuccess(t("ATTRIBUTE_PAGE.REORDER_SUCCESS", { defaultValue: "Ordre mis à jour" }));
     } catch (e: any) {
-      notifyError(e?.message || "Erreur de réordonnancement");
+      notifyError(
+        e?.message ||
+          t("ATTRIBUTE_PAGE.REORDER_ERROR", { defaultValue: "Erreur de réordonnancement" })
+      );
       await hardRefreshAttributes();
     }
   };
 
-  // ── Toolbar (attributs) ─────────────────────────────────────────────────────
-  const AttributesToolbar = useMemo(
-    () => (
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        gap={1}
-        alignItems={{ xs: "stretch", sm: "center" }}
-        sx={{ mb: 1 }}
-      >
-        <TextField
-          size="small"
-          placeholder="Rechercher un attribut…"
-          value={q}
-          onChange={(e) => {
-            setPage(0);
-            setQ(e.target.value);
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchRoundedIcon fontSize="small" />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                <Tooltip title="Rafraîchir (pull local)">
-                  <span>
-                    <IconButton size="small" onClick={hardRefreshAttributes}>
-                      <RefreshRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 260 }}
-          InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-          select
-          size="small"
-          label="Type"
-          value={type}
-          onChange={(e) => {
-            setPage(0);
-            setType(e.target.value as AttributeType | "");
-          }}
-          sx={{ width: 200 }}
-          InputLabelProps={{ shrink: true }}
-        >
-          <MenuItem value="">Tous</MenuItem>
-          {ATTRIBUTE_TYPES.map((t) => (
-            <MenuItem key={t} value={t}>
-              {t}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label="Filterable"
-          value={filterable}
-          onChange={(e) => {
-            setPage(0);
-            setFilterable(e.target.value as "" | "true" | "false");
-          }}
-          sx={{ width: 160 }}
-          InputLabelProps={{ shrink: true }}
-        >
-          <MenuItem value="">—</MenuItem>
-          <MenuItem value="true">Oui</MenuItem>
-          <MenuItem value="false">Non</MenuItem>
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label="Sortable"
-          value={sortable}
-          onChange={(e) => {
-            setPage(0);
-            setSortable(e.target.value as "" | "true" | "false");
-          }}
-          sx={{ width: 160 }}
-          InputLabelProps={{ shrink: true }}
-        >
-          <MenuItem value="">—</MenuItem>
-          <MenuItem value="true">Oui</MenuItem>
-          <MenuItem value="false">Non</MenuItem>
-        </TextField>
-        <Box sx={{ flex: 1 }} />
-        <Chip
-          icon={<AddRoundedIcon />}
-          label="Nouvel attribut"
-          color="primary"
-          onClick={() => setDrawerA({ open: true, initial: null })}
-          sx={{ cursor: "pointer" }}
-        />
-      </Stack>
-    ),
-    [q, type, filterable, sortable, hardRefreshAttributes]
-  );
-
-  // ── Health / Diagnostics (côté UI) ──────────────────────────────────────────
-  // On conserve des checks utiles côté attributs (category => filter, "useless" si ni filter/sort/primary).
-  const health = useMemo(() => {
-    const rows = attributes ?? [];
-    const issues: string[] = [];
-    let usefulCount = 0;
-
-    const badCategory: Attribute[] = [];
-    const useless: Attribute[] = [];
-
-    for (const a of rows) {
-      const isPrimary = !!(a as any).primaryField;
-      const isCategory = !!(a as any).category;
-      const isFilter = !!(a as any).filter;
-      const isSort = !!(a as any).sort;
-
-      const isUseful = isFilter || isSort || isPrimary;
-      if (isUseful) usefulCount++;
-      else useless.push(a);
-
-      if (isCategory && !isFilter) badCategory.push(a);
-    }
-
-    if (badCategory.length) {
-      issues.push(
-        `Attribut(s) category sans filtre activé: ${badCategory
-          .map((x) => x.name)
-          .join(", ")}`
-      );
-    }
-    if (useless.length) {
-      issues.push(
-        `Attribut(s) potentiellement “inutiles” (ni filtre/sort, ni primary): ${useless
-          .map((x) => x.name)
-          .join(", ")}`
-      );
-    }
-
-    const coverage = rows.length ? Math.round((usefulCount / rows.length) * 100) : 100;
-
-    return {
-      total: rows.length,
-      useful: usefulCount,
-      coverage,
-      issues,
-      badCategory,
-      useless,
-    };
-  }, [attributes]);
-
-  // Map id → problèmes (pour mise en valeur dans la table)
-  const attributeIssuesById = useMemo(() => {
-    const map = new Map<number, AttributeIssueInfo>();
-    const upsert = (
-      id: number,
-      tag: AttributeIssueInfo["tags"][number],
-      severity: AttributeIssueInfo["severity"]
-    ) => {
-      const prev = map.get(id);
-      if (prev) {
-        if (!prev.tags.includes(tag)) prev.tags.push(tag);
-        if (severity === "error") prev.severity = "error";
-      } else {
-        map.set(id, { tags: [tag], severity });
-      }
-    };
-
-    for (const a of health.badCategory) {
-      if ((a as any).id != null) upsert((a as any).id, "category-no-filter", "warning");
-    }
-    for (const a of health.useless) {
-      if ((a as any).id != null) upsert((a as any).id, "useless", "error");
-    }
-    return map;
-  }, [health.badCategory, health.useless]);
-
-  // ── Drawers/Dialogs state ───────────────────────────────────────────────────
   const [drawerA, setDrawerA] = useState<{ open: boolean; initial?: Attribute | null }>({
     open: false,
   });
@@ -340,94 +511,407 @@ export default function AdminAttributesPage() {
     setDrawerA({ open: false });
     if (changed) {
       await hardRefreshAttributes();
-      notifySuccess("Attribut enregistré");
+      notifySuccess(t("ATTRIBUTE_PAGE.SAVED_SUCCESS", { defaultValue: "Attribut enregistré" }));
     }
   };
 
+  const essentialSetupProgress = RECOMMENDED_BOOTSTRAP_CONCEPT_CODES.map((conceptCode) => {
+    const exists = attributes.some((a) => getConceptCode(a) === conceptCode);
+    return {
+      conceptCode,
+      exists,
+      label: getSetupStepLabel(conceptCode),
+    };
+  });
+
+  const completedEssentialCount = essentialSetupProgress.filter((step) => step.exists).length;
+  const essentialProgressPercent =
+    essentialSetupProgress.length === 0
+      ? 0
+      : (completedEssentialCount / essentialSetupProgress.length) * 100;
+
+  const nextRecommendedConceptCode = health.missingRecommendedConcepts[0] ?? null;
+  const nextRecommendedConceptLabel = nextRecommendedConceptCode
+    ? getSetupStepLabel(nextRecommendedConceptCode)
+    : null;
+
+  const isSetupComplete = essentialSetupProgress.every((step) => step.exists);
+
+  const viewChips: Array<{ value: ListViewMode; labelKey: string; defaultLabel: string }> = [
+    { value: "all", labelKey: "ATTRIBUTE_PAGE.VIEWS.ALL", defaultLabel: "Tous" },
+    { value: "essential", labelKey: "ATTRIBUTE_PAGE.VIEWS.ESSENTIAL", defaultLabel: "Essentiels" },
+    { value: "custom", labelKey: "ATTRIBUTE_PAGE.VIEWS.CUSTOM", defaultLabel: "Personnalisés" },
+    {
+      value: "needsAttention",
+      labelKey: "ATTRIBUTE_PAGE.VIEWS.NEEDS_ATTENTION",
+      defaultLabel: "À corriger",
+    },
+  ];
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {/* Bandeau Health */}
-      <Grid container spacing={1} sx={{ mb: 1 }}>
-        <Grid item xs={12} md={8}>
-          <Card variant="outlined">
-            <CardContent sx={{ py: 1.5 }}>
-              <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-                <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
-                  Santé du schéma
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+        gap: { xs: 1.5, sm: 2 },
+        overflow: "visible",
+        width: "100%",
+        maxWidth: 1120,
+        mx: "auto",
+        px: { xs: 1.5, sm: 2, md: 3 },
+        pb: { xs: 2, sm: 3 },
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "stretch", md: "center" }}
+        spacing={{ xs: 1.25, md: 2 }}
+      >
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="h5" fontWeight={700}>
+            {t("ATTRIBUTE_PAGE.TITLE", { defaultValue: "Attributs" })}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 0.25, maxWidth: 720 }}
+          >
+            {t("ATTRIBUTE_PAGE.SUBTITLE", {
+              defaultValue:
+                "Définissez les informations utiles pour identifier et organiser les membres du groupe.",
+            })}
+          </Typography>
+        </Box>
+
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{
+            width: { xs: "100%", md: "auto" },
+            justifyContent: { xs: "stretch", md: "flex-end" },
+            "& > *": {
+              flex: { xs: 1, sm: "0 0 auto" },
+            },
+          }}
+        >
+          <Button
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={hardRefreshAttributes}
+            sx={{ whiteSpace: "nowrap" }}
+          >
+            {t("ATTRIBUTE_PAGE.REFRESH", { defaultValue: "Actualiser" })}
+          </Button>
+
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={() => setDrawerA({ open: true, initial: null })}
+            sx={{ whiteSpace: "nowrap" }}
+          >
+            {t("ATTRIBUTE_PAGE.ADD_ATTRIBUTE", { defaultValue: "Ajouter un attribut" })}
+          </Button>
+        </Stack>
+      </Stack>
+
+      {!isSetupComplete && (
+        <Card variant="outlined" sx={{ overflow: "visible" }}>
+          <CardContent
+            sx={{
+              pt: 2.25,
+              pb: 3,
+              px: { xs: 2, sm: 3 },
+              overflow: "visible",
+            }}
+          >
+            <Stack spacing={2.25} sx={{ overflow: "visible" }}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {t("ATTRIBUTE_PAGE.SETUP.TITLE", {
+                    defaultValue: "Commencer par les attributs essentiels",
+                  })}
                 </Typography>
-                <Chip size="small" label={`Attributs: ${health.total}`} variant="outlined" />
-                <Chip
-                  size="small"
-                  label={`Utiles: ${health.useful}/${health.total}`}
-                  color={
-                    health.coverage === 100 ? "success" : health.coverage >= 80 ? "warning" : "error"
-                  }
-                  variant={health.coverage === 100 ? "filled" : "outlined"}
-                />
-                <Chip
-                  size="small"
-                  label={`Couverture: ${health.coverage}%`}
-                  color={
-                    health.coverage === 100 ? "success" : health.coverage >= 80 ? "warning" : "error"
-                  }
-                  variant={health.coverage === 100 ? "filled" : "outlined"}
-                />
-                <Box sx={{ flex: 1 }} />
-              </Stack>
-              {!!health.issues.length && (
-                <Alert
-                  severity="warning"
-                  iconMapping={{ warning: <InfoOutlinedIcon /> }}
-                  sx={{ mt: 1 }}
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {t("ATTRIBUTE_PAGE.SETUP.SUBTITLE", {
+                    defaultValue:
+                      "Pour un quiz photo fiable, commence par cadrer les informations de base.",
+                  })}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  gap={1}
+                  sx={{ mb: 1 }}
                 >
-                  <AlertTitle>Incohérences détectées</AlertTitle>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {health.issues.map((msg, i) => (
-                      <li key={i}>
-                        <Typography variant="body2">{msg}</Typography>
-                      </li>
-                    ))}
-                  </ul>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+                  <Typography variant="body2" fontWeight={600}>
+                    {t("ATTRIBUTE_PAGE.SETUP.PROGRESS_LABEL", {
+                      done: completedEssentialCount,
+                      total: essentialSetupProgress.length,
+                      defaultValue: `${completedEssentialCount} / ${essentialSetupProgress.length} attributs essentiels`,
+                    })}
+                  </Typography>
 
-        <Grid item xs={12} md={4}>
-          <Card variant="outlined">
-            <CardContent sx={{ py: 1.5 }}>
-              <Stack
-                direction="row"
-                alignItems="center"
-                gap={1}
-                justifyContent="flex-end"
-                flexWrap="wrap"
-              >
-                <Tooltip title="Rafraîchir Attributs">
-                  <span>
-                    <Chip
-                      icon={<RefreshRoundedIcon />}
-                      label="Refresh Attributs"
-                      onClick={hardRefreshAttributes}
-                      variant="outlined"
-                      sx={{ cursor: "pointer" }}
-                    />
-                  </span>
-                </Tooltip>
+                  <Typography variant="body2" color="text.secondary">
+                    {t("ATTRIBUTE_PAGE.SETUP.PROGRESS_PERCENT", {
+                      percent: Math.round(essentialProgressPercent),
+                      defaultValue: `${Math.round(essentialProgressPercent)}%`,
+                    })}
+                  </Typography>
+                </Stack>
+
+                <LinearProgress
+                  variant="determinate"
+                  value={essentialProgressPercent}
+                  sx={{ height: 6, borderRadius: 999 }}
+                />
+              </Box>
+
+              <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap>
+                {essentialSetupProgress.map((step) => (
+                  <Chip
+                    key={step.conceptCode}
+                    icon={
+                      step.exists ? (
+                        <CheckCircleRoundedIcon fontSize="small" />
+                      ) : (
+                        <RadioButtonUncheckedRoundedIcon fontSize="small" />
+                      )
+                    }
+                    label={step.label}
+                    color={step.exists ? "success" : "default"}
+                    variant={step.exists ? "filled" : "outlined"}
+                    sx={{ maxWidth: "100%" }}
+                  />
+                ))}
               </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
 
-      {/* Layout : uniquement liste Attributs */}
-      <Grid container spacing={2} sx={{ minHeight: 0, flex: 1 }}>
-        <Grid item xs={12} sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-          {AttributesToolbar}
-          <Divider sx={{ mb: 1 }} />
+              {!!nextRecommendedConceptLabel && (
+                <Box
+                  sx={(theme) => ({
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" },
+                    alignItems: { xs: "flex-start", sm: "center" },
+                    justifyContent: "space-between",
+                    gap: 1.25,
+                    px: 1.5,
+                    py: 1.25,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.info.main, 0.08),
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.18)}`,
+                  })}
+                >
+                  <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                    <TipsAndUpdatesOutlinedIcon color="info" fontSize="small" />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        {t("ATTRIBUTE_PAGE.SETUP.NEXT_STEP_TITLE", {
+                          defaultValue: "Prochaine étape recommandée",
+                        })}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {t("ATTRIBUTE_PAGE.SETUP.NEXT_STEP_TEXT_SINGLE", {
+                          concept: nextRecommendedConceptLabel,
+                          defaultValue: `Ajoute ${nextRecommendedConceptLabel} pour compléter la configuration de base.`,
+                        })}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => setDrawerA({ open: true, initial: null })}
+                    sx={{
+                      whiteSpace: "nowrap",
+                      alignSelf: { xs: "stretch", sm: "center" },
+                    }}
+                  >
+                    {t("ATTRIBUTE_PAGE.SETUP.ADD_CONCEPT", {
+                      concept: nextRecommendedConceptLabel,
+                      defaultValue: `Ajouter ${nextRecommendedConceptLabel}`,
+                    })}
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {topIssuesSummary && (
+        <Alert severity={health.errorsCount > 0 ? "error" : "warning"}>
+          <AlertTitle>
+            {health.errorsCount > 0
+              ? t("ATTRIBUTE_PAGE.ISSUES_TITLE_ERROR", {
+                  defaultValue: "Des corrections sont nécessaires",
+                })
+              : t("ATTRIBUTE_PAGE.ISSUES_TITLE_WARNING", {
+                  defaultValue: "Quelques ajustements sont recommandés",
+                })}
+          </AlertTitle>
+          {topIssuesSummary}
+        </Alert>
+      )}
+
+      {!topIssuesSummary && isSetupComplete && (
+        <Alert severity="success" icon={<AutoAwesomeRoundedIcon />}>
+          <AlertTitle>
+            {t("ATTRIBUTE_PAGE.SUCCESS_TITLE", {
+              defaultValue: "Configuration de base prête",
+            })}
+          </AlertTitle>
+          {t("ATTRIBUTE_PAGE.SUCCESS_TEXT", {
+            defaultValue:
+              "Les attributs essentiels sont en place. Tu peux maintenant affiner ou ajouter des attributs métier.",
+          })}
+        </Alert>
+      )}
+
+      <Card
+        variant="outlined"
+        sx={{
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <CardContent sx={{ pb: 1.25, px: { xs: 1.75, sm: 2.5 }, pt: 1.75 }}>
+          <Stack spacing={1.25}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "stretch", md: "center" }}
+              gap={1}
+            >
+              <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap>
+                {viewChips.map((item) => (
+                  <Chip
+                    key={item.value}
+                    size="small"
+                    label={t(item.labelKey, { defaultValue: item.defaultLabel })}
+                    color={viewMode === item.value ? "primary" : "default"}
+                    variant={viewMode === item.value ? "filled" : "outlined"}
+                    onClick={() => {
+                      setPage(0);
+                      setViewMode(item.value);
+                    }}
+                    sx={{ cursor: "pointer" }}
+                  />
+                ))}
+              </Stack>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ whiteSpace: "nowrap", alignSelf: { xs: "flex-end", md: "auto" } }}
+              >
+                {t("ATTRIBUTE_PAGE.RESULTS_COUNT", {
+                  count: totalA,
+                  defaultValue: `${totalA} résultat${totalA > 1 ? "s" : ""}`,
+                })}
+              </Typography>
+            </Stack>
+
+            <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap alignItems="center">
+              {(health.byTagCount["system-concept-duplicated"] ?? 0) > 0 && (
+                <Chip
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  label={t("ATTRIBUTE_PAGE.QUICK_FILTER_DUPLICATED_SYSTEM_CONCEPTS", {
+                    defaultValue: "Concepts système dupliqués",
+                  })}
+                  onClick={() => {
+                    setPage(0);
+                    setViewMode("needsAttention");
+                  }}
+                  sx={{ cursor: "pointer" }}
+                />
+              )}
+
+              {(health.byTagCount["concept-type-mismatch"] ?? 0) > 0 && (
+                <Chip
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  label={t("ATTRIBUTE_PAGE.QUICK_FILTER_TYPES_TO_FIX", {
+                    defaultValue: "Types à corriger",
+                  })}
+                  onClick={() => {
+                    setPage(0);
+                    setViewMode("needsAttention");
+                  }}
+                  sx={{ cursor: "pointer" }}
+                />
+              )}
+
+              {(health.byTagCount["enum-without-options"] ?? 0) > 0 && (
+                <Chip
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  label={t("ATTRIBUTE_PAGE.QUICK_FILTER_INCOMPLETE_LISTS", {
+                    defaultValue: "Listes incomplètes",
+                  })}
+                  onClick={() => {
+                    setPage(0);
+                    setViewMode("needsAttention");
+                  }}
+                  sx={{ cursor: "pointer" }}
+                />
+              )}
+            </Stack>
+          </Stack>
+        </CardContent>
+
+        <Divider />
+
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            pt: 1.5,
+            minHeight: 0,
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {loadingA && attributes.length === 0 ? (
-            <Skeleton variant="rounded" height={240} />
+            <Skeleton variant="rounded" height={280} />
+          ) : totalA === 0 ? (
+            <Card variant="outlined" sx={{ borderStyle: "dashed" }}>
+              <CardContent sx={{ py: 4 }}>
+                <Stack spacing={1.5} alignItems="flex-start">
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {t("ATTRIBUTE_PAGE.EMPTY_TITLE", { defaultValue: "Aucun attribut à afficher" })}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t("ATTRIBUTE_PAGE.EMPTY_TEXT", {
+                      defaultValue:
+                        "Commence par ajouter les informations essentielles, puis enrichis progressivement le schéma avec des attributs métier.",
+                    })}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => setDrawerA({ open: true, initial: null })}
+                    sx={{ whiteSpace: "nowrap" }}
+                  >
+                    {t("ATTRIBUTE_PAGE.ADD_ATTRIBUTE", { defaultValue: "Ajouter un attribut" })}
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
           ) : (
             <AttributeList
               rows={pageRows}
@@ -437,21 +921,22 @@ export default function AdminAttributesPage() {
               onPageChange={setPage}
               onReorder={onReorder}
               onEdit={(row) => setDrawerA({ open: true, initial: row })}
-              onCreate={() => setDrawerA({ open: true, initial: null })}
               onDeleted={async () => {
                 await hardRefreshAttributes();
               }}
-              issuesByAttributeId={attributeIssuesById}
+              issuesByAttributeId={issuesByAttributeId}
             />
           )}
+        </Box>
+      </Card>
 
-          <AttributeFormDrawer
-            open={drawerA.open}
-            initial={drawerA.initial || undefined}
-            onClose={onCloseAttributeDrawer}
-          />
-        </Grid>
-      </Grid>
+      <AttributeFormDrawer
+        open={drawerA.open}
+        initial={drawerA.initial || undefined}
+        onClose={onCloseAttributeDrawer}
+        conceptOptions={concepts}
+        allAttributes={attributes}
+      />
     </Box>
   );
 }

@@ -1,13 +1,18 @@
-// src/contexts/OrgDataContext.tsx
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+
 import { Attribute } from "../models/commons/Attribute/Attribute";
+import { Concept } from "../models/commons/Concept/Concept";
+
 import { getAttributes, getFilters } from "../services/business/attributes/attribute.service";
+import { getConcepts } from "../services/business/concept/concept.service";
+
 import { useAuth } from "./AuthContext";
 
 interface TenantDataContextType {
   attributes: Attribute[];
   filters: Attribute[];
   sorts: Attribute[];
+  concepts: Concept[];
   /** utile pour l'UX (skeleton/loader) */
   loading: boolean;
 }
@@ -21,19 +26,19 @@ export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [filters, setFilters] = useState<Attribute[]>([]);
   const [sorts, setSorts] = useState<Attribute[]>([]);
+  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // 1) Reset data quand il n'y a plus d'orga (logout) ou quand l'orga change
   useEffect(() => {
     if (!orgId) {
       setAttributes([]);
       setFilters([]);
       setSorts([]);
+      setConcepts([]);
       setLoading(false);
     }
   }, [orgId]);
 
-  // 2) Fetch org data UNIQUEMENT si org présente
   useEffect(() => {
     if (!orgId) return;
 
@@ -42,10 +47,10 @@ export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
     (async () => {
       setLoading(true);
       try {
-        // Un seul point d'orchestration, plus robuste et simple à annuler
-        const [allAttributes, allFilterAttributes] = await Promise.all([
+        const [allAttributes, allFilterAttributes, allConcepts] = await Promise.all([
           getAttributes({ options: true }),
           getFilters({ stats: true, options: true }),
+          getConcepts(),
         ]);
 
         if (cancelled) return;
@@ -53,9 +58,11 @@ export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
         setAttributes(allAttributes);
         setSorts(allAttributes.filter((attr) => Boolean(attr.sort)));
         setFilters(allFilterAttributes);
-
+        setConcepts(allConcepts);
       } catch (error) {
-        if (!cancelled) console.error("[OrgData] Error fetching org data:", error);
+        if (!cancelled) {
+          console.error("[TenantData] Error fetching tenant data:", error);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -71,9 +78,10 @@ export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
       attributes,
       filters,
       sorts,
+      concepts,
       loading,
     }),
-    [attributes, filters, sorts, loading]
+    [attributes, filters, sorts, concepts, loading]
   );
 
   return <TenantDataContext.Provider value={value}>{children}</TenantDataContext.Provider>;
@@ -81,6 +89,8 @@ export const TenantDataProvider = ({ children }: { children: ReactNode }) => {
 
 export const useTenantData = () => {
   const context = useContext(TenantDataContext);
-  if (!context) throw new Error("useTenantData must be used within a TenantDataProvider");
+  if (!context) {
+    throw new Error("useTenantData must be used within a TenantDataProvider");
+  }
   return context;
 };

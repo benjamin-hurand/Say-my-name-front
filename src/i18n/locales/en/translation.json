@@ -1,7 +1,54 @@
 {
-    "TRAINING": "TRAINING",
-    "RANKED": "RANKED",
-    "PROFILE": "PROFILE",
-    "SETTINGS": "SETTINGS"
+  "TRAINING": "TRAINING",
+  "RANKED": "RANKED",
+  "PROFILE": "PROFILE",
+  "SETTINGS": "SETTINGS",
+
+  "CONCEPTS": {
+    "FIRST_NAME": {
+      "LABEL": "First name",
+      "DESCRIPTION": "Person's given name"
+    },
+    "LAST_NAME": {
+      "LABEL": "Last name",
+      "DESCRIPTION": "Person's family name"
+    },
+    "NICKNAME": {
+      "LABEL": "Nickname",
+      "DESCRIPTION": "Informal or preferred name"
+    },
+    "TITLE": {
+      "LABEL": "Title",
+      "DESCRIPTION": "Title or honorific (Dr., Prof., etc.)"
+    },
+    "GENDER": {
+      "LABEL": "Gender",
+      "DESCRIPTION": "Gender of the person"
+    },
+    "IDENTITY": {
+      "LABEL": "Identity",
+      "DESCRIPTION": "Derived identity combining multiple identity components"
+    },
+    "DEPARTMENT": {
+      "LABEL": "Department",
+      "DESCRIPTION": "Department or organizational unit"
+    },
+    "PROMOTION": {
+      "LABEL": "Promotion",
+      "DESCRIPTION": "Promotion, class or cohort"
+    },
+    "ARRIVAL_DATE": {
+      "LABEL": "Arrival date",
+      "DESCRIPTION": "Date when the person joined the group"
+    }
+  },
+
+  "ATTRIBUTE_PAGE": {
+    "SETUP": {
+      "PROGRESS_LABEL": "{{done}} / {{total}} essential attributes",
+      "PROGRESS_PERCENT": "{{percent}}%",
+      "NEXT_STEP_TEXT_SINGLE": "Add {{concept}} to complete the basic setup.",
+      "ADD_CONCEPT": "Add {{concept}}"
+    }
   }
-  
+}

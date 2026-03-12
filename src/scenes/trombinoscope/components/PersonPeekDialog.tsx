@@ -18,6 +18,7 @@ import {
   useMediaQuery
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import { glassDialog } from "../../../styles/glassStyles";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTenantData } from "../../../contexts/TenantDataContext";
@@ -153,12 +154,9 @@ export default function PersonPeekDialog({
       }}
       PaperProps={{
         sx: {
+          ...(glassDialog(theme) as object),
           borderRadius: 4,
           overflow: "hidden",
-          background: alpha(theme.palette.background.paper, 0.55),
-          backdropFilter: "blur(16px) saturate(140%)",
-          border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-          boxShadow: "0 12px 48px rgba(0,0,0,0.5)",
           width: { xs: "calc(100vw - 24px)", sm: "min(900px, 92vw)", md: "min(1100px, 92vw)", lg: "min(1280px, 92vw)" },
         },
       }}

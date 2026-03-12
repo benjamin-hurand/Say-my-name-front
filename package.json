@@ -12,12 +12,12 @@
     "postinstall": "npm dedupe"
   },
   "dependencies": {
-    "@emotion/react": "11.11.4",
-    "@emotion/styled": "11.11.5",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
     "@hello-pangea/dnd": "18.0.1",
     "@hookform/resolvers": "^5.2.2",
-    "@mui/icons-material": "5.18.0",
-    "@mui/material": "5.18.0",
+    "@mui/icons-material": "^5.18.0",
+    "@mui/material": "^5.18.0",
     "@mui/system": "5.18.0",
     "@mui/x-date-pickers": "8.8.0",
     "@react-oauth/google": "0.12.1",

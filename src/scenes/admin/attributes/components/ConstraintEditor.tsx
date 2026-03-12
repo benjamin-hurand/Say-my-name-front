@@ -9,41 +9,39 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { Controller } from "react-hook-form";
-import type { Control, FieldErrors, UseFormWatch } from "react-hook-form";
+import type { Control, FieldErrors, UseFormWatch, UseFormSetValue } from "react-hook-form";
 import { z } from "zod";
-import { attributeCreateSchema } from "../validation/attributeSchemas";
+
+import { attributeCreateSchema } from "../validation/attributeCreate.schema";
 import { AttributeType, CONSTRAINT_KINDS } from "../../../../models/commons/Attribute/Attribute";
+import type { ConstraintPayload } from "../../../../models/commons/Attribute/constraintPayload.schema";
 
-
-// Types dérivés du schéma Zod (cohérents avec AttributeFormDrawer)
 type FormInput = z.input<typeof attributeCreateSchema>;
 
-export default function ConstraintEditor({
-  control,
-  watch,
-  errors,
-}: {
+type Props = {
   control: Control<FormInput>;
   watch: UseFormWatch<FormInput>;
   errors: FieldErrors<FormInput>;
-}) {
+  setValue: UseFormSetValue<FormInput>;
+};
+
+export default function ConstraintEditor({ control, watch, errors, setValue }: Props) {
   const type = watch("type");
   const kind = watch("constraintKind");
 
   const hint = useMemo(() => {
-    if (type === "EMAIL") return "Astuce: utilisez REGEX pour imposer un pattern email";
-    if (type === "URL") return "Astuce: REGEX (pattern) ou limites de longueur peuvent aider";
-    if (type === "ENUM") return "Astuce: utilisez les options ENUM (allowInactive/storeCode) selon vos besoins";
+    if (type === "EMAIL") return "Astuce : utilisez REGEX pour imposer un pattern email";
+    if (type === "URL") return "Astuce : REGEX ou limites de longueur peuvent aider";
+    if (type === "ENUM") {
+      return "Astuce : utilisez les options ENUM (allowInactive / storeCode) selon vos besoins";
+    }
     return undefined;
   }, [type]);
 
-  // Rend les champs min/max correctement selon le type d'attribut
   const renderRangeInputs = (t: AttributeType | undefined) => {
     const isDate = t === "DATE";
     const isDateTime = t === "DATETIME";
     const isNumber = t === "NUMBER";
-
-    const commonProps = { sx: { mt: 1 }, fullWidth: true } as const;
 
     return (
       <>
@@ -54,23 +52,50 @@ export default function ConstraintEditor({
             render={({ field }) => (
               <TextField
                 label="Min"
-                {...commonProps}
-                type={isNumber ? "number" : isDate ? "date" : isDateTime ? "datetime-local" : "text"}
+                fullWidth
+                sx={{ mt: 1 }}
+                type={
+                  isNumber
+                    ? "number"
+                    : isDate
+                    ? "date"
+                    : isDateTime
+                    ? "datetime-local"
+                    : "text"
+                }
                 InputLabelProps={{ shrink: isDate || isDateTime ? true : undefined }}
-                {...field}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+                name={field.name}
               />
             )}
           />
+
           <Controller
             name="constraintPayload.max"
             control={control}
             render={({ field }) => (
               <TextField
                 label="Max"
-                {...commonProps}
-                type={isNumber ? "number" : isDate ? "date" : isDateTime ? "datetime-local" : "text"}
+                fullWidth
+                sx={{ mt: 1 }}
+                type={
+                  isNumber
+                    ? "number"
+                    : isDate
+                    ? "date"
+                    : isDateTime
+                    ? "datetime-local"
+                    : "text"
+                }
                 InputLabelProps={{ shrink: isDate || isDateTime ? true : undefined }}
-                {...field}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+                name={field.name}
               />
             )}
           />
@@ -81,9 +106,19 @@ export default function ConstraintEditor({
             name="constraintPayload.step"
             control={control}
             render={({ field }) => (
-              <TextField label="Step (optionnel)" type="number" sx={{ minWidth: 220 }} {...field} />
+              <TextField
+                label="Step (optionnel)"
+                type="number"
+                sx={{ minWidth: 220 }}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+                name={field.name}
+              />
             )}
           />
+
           <Controller
             name="constraintPayload.inclusive"
             control={control}
@@ -106,7 +141,22 @@ export default function ConstraintEditor({
           name="constraintKind"
           control={control}
           render={({ field }) => (
-            <TextField select label="Constraint kind" sx={{ minWidth: 220 }} {...field}>
+            <TextField
+              select
+              label="Constraint kind"
+              sx={{ minWidth: 220 }}
+              value={field.value ?? "NONE"}
+              onChange={(e) => {
+                const newKind = e.target.value as ConstraintPayload["kind"];
+                field.onChange(newKind);
+                setValue("constraintPayload", { kind: newKind } as ConstraintPayload, { shouldDirty: true });
+              }}
+              onBlur={field.onBlur}
+              inputRef={field.ref}
+              name={field.name}
+              error={!!errors.constraintKind}
+              helperText={errors.constraintKind?.message as string | undefined}
+            >
               {CONSTRAINT_KINDS.map((k) => (
                 <MenuItem key={k} value={k}>
                   {k}
@@ -117,8 +167,6 @@ export default function ConstraintEditor({
         />
         {hint && <Chip size="small" label={hint} />}
       </Stack>
-
-      {/* Payloads dynamiques alignés avec le domaine */}
 
       {kind === "SET" && (
         <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ mt: 1 }} alignItems="center">
@@ -145,6 +193,7 @@ export default function ConstraintEditor({
               );
             }}
           />
+
           <Controller
             name="constraintPayload.strict"
             control={control}
@@ -167,9 +216,19 @@ export default function ConstraintEditor({
               name="constraintPayload.pattern"
               control={control}
               render={({ field }) => (
-                <TextField label="Pattern (regex)" placeholder="^.+$" fullWidth {...field} />
+                <TextField
+                  label="Pattern (regex)"
+                  placeholder="^.+$"
+                  fullWidth
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  name={field.name}
+                />
               )}
             />
+
             <Controller
               name="constraintPayload.caseInsensitive"
               control={control}
@@ -181,16 +240,38 @@ export default function ConstraintEditor({
               )}
             />
           </Stack>
+
           <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ mt: 1 }}>
             <Controller
               name="constraintPayload.minLength"
               control={control}
-              render={({ field }) => <TextField type="number" label="Min length" {...field} />}
+              render={({ field }) => (
+                <TextField
+                  type="number"
+                  label="Min length"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  name={field.name}
+                />
+              )}
             />
+
             <Controller
               name="constraintPayload.maxLength"
               control={control}
-              render={({ field }) => <TextField type="number" label="Max length" {...field} />}
+              render={({ field }) => (
+                <TextField
+                  type="number"
+                  label="Max length"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  name={field.name}
+                />
+              )}
             />
           </Stack>
         </>
@@ -208,6 +289,7 @@ export default function ConstraintEditor({
               />
             )}
           />
+
           <Controller
             name="constraintPayload.storeCode"
             control={control}

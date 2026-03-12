@@ -20,7 +20,6 @@ export interface CreateAttributePayload {
   filter?: boolean;
   sort?: boolean;
   required?: boolean;
-  initializable?: boolean;
 
   editPolicy?: EditPolicy;
 

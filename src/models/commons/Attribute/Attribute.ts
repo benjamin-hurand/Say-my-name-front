@@ -1,4 +1,5 @@
 // types/attributes.ts
+import type { ConstraintPayload } from "./constraintPayload.schema";
 
 /** ---- Listes canoniques ---- */
 export const ATTRIBUTE_TYPES = [
@@ -14,7 +15,7 @@ export const CASING_STRATEGIES = [
 ] as const;
 
 export const EDIT_POLICIES = [
-  "FREE", "RESTRICTED",
+  "FREE", "RESTRICTED", "DERIVED",
 ] as const;
 
 /** ---- Types dérivés (Single Source of Truth) ---- */
@@ -64,9 +65,19 @@ export interface AttributeEnumOptionDto {
   orderIndex: number;
   active: boolean;
 }
+export type ConceptValueType = "TEXT" | "ENUM" | "DATETIME" | "NUMBER" | "BOOLEAN";
+export type ConceptPortabilityKind = "NONE" | "VALUE_ONLY" | "WITH_CONTEXT";
 
 export interface Attribute {
   id: number;
+
+  conceptId?: number | null;
+  conceptCode?: string | null;
+  conceptValueType?: ConceptValueType | null;
+  conceptDerived?: boolean | null;
+  conceptPortabilityKind?: ConceptPortabilityKind | null;
+  identityComponentEligible?: boolean | null;
+
   name: string;
   displayOrder?: number | null;
   identitySource?: boolean | null;
@@ -74,14 +85,12 @@ export interface Attribute {
   maxValues?: number | null;
   filter?: boolean | null;
   sort?: boolean | null;
-  initializable?: boolean | null;
   required?: boolean | null;
   type?: AttributeType | null;
   editPolicy?: EditPolicy | null;
-  derived?: boolean | null;
   casingStrategy?: CasingStrategy | null;
   constraintKind?: ConstraintKind | null;
-  constraintPayload?: Record<string, unknown> | null;
+  constraintPayload?: ConstraintPayload | null;
   constraint?: ConstraintDto | null;
   stats?: AttributeStatsDto | null;
   options?: AttributeEnumOptionDto[] | null;

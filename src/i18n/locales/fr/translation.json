@@ -1,8 +1,53 @@
 {
-    "TRAINING": "ENTRAINEMENT",
-    "RANKED": "CLASSE",
-    "PROFILE": "PROFIL",
-    "SETTINGS": "PARAMETRES"
-    
+  "TRAINING": "ENTRAINEMENT",
+  "RANKED": "CLASSE",
+  "PROFILE": "PROFIL",
+  "SETTINGS": "PARAMETRES",
+
+  "CONCEPTS": {
+    "FIRST_NAME": {
+      "LABEL": "Prénom",
+      "DESCRIPTION": "Prénom de la personne"
+    },
+    "LAST_NAME": {
+      "LABEL": "Nom",
+      "DESCRIPTION": "Nom de famille de la personne"
+    },
+    "NICKNAME": {
+      "LABEL": "Surnom",
+      "DESCRIPTION": "Nom informel ou préféré"
+    },
+    "TITLE": {
+      "LABEL": "Titre",
+      "DESCRIPTION": "Titre ou civilité (Dr., Prof., etc.)"
+    },
+    "GENDER": {
+      "LABEL": "Genre",
+      "DESCRIPTION": "Genre de la personne"
+    },
+    "IDENTITY": {
+      "LABEL": "Identité",
+      "DESCRIPTION": "Identité dérivée combinant plusieurs composants d'identité"
+    },
+    "DEPARTMENT": {
+      "LABEL": "Département",
+      "DESCRIPTION": "Département ou unité organisationnelle"
+    },
+    "PROMOTION": {
+      "LABEL": "Promotion",
+      "DESCRIPTION": "Promotion, classe ou cohorte"
+    },
+    "ARRIVAL_DATE": {
+      "LABEL": "Date d'arrivée",
+      "DESCRIPTION": "Date à laquelle la personne a rejoint le groupe"
+    }
+  },
+  "ATTRIBUTE_PAGE": {
+    "SETUP": {
+      "PROGRESS_LABEL": "{{done}} / {{total}} attributs essentiels",
+      "PROGRESS_PERCENT": "{{percent}}%",
+      "NEXT_STEP_TEXT_SINGLE": "Ajoute {{concept}} pour compléter la configuration de base.",
+      "ADD_CONCEPT": "Ajouter {{concept}}"
+    }
   }
-  
+}

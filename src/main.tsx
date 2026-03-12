@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 import './index.css';
-import './i18n';
+import './i18n/i18n.ts';
 import { ThemeColorProvider } from './contexts/ThemeColorContext.tsx';
 
 // 👇 Ajouts pour MUI X Date Pickers
