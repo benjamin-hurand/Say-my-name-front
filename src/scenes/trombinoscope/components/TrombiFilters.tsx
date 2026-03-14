@@ -45,7 +45,7 @@ const isBooleanAttr = (a: Attribute) =>
 
 /** Texte et assimilés (gérés par la recherche globale) */
 const isTextualOnly = (a: Attribute) =>
-  getType(a) === "TEXT" || getType(a) === "URL" || getType(a) === "EMAIL";
+  getType(a) === "TEXT";
 
 const TrombiFilters: React.FC<Props> = ({
   filtersAttributes, selectedFilters, onFiltersChange,

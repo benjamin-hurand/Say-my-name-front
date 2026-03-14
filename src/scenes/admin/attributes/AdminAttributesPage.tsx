@@ -74,7 +74,7 @@ const ESSENTIAL_CONCEPT_CODES = new Set([
 ]);
 
 const CONCEPT_TYPE_COMPATIBILITY: Record<ConceptValueType, AttributeType[]> = {
-  TEXT: ["TEXT", "EMAIL", "URL"],
+  TEXT: ["TEXT"],
   ENUM: ["ENUM"],
   DATETIME: ["DATE", "DATETIME"],
   NUMBER: ["NUMBER"],

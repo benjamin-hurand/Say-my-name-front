@@ -30,8 +30,6 @@ export default function ConstraintEditor({ control, watch, errors, setValue }: P
   const kind = watch("constraintKind");
 
   const hint = useMemo(() => {
-    if (type === "EMAIL") return "Astuce : utilisez REGEX pour imposer un pattern email";
-    if (type === "URL") return "Astuce : REGEX ou limites de longueur peuvent aider";
     if (type === "ENUM") {
       return "Astuce : utilisez les options ENUM (allowInactive / storeCode) selon vos besoins";
     }

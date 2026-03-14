@@ -3,7 +3,7 @@ import type { ConstraintPayload } from "./constraintPayload.schema";
 
 /** ---- Listes canoniques ---- */
 export const ATTRIBUTE_TYPES = [
-  "TEXT", "NUMBER", "ENUM", "DATE", "DATETIME", "BOOLEAN", "URL", "EMAIL",
+  "TEXT", "NUMBER", "ENUM", "DATE", "DATETIME", "BOOLEAN",
 ] as const;
 
 export const CONSTRAINT_KINDS = [

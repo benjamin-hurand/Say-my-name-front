@@ -308,14 +308,6 @@ const TypedValueInput: React.FC<Props> = ({
       }
       break;
     }
-    case "URL": {
-      if (trimmed !== "" && !URL_RE.test(trimmed)) { invalid = true; helper = "URL invalide (http(s)://...)"; }
-      break;
-    }
-    case "EMAIL": {
-      if (trimmed !== "" && !EMAIL_RE.test(trimmed)) { invalid = true; helper = "Email invalide"; }
-      break;
-    }
   }
 
   if (!invalid && kind === "REGEX" && constraint?.regex) {
@@ -544,11 +536,9 @@ const TypedValueInput: React.FC<Props> = ({
     );
   }
 
-  // ===== TEXT / NUMBER / EMAIL / URL (avec boutons save/cancel) =====
+  // ===== TEXT / NUMBER (avec boutons save/cancel) =====
   const inputType =
-    attribute?.type === "NUMBER" ? "number" :
-    attribute?.type === "EMAIL" ? "email" :
-    attribute?.type === "URL" ? "url" : "text";
+    attribute?.type === "NUMBER" ? "number" : "text";
 
   const { min: minAttr, max: maxAttr, step } = attribute?.type === "NUMBER"
     ? getEffectiveNumberBounds(attribute)
