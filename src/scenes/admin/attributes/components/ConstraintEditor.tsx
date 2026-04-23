@@ -13,7 +13,7 @@ import type { Control, FieldErrors, UseFormWatch, UseFormSetValue } from "react-
 import { z } from "zod";
 
 import { attributeCreateSchema } from "../validation/attributeCreate.schema";
-import { AttributeType, CONSTRAINT_KINDS } from "../../../../models/commons/Attribute/Attribute";
+import { ValueType, CONSTRAINT_KINDS } from "../../../../models/commons/Attribute/Attribute";
 import type { ConstraintPayload } from "../../../../models/commons/Attribute/constraintPayload.schema";
 
 type FormInput = z.input<typeof attributeCreateSchema>;
@@ -31,12 +31,12 @@ export default function ConstraintEditor({ control, watch, errors, setValue }: P
 
   const hint = useMemo(() => {
     if (type === "ENUM") {
-      return "Astuce : utilisez les options ENUM (allowInactive / storeCode) selon vos besoins";
+      return "Astuce : les options ENUM sont gérées via la section dédiée ci-dessus";
     }
     return undefined;
   }, [type]);
 
-  const renderRangeInputs = (t: AttributeType | undefined) => {
+  const renderRangeInputs = (t: ValueType | undefined) => {
     const isDate = t === "DATE";
     const isDateTime = t === "DATETIME";
     const isNumber = t === "NUMBER";
@@ -166,45 +166,6 @@ export default function ConstraintEditor({ control, watch, errors, setValue }: P
         {hint && <Chip size="small" label={hint} />}
       </Stack>
 
-      {kind === "SET" && (
-        <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ mt: 1 }} alignItems="center">
-          <Controller
-            name="constraintPayload.values"
-            control={control}
-            render={({ field }) => {
-              const value = Array.isArray(field.value) ? field.value : [];
-              return (
-                <TextField
-                  label="Valeurs (séparées par des virgules)"
-                  placeholder="ex: Alice,Bob,Charlie"
-                  value={value.join(",")}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value
-                        .split(",")
-                        .map((v) => v.trim())
-                        .filter(Boolean)
-                    )
-                  }
-                  fullWidth
-                />
-              );
-            }}
-          />
-
-          <Controller
-            name="constraintPayload.strict"
-            control={control}
-            render={({ field }) => (
-              <FormControlLabel
-                control={<Switch checked={!!field.value} onChange={(_, v) => field.onChange(v)} />}
-                label="Strict (interdit valeurs hors liste)"
-              />
-            )}
-          />
-        </Stack>
-      )}
-
       {kind === "RANGE" && renderRangeInputs(type)}
 
       {kind === "REGEX" && (
@@ -275,31 +236,6 @@ export default function ConstraintEditor({ control, watch, errors, setValue }: P
         </>
       )}
 
-      {kind === "ENUM" && (
-        <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ mt: 1 }} alignItems="center">
-          <Controller
-            name="constraintPayload.allowInactive"
-            control={control}
-            render={({ field }) => (
-              <FormControlLabel
-                control={<Switch checked={!!field.value} onChange={(_, v) => field.onChange(v)} />}
-                label="Autoriser options inactives"
-              />
-            )}
-          />
-
-          <Controller
-            name="constraintPayload.storeCode"
-            control={control}
-            render={({ field }) => (
-              <FormControlLabel
-                control={<Switch checked={!!field.value} onChange={(_, v) => field.onChange(v)} />}
-                label="Stocker le code plutôt que le label"
-              />
-            )}
-          />
-        </Stack>
-      )}
     </Box>
   );
 }

@@ -32,7 +32,7 @@ type Props = {
   /** Optionnel : utilisé comme placeholder (pas comme label). */
   label?: string;
 
-  /** Libellé custom pour l’option vide dans les Select (ENUM/SET/BOOLEAN). */
+  /** Libellé custom pour l’option vide dans les Select (ENUM/BOOLEAN). */
   selectEmptyLabel?: string;
   /** Cacher l’option vide (outre attribute.required). */
   hideEmptyOption?: boolean;
@@ -41,13 +41,13 @@ type Props = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_RE = /^https?:\/\/.+/i;
 
-/** 🔧 Fix minimal anti-label coupé (sans doublons) */
+/** Fix minimal anti-label coupé */
 const labelCutFixSx = {
   overflow: "visible",
   "& .MuiOutlinedInput-root": { overflow: "visible" },
 } as const;
 
-/** 🧩 Items shrinkables pour bien wrap en ligne */
+/** Items shrinkables pour bien wrap en ligne */
 const flexItemShrinkableSx = {
   display: "inline-flex",
   flex: "0 1 auto",
@@ -55,7 +55,7 @@ const flexItemShrinkableSx = {
   overflow: "visible",
 } as const;
 
-/** 🧩 Style compact homogène pour Date/DateTime */
+/** Style compact homogène pour Date/DateTime */
 const compactFieldSx = {
   width: 170,
   maxWidth: "100%",
@@ -67,11 +67,19 @@ const compactFieldSx = {
 // ---------- utils bas niveau ----------
 function toRegExp(pattern?: string, caseInsensitive?: boolean): RegExp | null {
   if (!pattern) return null;
-  try { return new RegExp(pattern, caseInsensitive ? "i" : undefined); }
-  catch { return null; }
+  try {
+    return new RegExp(pattern, caseInsensitive ? "i" : undefined);
+  } catch {
+    return null;
+  }
 }
 
-function numberInRange(n: number, min?: number | null, max?: number | null, inclusive = true): boolean {
+function numberInRange(
+  n: number,
+  min?: number | null,
+  max?: number | null,
+  inclusive = true,
+): boolean {
   if (min != null && (inclusive ? n < min : n <= min)) return false;
   if (max != null && (inclusive ? n > max : n >= max)) return false;
   return true;
@@ -99,7 +107,9 @@ function clamp(n: number, min?: number | null, max?: number | null): number {
 // --------------------------------------------
 
 function getEffectiveNumberBounds(attribute?: Attribute): {
-  min?: number; max?: number; step?: number
+  min?: number;
+  max?: number;
+  step?: number;
 } {
   if (!attribute) return {};
   const r = attribute.constraint?.range;
@@ -116,11 +126,15 @@ function getEffectiveNumberBounds(attribute?: Attribute): {
   if (sMin != null || sMax != null) {
     return { min: sMin ?? undefined, max: sMax ?? undefined, step };
   }
+
   return { step };
 }
 
 function getEffectiveDateBounds(attribute?: Attribute): {
-  minD?: Dayjs; maxD?: Dayjs; minStr?: string; maxStr?: string;
+  minD?: Dayjs;
+  maxD?: Dayjs;
+  minStr?: string;
+  maxStr?: string;
 } {
   if (!attribute) return {};
   const r = attribute.constraint?.range;
@@ -128,20 +142,24 @@ function getEffectiveDateBounds(attribute?: Attribute): {
   const rMax = toDayjsDateOnly(r?.max) ?? undefined;
   if (rMin || rMax) {
     return {
-      minD: rMin, maxD: rMax,
+      minD: rMin,
+      maxD: rMax,
       minStr: rMin?.format("YYYY-MM-DD"),
-      maxStr: rMax?.format("YYYY-MM-DD")
+      maxStr: rMax?.format("YYYY-MM-DD"),
     };
   }
+
   const sMin = toDayjsDateOnly(attribute.stats?.observedMin) ?? undefined;
   const sMax = toDayjsDateOnly(attribute.stats?.observedMax) ?? undefined;
   if (sMin || sMax) {
     return {
-      minD: sMin, maxD: sMax,
+      minD: sMin,
+      maxD: sMax,
       minStr: sMin?.format("YYYY-MM-DD"),
-      maxStr: sMax?.format("YYYY-MM-DD")
+      maxStr: sMax?.format("YYYY-MM-DD"),
     };
   }
+
   return {};
 }
 
@@ -152,29 +170,34 @@ function coerceOnBlurValue(attribute: Attribute | undefined, raw: string): strin
   if (attribute.type === "NUMBER") {
     const n = Number(trimmed.replace(",", "."));
     if (!Number.isFinite(n)) return raw;
+
     const { min, max, step } = getEffectiveNumberBounds(attribute);
     let v = clamp(n, min, max);
+
     if (step && step > 0) {
-      const base = (min ?? 0);
+      const base = min ?? 0;
       v = base + Math.round((v - base) / step) * step;
       v = clamp(v, min, max);
     }
+
     return String(v);
   }
 
   if (attribute.type === "DATE" || attribute.type === "DATETIME") {
     const d = trimmed ? dayjs(trimmed) : null;
     if (!d || !d.isValid()) return raw;
+
     const { minD, maxD } = getEffectiveDateBounds(attribute);
     let v = d;
     if (minD && v.isBefore(minD, "day")) v = minD;
     if (maxD && v.isAfter(maxD, "day")) v = maxD;
+
     return attribute.type === "DATE" ? v.format("YYYY-MM-DD") : v.toISOString();
   }
+
   return raw;
 }
 
-// ===== libellé “vide” intelligent =====
 function emptyLabelFor(attribute?: Attribute, override?: string): string {
   if (override) return override;
   if (!attribute) return "Non renseigné";
@@ -201,21 +224,35 @@ const EndAdornment: React.FC<{
     {status === "saving" && <CircularProgress size={16} />}
     {status === "success" && <Typography sx={{ fontSize: 12, ml: 0.5 }}>✔</Typography>}
     {status === "error" && (
-      <Typography color="error" sx={{ fontSize: 12, ml: 0.5 }}>Erreur</Typography>
+      <Typography color="error" sx={{ fontSize: 12, ml: 0.5 }}>
+        Erreur
+      </Typography>
     )}
     <IconButton
       size="small"
-      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       disabled={disableSave}
-      onClick={(e) => { e.stopPropagation(); onSave(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSave();
+      }}
       aria-label="Enregistrer"
     >
       <SaveIcon fontSize="inherit" />
     </IconButton>
     <IconButton
       size="small"
-      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-      onClick={(e) => { e.stopPropagation(); onCancel(); }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel();
+      }}
       aria-label="Annuler"
     >
       <CloseIcon fontSize="inherit" />
@@ -258,7 +295,7 @@ const TypedValueInput: React.FC<Props> = ({
 
   // --------- validation ----------
   const constraint = attribute?.constraint;
-  const kind = constraint?.kind; // "NONE" | "RANGE" | "REGEX" | "ENUM" | "SET"
+  const kind = constraint?.kind; // "NONE" | "RANGE" | "REGEX"
   const trimmed = (value ?? "").trim();
 
   let invalid = false;
@@ -269,78 +306,103 @@ const TypedValueInput: React.FC<Props> = ({
       if (trimmed !== "") {
         const n = Number(trimmed.replace(",", "."));
         if (Number.isNaN(n)) {
-          invalid = true; helper = "Entrez un nombre valide";
+          invalid = true;
+          helper = "Entrez un nombre valide";
         } else {
           const { min, max } = getEffectiveNumberBounds(attribute);
           const incl = constraint?.range?.inclusive ?? true;
           if (!numberInRange(n, min, max, incl)) {
-            invalid = true; helper = `Hors bornes (${min ?? "-∞"} – ${max ?? "+∞"}${incl ? " inclus" : ""})`;
+            invalid = true;
+            helper = `Hors bornes (${min ?? "-∞"} – ${max ?? "+∞"}${incl ? " inclus" : ""})`;
           }
         }
       }
       break;
     }
+
     case "DATE": {
       if (trimmed !== "" && !dayjs(trimmed).isValid()) {
-        invalid = true; helper = "Format invalide (YYYY-MM-DD)";
+        invalid = true;
+        helper = "Format invalide (YYYY-MM-DD)";
       } else if (trimmed !== "") {
         const { minD, maxD } = getEffectiveDateBounds(attribute);
         const d = dayjs(trimmed);
-        if (minD && d.isBefore(minD, "day")) { invalid = true; helper = `Date ≥ ${minD.format("YYYY-MM-DD")}`; }
-        if (!invalid && maxD && d.isAfter(maxD, "day")) { invalid = true; helper = `Date ≤ ${maxD.format("YYYY-MM-DD")}`; }
+        if (minD && d.isBefore(minD, "day")) {
+          invalid = true;
+          helper = `Date ≥ ${minD.format("YYYY-MM-DD")}`;
+        }
+        if (!invalid && maxD && d.isAfter(maxD, "day")) {
+          invalid = true;
+          helper = `Date ≤ ${maxD.format("YYYY-MM-DD")}`;
+        }
       }
       break;
     }
+
     case "DATETIME": {
       if (trimmed !== "" && !dayjs(trimmed).isValid()) {
-        invalid = true; helper = "Format invalide (ISO 8601)";
+        invalid = true;
+        helper = "Format invalide (ISO 8601)";
       } else if (trimmed !== "") {
         const { minD, maxD } = getEffectiveDateBounds(attribute);
         const d = dayjs(trimmed);
-        if (minD && d.isBefore(minD)) { invalid = true; helper = `Date/heure ≥ ${minD.format("YYYY-MM-DD")}`; }
-        if (!invalid && maxD && d.isAfter(maxD)) { invalid = true; helper = `Date/heure ≤ ${maxD.format("YYYY-MM-DD")}`; }
+        if (minD && d.isBefore(minD)) {
+          invalid = true;
+          helper = `Date/heure ≥ ${minD.format("YYYY-MM-DD")}`;
+        }
+        if (!invalid && maxD && d.isAfter(maxD)) {
+          invalid = true;
+          helper = `Date/heure ≤ ${maxD.format("YYYY-MM-DD")}`;
+        }
       }
       break;
     }
+
     case "BOOLEAN": {
       if (trimmed !== "" && !(trimmed === "true" || trimmed === "false")) {
-        invalid = true; helper = "Valeur booléenne requise";
+        invalid = true;
+        helper = "Valeur booléenne requise";
       }
       break;
     }
   }
 
   if (!invalid && kind === "REGEX" && constraint?.regex) {
-    const rx = toRegExp(constraint.regex.pattern ?? undefined, constraint.regex.caseInsensitive ?? false);
-    if (trimmed !== "" && rx && !rx.test(trimmed)) { invalid = true; helper = "Format non conforme au motif requis"; }
-    if (!invalid && constraint.regex.minLength != null && trimmed.length < constraint.regex.minLength) {
-      invalid = true; helper = `Taille min: ${constraint.regex.minLength}`;
-    }
-    if (!invalid && constraint.regex.maxLength != null && trimmed.length > constraint.regex.maxLength) {
-      invalid = true; helper = `Taille max: ${constraint.regex.maxLength}`;
-    }
-  }
+    const rx = toRegExp(
+      constraint.regex.pattern ?? undefined,
+      constraint.regex.caseInsensitive ?? false,
+    );
 
-  if (!invalid && kind === "SET" && constraint?.set) {
-    const allowed = constraint.set.values ?? [];
-    if (trimmed !== "" && !allowed.includes(trimmed) && constraint.set.strict !== false) {
-      invalid = true; helper = "Valeur non autorisée";
+    if (trimmed !== "" && rx && !rx.test(trimmed)) {
+      invalid = true;
+      helper = "Format non conforme au motif requis";
+    }
+
+    if (!invalid && constraint.regex.minLength != null && trimmed.length < constraint.regex.minLength) {
+      invalid = true;
+      helper = `Taille min: ${constraint.regex.minLength}`;
+    }
+
+    if (!invalid && constraint.regex.maxLength != null && trimmed.length > constraint.regex.maxLength) {
+      invalid = true;
+      helper = `Taille max: ${constraint.regex.maxLength}`;
     }
   }
 
   if (!invalid && attribute?.type === "ENUM") {
     const opts = attribute.options ?? [];
-    const storeCode = attribute.constraint?.enumRule?.storeCode ?? true;
     if (trimmed !== "") {
-      const exists = storeCode ? opts.some(o => o.code === trimmed) : opts.some(o => o.label === trimmed);
-      if (!exists) { invalid = true; helper = "Choisissez une option de la liste"; }
+      const exists = opts.some((o) => o.code === trimmed || o.label === trimmed);
+      if (!exists) {
+        invalid = true;
+        helper = "Choisissez une option de la liste";
+      }
     }
   }
 
   const showError = touched && invalid;
   const disableSave = showError || status === "saving";
 
-  const trySave = () => { if (!disableSave) onSave(); };
   const tryBlur = () => {
     const coerced = coerceOnBlurValue(attribute, value);
     if (coerced !== value) onChange(coerced);
@@ -350,7 +412,6 @@ const TypedValueInput: React.FC<Props> = ({
 
   const placeholder = (label ?? attribute?.name ?? "") || undefined;
 
-  // ===== Helpers Select communs =====
   const showEmptyOption = !attribute?.required && !hideEmptyOption;
   const emptyOptionLabel = emptyLabelFor(attribute, selectEmptyLabel);
   const commonMenuProps = {
@@ -363,11 +424,14 @@ const TypedValueInput: React.FC<Props> = ({
   // ===== ENUM -> Select (Autosave, PAS de boutons) =====
   if (attribute?.type === "ENUM") {
     const opts = attribute.options ?? [];
-    const storeCode = attribute.constraint?.enumRule?.storeCode ?? true;
     const currentValue = value ?? "";
 
     return (
-      <FormControl size="small" sx={{ width: 220, ...flexItemShrinkableSx, ...labelCutFixSx }} error={showError}>
+      <FormControl
+        size="small"
+        sx={{ width: 220, ...flexItemShrinkableSx, ...labelCutFixSx }}
+        error={showError}
+      >
         <Select
           displayEmpty
           value={currentValue}
@@ -378,11 +442,11 @@ const TypedValueInput: React.FC<Props> = ({
           }}
           onBlur={tryBlur}
           renderValue={(v) =>
-            v
-              ? (storeCode
-                  ? (opts.find(o => o.code === v)?.label ?? (v as string))
-                  : (v as string))
-              : <span style={{ color: "#888" }}>{placeholder ?? "Choisir…"}</span>
+            v ? (
+              opts.find((o) => o.code === v || o.label === v)?.label ?? (v as string)
+            ) : (
+              <span style={{ color: "#888" }}>{placeholder ?? "Choisir…"}</span>
+            )
           }
           inputProps={{ "aria-label": placeholder }}
           {...commonMenuProps}
@@ -392,44 +456,10 @@ const TypedValueInput: React.FC<Props> = ({
               <em>{emptyOptionLabel}</em>
             </MenuItem>
           )}
-          {opts.map(o => (
-            <MenuItem key={o.id ?? `${o.code}-${o.label}`} value={storeCode ? o.code : o.label}>
+          {opts.map((o) => (
+            <MenuItem key={o.id ?? `${o.code}-${o.label}`} value={o.code}>
               {o.label}
             </MenuItem>
-          ))}
-        </Select>
-        {showError && <FormHelperText sx={{ m: 0, mt: 0.25 }}>{helper}</FormHelperText>}
-      </FormControl>
-    );
-  }
-
-  // ===== SET -> Select (Autosave, PAS de boutons) =====
-  if (kind === "SET" && attribute?.constraint?.set?.values?.length) {
-    const allowed = attribute.constraint.set.values;
-    return (
-      <FormControl size="small" sx={{ width: 220, ...flexItemShrinkableSx, ...labelCutFixSx }} error={showError}>
-        <Select
-          displayEmpty
-          value={value ?? ""}
-          onChange={(e: SelectChangeEvent) => {
-            const next = e.target.value as string;
-            if (!touched) setTouched(true);
-            commitAndAutoSave(next);
-          }}
-          onBlur={tryBlur}
-          renderValue={(v) =>
-            v ? (v as string) : <span style={{ color: "#888" }}>{placeholder ?? "Choisir…"}</span>
-          }
-          inputProps={{ "aria-label": placeholder }}
-          {...commonMenuProps}
-        >
-          {showEmptyOption && (
-            <MenuItem value="">
-              <em>{emptyOptionLabel}</em>
-            </MenuItem>
-          )}
-          {allowed.map(v => (
-            <MenuItem key={v} value={v}>{v}</MenuItem>
           ))}
         </Select>
         {showError && <FormHelperText sx={{ m: 0, mt: 0.25 }}>{helper}</FormHelperText>}
@@ -466,7 +496,11 @@ const TypedValueInput: React.FC<Props> = ({
             openPickerButton: { size: "small" },
           }}
         />
-        {showError && <FormHelperText error sx={{ m: 0, mt: 0.25 }}>{helper}</FormHelperText>}
+        {showError && (
+          <FormHelperText error sx={{ m: 0, mt: 0.25 }}>
+            {helper}
+          </FormHelperText>
+        )}
       </Box>
     );
   }
@@ -499,7 +533,11 @@ const TypedValueInput: React.FC<Props> = ({
             openPickerButton: { size: "small" },
           }}
         />
-        {showError && <FormHelperText error sx={{ m: 0, mt: 0.25 }}>{helper}</FormHelperText>}
+        {showError && (
+          <FormHelperText error sx={{ m: 0, mt: 0.25 }}>
+            {helper}
+          </FormHelperText>
+        )}
       </Box>
     );
   }
@@ -507,7 +545,11 @@ const TypedValueInput: React.FC<Props> = ({
   // ===== BOOLEAN -> Select (Autosave, PAS de boutons) =====
   if (attribute?.type === "BOOLEAN") {
     return (
-      <FormControl size="small" sx={{ width: 220, ...flexItemShrinkableSx, ...labelCutFixSx }} error={showError}>
+      <FormControl
+        size="small"
+        sx={{ width: 220, ...flexItemShrinkableSx, ...labelCutFixSx }}
+        error={showError}
+      >
         <Select
           value={value === "true" ? "true" : value === "false" ? "false" : ""}
           displayEmpty
@@ -518,7 +560,11 @@ const TypedValueInput: React.FC<Props> = ({
           }}
           onBlur={tryBlur}
           renderValue={(v) =>
-            v ? (v === "true" ? "Oui" : "Non") : <span style={{ color: "#888" }}>{placeholder ?? "Choisir…"}</span>
+            v ? (
+              v === "true" ? "Oui" : "Non"
+            ) : (
+              <span style={{ color: "#888" }}>{placeholder ?? "Choisir…"}</span>
+            )
           }
           inputProps={{ "aria-label": placeholder }}
           {...commonMenuProps}
@@ -537,12 +583,10 @@ const TypedValueInput: React.FC<Props> = ({
   }
 
   // ===== TEXT / NUMBER (avec boutons save/cancel) =====
-  const inputType =
-    attribute?.type === "NUMBER" ? "number" : "text";
+  const inputType = attribute?.type === "NUMBER" ? "number" : "text";
 
-  const { min: minAttr, max: maxAttr, step } = attribute?.type === "NUMBER"
-    ? getEffectiveNumberBounds(attribute)
-    : {};
+  const { min: minAttr, max: maxAttr, step } =
+    attribute?.type === "NUMBER" ? getEffectiveNumberBounds(attribute) : {};
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -574,9 +618,10 @@ const TypedValueInput: React.FC<Props> = ({
           step: step ?? undefined,
           min: minAttr,
           max: maxAttr,
-          pattern: kind === "REGEX" && attribute?.constraint?.regex?.pattern
-            ? attribute.constraint.regex.pattern
-            : undefined,
+          pattern:
+            kind === "REGEX" && attribute?.constraint?.regex?.pattern
+              ? attribute.constraint.regex.pattern
+              : undefined,
           "aria-label": label ?? attribute?.name ?? "",
           inputMode: attribute?.type === "NUMBER" ? "decimal" : undefined,
         }}
@@ -585,10 +630,12 @@ const TypedValueInput: React.FC<Props> = ({
             <EndAdornment
               status={status}
               disableSave={showError || status === "saving"}
-              onSave={() => { if (!(showError || status === "saving")) onSave(); }}
+              onSave={() => {
+                if (!(showError || status === "saving")) onSave();
+              }}
               onCancel={onCancel}
             />
-          )
+          ),
         }}
         error={showError}
         helperText={showError ? helper : undefined}

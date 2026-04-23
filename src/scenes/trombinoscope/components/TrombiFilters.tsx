@@ -1,12 +1,21 @@
 // src/pages/trombi/components/TrombiFilters.tsx
 import React, { useMemo, useState } from "react";
 import {
-  Paper, Stack, TextField,
-  Chip, Box, Typography, Button, Tooltip, Divider, IconButton, Collapse
+  Paper,
+  Stack,
+  TextField,
+  Chip,
+  Box,
+  Typography,
+  Button,
+  Tooltip,
+  Divider,
+  IconButton,
+  Collapse,
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import { AttributeFilterDto } from "../../../services/dto/person/search/PersonSearchRequestDto";
-import { Attribute, AttributeType, isEnumRule, isRange } from "../../../models/commons/Attribute/Attribute";
+import { Attribute, ValueType, isRange } from "../../../models/commons/Attribute/Attribute";
 
 type Props = {
   filtersAttributes: Attribute[];
@@ -23,13 +32,13 @@ type Props = {
 const DEFAULT_ENUM_VISIBLE = 10;
 
 /* ---------------- Helpers typés ---------------- */
-const getType = (a?: Attribute | null): AttributeType | undefined =>
-  (a?.type ?? undefined) as AttributeType | undefined;
+const getType = (a?: Attribute | null): ValueType | undefined =>
+  (a?.type ?? undefined) as ValueType | undefined;
 
 const getOptions = (a: Attribute) => a.options ?? [];
 
 const isEnumAttr = (a: Attribute) =>
-  getType(a) === "ENUM" || (a.options && a.options.length > 0) || isEnumRule(a.constraint);
+  getType(a) === "ENUM" || getOptions(a).length > 0;
 
 const isCategoryAttr = (a: Attribute) =>
   Boolean(a.category) || (isEnumAttr(a) && (a.maxValues === 1 || a.required));
@@ -48,8 +57,11 @@ const isTextualOnly = (a: Attribute) =>
   getType(a) === "TEXT";
 
 const TrombiFilters: React.FC<Props> = ({
-  filtersAttributes, selectedFilters, onFiltersChange,
-  filtersOpen = false, rootRef,
+  filtersAttributes,
+  selectedFilters,
+  onFiltersChange,
+  filtersOpen = false,
+  rootRef,
 }) => {
   // Ranges (number/date) : brouillon local avant "Appliquer"
   const [rangeDraft, setRangeDraft] = useState<Record<number, { min: string; max: string }>>({});
@@ -72,10 +84,10 @@ const TrombiFilters: React.FC<Props> = ({
         const pretty = [min || "…", max || "…"].join(" → ");
         label += ` : ${pretty}`;
       } else if (entry.op === "IN") {
-        const opts = (attr?.options || []);
-        const map = new Map(opts.map(o => [o.code, o.label || o.code]));
+        const opts = attr?.options || [];
+        const map = new Map(opts.map((o) => [o.code, o.label || o.code]));
         const v = entry.values
-          .map(val => map.get(val) ?? val)
+          .map((val) => map.get(val) ?? val)
           .slice(0, 3)
           .join(", ");
         const more = entry.values.length > 3 ? ` +${entry.values.length - 3}` : "";
@@ -90,13 +102,14 @@ const TrombiFilters: React.FC<Props> = ({
     const q = (enumQuery[attr.id] || "").toLowerCase().trim();
     const all = getOptions(attr);
     if (!q) return all;
-    return all.filter(o => (o.label || o.code).toLowerCase().includes(q));
+    return all.filter((o) => (o.label || o.code).toLowerCase().includes(q));
   };
 
   /** Apply helpers */
   const applyEnumValues = (attrId: number, values: string[]) => {
-    if (values.length) onFiltersChange({ ...selectedFilters, [attrId]: { op: "IN", values } });
-    else {
+    if (values.length) {
+      onFiltersChange({ ...selectedFilters, [attrId]: { op: "IN", values } });
+    } else {
       const next = { ...selectedFilters };
       delete next[attrId];
       onFiltersChange(next);
@@ -106,12 +119,12 @@ const TrombiFilters: React.FC<Props> = ({
   const toggleEnumValue = (attrId: number, value: string, exclusive = false) => {
     const cur = selectedFilters[attrId]?.values ?? [];
     if (exclusive) {
-      const next = (cur.length === 1 && cur[0] === value) ? [] : [value];
+      const next = cur.length === 1 && cur[0] === value ? [] : [value];
       applyEnumValues(attrId, next);
       return;
     }
     const exists = cur.includes(value);
-    const next = exists ? cur.filter(v => v !== value) : [...cur, value];
+    const next = exists ? cur.filter((v) => v !== value) : [...cur, value];
     applyEnumValues(attrId, next);
   };
 
@@ -120,13 +133,18 @@ const TrombiFilters: React.FC<Props> = ({
     const d = rangeDraft[attrId] || { min: "", max: "" };
     const min = (d.min || "").trim();
     const max = (d.max || "").trim();
+
     if (!min && !max) {
       const next = { ...selectedFilters };
       delete next[attrId];
       onFiltersChange(next);
       return;
     }
-    onFiltersChange({ ...selectedFilters, [attrId]: { op: "RANGE", values: [min, max] } });
+
+    onFiltersChange({
+      ...selectedFilters,
+      [attrId]: { op: "RANGE", values: [min, max] },
+    });
   };
 
   return (
@@ -136,7 +154,7 @@ const TrombiFilters: React.FC<Props> = ({
           {/* Résumé des filtres actifs */}
           {activePills.length > 0 && (
             <Box sx={{ mb: 1, display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-              {activePills.map(p => (
+              {activePills.map((p) => (
                 <Chip
                   key={`pill-${p.id}`}
                   label={p.label}
@@ -144,7 +162,7 @@ const TrombiFilters: React.FC<Props> = ({
                     const next = { ...selectedFilters };
                     delete next[p.id];
                     onFiltersChange(next);
-                    setRangeDraft(s => ({ ...s, [p.id]: { min: "", max: "" } }));
+                    setRangeDraft((s) => ({ ...s, [p.id]: { min: "", max: "" } }));
                   }}
                   size="small"
                   variant="outlined"
@@ -162,17 +180,17 @@ const TrombiFilters: React.FC<Props> = ({
             }}
           >
             {(filtersAttributes || [])
-              .filter(a => !isTextualOnly(a))
+              .filter((a) => !isTextualOnly(a))
               .map((attr) => {
                 const options = getOptions(attr);
                 const picked = new Set(selectedFilters[attr.id]?.values ?? []);
                 const hasDraft = !!rangeDraft[attr.id]?.min || !!rangeDraft[attr.id]?.max;
                 const hasValue = picked.size > 0 || hasDraft;
 
-                const avgLabelLen =
-                  options?.length
-                    ? options.reduce((s, o) => s + (o.label?.length ?? o.code.length), 0) / options.length
-                    : 0;
+                const avgLabelLen = options.length
+                  ? options.reduce((s, o) => s + (o.label?.length ?? o.code.length), 0) /
+                    options.length
+                  : 0;
 
                 const isBigEnum =
                   (isEnumAttr(attr) || isCategoryAttr(attr)) &&
@@ -192,7 +210,10 @@ const TrombiFilters: React.FC<Props> = ({
                     }}
                   >
                     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.75 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, opacity: 0.95, flex: 1 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: 700, opacity: 0.95, flex: 1 }}
+                      >
                         {attr.name ?? "Attribut"}
                       </Typography>
 
@@ -202,9 +223,14 @@ const TrombiFilters: React.FC<Props> = ({
                             <IconButton
                               size="small"
                               onClick={() => {
-                                const next = { ...selectedFilters }; delete next[attr.id]; onFiltersChange(next);
-                                setRangeDraft((s) => ({ ...s, [attr.id]: { min: "", max: "" } }));
-                                setEnumQuery(s => ({ ...s, [attr.id]: "" }));
+                                const next = { ...selectedFilters };
+                                delete next[attr.id];
+                                onFiltersChange(next);
+                                setRangeDraft((s) => ({
+                                  ...s,
+                                  [attr.id]: { min: "", max: "" },
+                                }));
+                                setEnumQuery((s) => ({ ...s, [attr.id]: "" }));
                               }}
                               aria-label="Effacer ce filtre"
                             >
@@ -216,11 +242,11 @@ const TrombiFilters: React.FC<Props> = ({
                     </Stack>
 
                     {/* CATEGORY (exclusive) */}
-                    {isCategoryAttr(attr) && (
+                    {isCategoryAttr(attr) &&
                       (() => {
-                        const opts = (enumQuery[attr.id]?.trim()
+                        const opts = enumQuery[attr.id]?.trim()
                           ? filteredOptions(attr)
-                          : getOptions(attr));
+                          : getOptions(attr);
                         const collapsed = enumCollapsed[attr.id] ?? true;
                         const visible = collapsed ? opts.slice(0, DEFAULT_ENUM_VISIBLE) : opts;
 
@@ -244,16 +270,22 @@ const TrombiFilters: React.FC<Props> = ({
                             {opts.length > DEFAULT_ENUM_VISIBLE && (
                               <Button
                                 size="small"
-                                onClick={() => setEnumCollapsed(s => ({ ...s, [attr.id]: !collapsed })) }
+                                onClick={() =>
+                                  setEnumCollapsed((s) => ({
+                                    ...s,
+                                    [attr.id]: !collapsed,
+                                  }))
+                                }
                                 sx={{ ml: 0.5 }}
                               >
-                                {collapsed ? `Afficher +${opts.length - DEFAULT_ENUM_VISIBLE}` : "Réduire"}
+                                {collapsed
+                                  ? `Afficher +${opts.length - DEFAULT_ENUM_VISIBLE}`
+                                  : "Réduire"}
                               </Button>
                             )}
                           </Box>
                         );
-                      })()
-                    )}
+                      })()}
 
                     {/* ENUM (multi) */}
                     {isEnumAttr(attr) && !isCategoryAttr(attr) && (
@@ -263,7 +295,9 @@ const TrombiFilters: React.FC<Props> = ({
                             size="small"
                             placeholder={`Filtrer ${attr.name ?? ""}…`}
                             value={enumQuery[attr.id] ?? ""}
-                            onChange={(e) => setEnumQuery(s => ({ ...s, [attr.id]: e.target.value })) }
+                            onChange={(e) =>
+                              setEnumQuery((s) => ({ ...s, [attr.id]: e.target.value }))
+                            }
                             sx={{ mb: 0.75 }}
                             inputProps={{ "aria-label": `Filtrer ${attr.name}` }}
                           />
@@ -294,10 +328,17 @@ const TrombiFilters: React.FC<Props> = ({
                               {opts.length > DEFAULT_ENUM_VISIBLE && (
                                 <Button
                                   size="small"
-                                  onClick={() => setEnumCollapsed(s => ({ ...s, [attr.id]: !collapsed })) }
+                                  onClick={() =>
+                                    setEnumCollapsed((s) => ({
+                                      ...s,
+                                      [attr.id]: !collapsed,
+                                    }))
+                                  }
                                   sx={{ ml: 0.5 }}
                                 >
-                                  {collapsed ? `Afficher +${opts.length - DEFAULT_ENUM_VISIBLE}` : "Réduire"}
+                                  {collapsed
+                                    ? `Afficher +${opts.length - DEFAULT_ENUM_VISIBLE}`
+                                    : "Réduire"}
                                 </Button>
                               )}
                             </Box>
@@ -317,7 +358,10 @@ const TrombiFilters: React.FC<Props> = ({
                           onChange={(e) =>
                             setRangeDraft((s) => ({
                               ...s,
-                              [attr.id]: { min: e.target.value, max: s[attr.id]?.max ?? selectedFilters[attr.id]?.values?.[1] ?? "" },
+                              [attr.id]: {
+                                min: e.target.value,
+                                max: s[attr.id]?.max ?? selectedFilters[attr.id]?.values?.[1] ?? "",
+                              },
                             }))
                           }
                           sx={{ flex: 1 }}
@@ -331,13 +375,18 @@ const TrombiFilters: React.FC<Props> = ({
                           onChange={(e) =>
                             setRangeDraft((s) => ({
                               ...s,
-                              [attr.id]: { min: s[attr.id]?.min ?? selectedFilters[attr.id]?.values?.[0] ?? "", max: e.target.value },
+                              [attr.id]: {
+                                min: s[attr.id]?.min ?? selectedFilters[attr.id]?.values?.[0] ?? "",
+                                max: e.target.value,
+                              },
                             }))
                           }
                           sx={{ flex: 1 }}
                           InputLabelProps={{ shrink: true }}
                         />
-                        <Button size="small" onClick={() => commitRange(attr.id)}>Appliquer</Button>
+                        <Button size="small" onClick={() => commitRange(attr.id)}>
+                          Appliquer
+                        </Button>
                       </Stack>
                     )}
 
@@ -352,7 +401,10 @@ const TrombiFilters: React.FC<Props> = ({
                           onChange={(e) =>
                             setRangeDraft((s) => ({
                               ...s,
-                              [attr.id]: { min: e.target.value, max: s[attr.id]?.max ?? selectedFilters[attr.id]?.values?.[1] ?? "" },
+                              [attr.id]: {
+                                min: e.target.value,
+                                max: s[attr.id]?.max ?? selectedFilters[attr.id]?.values?.[1] ?? "",
+                              },
                             }))
                           }
                           sx={{ flex: 1 }}
@@ -366,20 +418,28 @@ const TrombiFilters: React.FC<Props> = ({
                           onChange={(e) =>
                             setRangeDraft((s) => ({
                               ...s,
-                              [attr.id]: { min: s[attr.id]?.min ?? selectedFilters[attr.id]?.values?.[0] ?? "", max: e.target.value },
+                              [attr.id]: {
+                                min: s[attr.id]?.min ?? selectedFilters[attr.id]?.values?.[0] ?? "",
+                                max: e.target.value,
+                              },
                             }))
                           }
                           sx={{ flex: 1 }}
                           InputLabelProps={{ shrink: true }}
                         />
-                        <Button size="small" onClick={() => commitRange(attr.id)}>Appliquer</Button>
+                        <Button size="small" onClick={() => commitRange(attr.id)}>
+                          Appliquer
+                        </Button>
                       </Stack>
                     )}
 
                     {/* BOOLEAN */}
                     {isBooleanAttr(attr) && (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-                        {[{ code: "true", label: "Oui" }, { code: "false", label: "Non" }].map(opt => {
+                        {[
+                          { code: "true", label: "Oui" },
+                          { code: "false", label: "Non" },
+                        ].map((opt) => {
                           const selected = picked.has(opt.code);
                           return (
                             <Chip
@@ -410,7 +470,7 @@ const TrombiFilters: React.FC<Props> = ({
                 setEnumQuery({});
                 setEnumCollapsed({});
               }}
-              disabled={Object.values(selectedFilters).every(v => !v?.values?.length)}
+              disabled={Object.values(selectedFilters).every((v) => !v?.values?.length)}
             >
               Réinitialiser les filtres
             </Button>

@@ -5,20 +5,19 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import LooksOneRoundedIcon from "@mui/icons-material/LooksOneRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
-import { Box, Paper, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Box } from "@mui/material";
 
-import type { AttributeType } from "../../../../../models/commons/Attribute/Attribute";
-import { glassCard } from "../../../../../styles/glassStyles";
+import type { ValueType } from "../../../../../models/commons/Attribute/Attribute";
 import type { CustomTypeOption } from "./attributeForm.types";
+import ChoiceCard from "./shared/ChoiceCard";
 
 type Props = {
   options: CustomTypeOption[];
-  value: AttributeType;
-  onChange: (type: AttributeType) => void;
+  value: ValueType;
+  onChange: (type: ValueType) => void;
 };
 
-function getTypeIcon(type: AttributeType): SvgIconComponent {
+function getTypeIcon(type: ValueType): SvgIconComponent {
   switch (type) {
     case "TEXT":
       return AbcRoundedIcon;
@@ -37,6 +36,11 @@ function getTypeIcon(type: AttributeType): SvgIconComponent {
   }
 }
 
+function getDisplayLabel(option: CustomTypeOption): string {
+  if (option.type === "ENUM") return "Liste de choix";
+  return option.label;
+}
+
 export default function CustomAttributeTypePicker({ options, value, onChange }: Props) {
   return (
     <Box
@@ -44,7 +48,7 @@ export default function CustomAttributeTypePicker({ options, value, onChange }: 
         display: "grid",
         gridTemplateColumns: {
           xs: "repeat(2, minmax(0, 1fr))",
-          md: "repeat(4, minmax(0, 1fr))",
+          md: "repeat(3, minmax(0, 1fr))",
         },
         gap: 1.25,
       }}
@@ -54,63 +58,15 @@ export default function CustomAttributeTypePicker({ options, value, onChange }: 
         const Icon = getTypeIcon(option.type);
 
         return (
-          <Paper
+          <ChoiceCard
             key={option.type}
-            component="button"
-            type="button"
+            selected={selected}
+            title={getDisplayLabel(option)}
+            subtitle={option.description}
             onClick={() => onChange(option.type)}
-            sx={(theme) => {
-              const ring = alpha(theme.palette.primary.main, 0.65);
-              const ringHalo = alpha(theme.palette.primary.main, 0.1);
-
-              return {
-                ...(glassCard(theme) as object),
-                minHeight: 116,
-                p: 1.5,
-                textAlign: "left",
-                cursor: "pointer",
-                ...(selected && {
-                  borderColor: ring,
-                  background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.06)}, ${alpha(theme.palette.background.paper, 0.35)})`,
-                  boxShadow: `inset 0 0 0 2px ${ring}, 0 10px 30px ${alpha(theme.palette.primary.main, 0.25)}`,
-                  "&::after": {
-                    content: '""',
-                    position: "absolute",
-                    inset: 0,
-                    borderRadius: "inherit",
-                    boxShadow: `0 0 0 8px ${ringHalo}`,
-                    pointerEvents: "none",
-                  },
-                }),
-              };
-            }}
-          >
-            <Stack spacing={1}>
-              <Box
-                sx={(theme) => ({
-                  width: 34,
-                  height: 34,
-                  borderRadius: 2,
-                  display: "grid",
-                  placeItems: "center",
-                  backgroundColor: selected
-                    ? alpha(theme.palette.primary.main, 0.16)
-                    : alpha(theme.palette.text.primary, 0.06),
-                  color: selected ? "primary.main" : "text.secondary",
-                })}
-              >
-                <Icon fontSize="small" />
-              </Box>
-
-              <Typography variant="subtitle2" fontWeight={700}>
-                {option.label}
-              </Typography>
-
-              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.35 }}>
-                {option.description}
-              </Typography>
-            </Stack>
-          </Paper>
+            icon={<Icon fontSize="small" />}
+            minHeight={116}
+          />
         );
       })}
     </Box>

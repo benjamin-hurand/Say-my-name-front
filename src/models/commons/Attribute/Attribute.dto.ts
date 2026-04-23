@@ -1,5 +1,5 @@
 import type {
-  AttributeType,
+  ValueType,
   CasingStrategy,
   EditPolicy,
   ConstraintKind,
@@ -11,7 +11,7 @@ import type { ConstraintPayload } from "./constraintPayload.schema";
  */
 export interface CreateAttributePayload {
   name: string;
-  type: AttributeType;
+  type: ValueType;
   casingStrategy?: CasingStrategy;
 
   maxValues?: number;          // 0 = illimité
@@ -25,6 +25,9 @@ export interface CreateAttributePayload {
 
   constraintKind?: ConstraintKind;
   constraintPayload?: ConstraintPayload | null;
+
+  /** Options initiales pour les attributs de type ENUM (à la création) */
+  enumOptions?: string[];
 
   displayOrder?: number | null;
 }

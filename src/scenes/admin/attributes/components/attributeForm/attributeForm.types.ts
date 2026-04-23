@@ -1,12 +1,8 @@
 import type { MutableRefObject } from "react";
 import type {
   Attribute,
-  AttributeType,
-  CasingStrategy,
-  ConstraintKind,
-  EditPolicy,
+  ValueType,
 } from "../../../../../models/commons/Attribute/Attribute";
-import type { ConstraintPayload } from "../../../../../models/commons/Attribute/constraintPayload.schema";
 import type { Concept } from "../../../../../models/commons/Concept/Concept";
 
 export type AttributeFormDrawerProps = {
@@ -15,39 +11,6 @@ export type AttributeFormDrawerProps = {
   onClose: (changed: boolean) => void;
   conceptOptions: Concept[];
   allAttributes: Attribute[];
-};
-
-export type ConceptPreset = {
-  forceNameFromConcept?: boolean;
-  suggestedName?: string;
-  forcedType?: AttributeType;
-  allowedTypes?: AttributeType[];
-  forcedMaxValues?: number;
-  forcedEditPolicy?: EditPolicy;
-  forcedConstraintKind?: ConstraintKind;
-  forcedPrimaryField?: boolean;
-  forcedRequired?: boolean;
-  forcedCategory?: boolean;
-  forcedFilter?: boolean;
-  forcedSort?: boolean;
-  hideType?: boolean;
-  hideMaxValues?: boolean;
-  hideEditPolicy?: boolean;
-  hidePrimaryField?: boolean;
-  hideRequired?: boolean;
-  suggested: Partial<{
-    type: AttributeType;
-    casingStrategy: CasingStrategy;
-    maxValues: number;
-    primaryField: boolean;
-    category: boolean;
-    filter: boolean;
-    sort: boolean;
-    required: boolean;
-    editPolicy: EditPolicy;
-    constraintKind: ConstraintKind;
-    constraintPayload: ConstraintPayload | null;
-  }>;
 };
 
 export type ConceptCardOption = Concept & {
@@ -66,7 +29,7 @@ export type ConceptDescriptionGetter = (concept: Concept | null | undefined) => 
 export type NameEditRef = MutableRefObject<boolean>;
 
 export type CustomTypeOption = {
-  type: AttributeType;
+  type: ValueType;
   label: string;
   description: string;
 };

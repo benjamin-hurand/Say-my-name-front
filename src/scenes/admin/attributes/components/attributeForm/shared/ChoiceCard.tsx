@@ -1,28 +1,24 @@
-import ExtensionRoundedIcon from "@mui/icons-material/ExtensionRounded";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import type { ElementType } from "react";
-
-import { getConceptIcon } from "./attributeForm.helpers";
-import type { ConceptCardOption, ConceptLabelGetter } from "./attributeForm.types";
+import type { ReactNode } from "react";
 
 type Props = {
-  options: ConceptCardOption[];
-  value: number | null;
-  onChange: (next: number | null) => void;
-  getLabel: ConceptLabelGetter;
-  initialConceptId?: number | null;
-};
-
-type ConceptCardProps = {
   selected: boolean;
-  title: string;
-  subtitle?: string;
-  icon: ElementType;
+  title: ReactNode;
+  subtitle?: ReactNode;
   onClick: () => void;
+  icon: ReactNode;
+  minHeight?: number;
 };
 
-function ConceptCard({ selected, title, subtitle, icon: Icon, onClick }: ConceptCardProps) {
+export default function ChoiceCard({
+  selected,
+  title,
+  subtitle,
+  onClick,
+  icon,
+  minHeight = 100,
+}: Props) {
   return (
     <Paper
       component="button"
@@ -31,14 +27,15 @@ function ConceptCard({ selected, title, subtitle, icon: Icon, onClick }: Concept
       aria-pressed={selected}
       variant="outlined"
       sx={(theme) => ({
-        minHeight: 110,
-        p: { xs: 1.25, sm: 1.5 },
+        position: "relative",
+        p: { xs: 1.4, sm: 1.5 },
+        minHeight,
         textAlign: "left",
         cursor: "pointer",
         borderWidth: selected ? 2 : 1,
         borderColor: selected
           ? theme.palette.primary.main
-          : alpha(theme.palette.divider, 0.8),
+          : alpha(theme.palette.divider, 0.75),
         backgroundColor: selected
           ? alpha(theme.palette.primary.main, 0.06)
           : alpha(theme.palette.background.paper, 0.76),
@@ -60,11 +57,11 @@ function ConceptCard({ selected, title, subtitle, icon: Icon, onClick }: Concept
         },
       })}
     >
-      <Stack spacing={1.1} sx={{ height: "100%" }}>
+      <Stack spacing={1}>
         <Box
           sx={(theme) => ({
-            width: 36,
-            height: 36,
+            width: 34,
+            height: 34,
             borderRadius: 2,
             display: "grid",
             placeItems: "center",
@@ -74,19 +71,25 @@ function ConceptCard({ selected, title, subtitle, icon: Icon, onClick }: Concept
             color: selected ? "primary.main" : "text.secondary",
           })}
         >
-          <Icon fontSize="small" />
+          {icon}
         </Box>
 
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.25 }}>
+          <Typography
+            component="div"
+            variant="subtitle2"
+            fontWeight={700}
+            sx={{ lineHeight: 1.3 }}
+          >
             {title}
           </Typography>
 
           {subtitle ? (
             <Typography
+              component="div"
               variant="caption"
               color="text.secondary"
-              sx={{ display: "block", mt: 0.45, lineHeight: 1.35 }}
+              sx={{ mt: 0.45, lineHeight: 1.35 }}
             >
               {subtitle}
             </Typography>
@@ -94,49 +97,5 @@ function ConceptCard({ selected, title, subtitle, icon: Icon, onClick }: Concept
         </Box>
       </Stack>
     </Paper>
-  );
-}
-
-export default function ConceptPicker({
-  options,
-  value,
-  onChange,
-  getLabel,
-  initialConceptId,
-}: Props) {
-  const visibleOptions = options.filter(
-    (concept) => !concept.blocked || concept.id === initialConceptId,
-  );
-
-  return (
-    <Box
-      sx={{
-        display: "grid",
-        gridTemplateColumns: {
-          xs: "repeat(2, minmax(0, 1fr))",
-          sm: "repeat(3, minmax(0, 1fr))",
-          lg: "repeat(4, minmax(0, 1fr))",
-        },
-        gap: { xs: 1, sm: 1.25 },
-      }}
-    >
-      {visibleOptions.map((concept) => (
-        <ConceptCard
-          key={concept.id}
-          selected={value === concept.id}
-          title={getLabel(concept)}
-          icon={getConceptIcon(concept)}
-          onClick={() => onChange(concept.id)}
-        />
-      ))}
-
-      <ConceptCard
-        selected={value == null}
-        title="Champ personnalise"
-        subtitle="Definir une information specifique"
-        icon={ExtensionRoundedIcon}
-        onClick={() => onChange(null)}
-      />
-    </Box>
   );
 }

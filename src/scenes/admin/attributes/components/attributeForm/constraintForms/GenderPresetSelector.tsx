@@ -18,7 +18,7 @@ const PRESETS = [
 ];
 
 export default function GenderPresetSelector({ control, watch, setValue }: Props) {
-  const values = watch("constraintPayload.values");
+  const values = watch("enumOptions");
 
   const activeKey = useMemo(() => {
     const current = Array.isArray(values) ? values : [];
@@ -36,30 +36,11 @@ export default function GenderPresetSelector({ control, watch, setValue }: Props
   }, [values]);
 
   const applyPreset = (presetValues: string[]) => {
-    setValue("constraintKind", "SET", { shouldDirty: true });
-    setValue(
-      "constraintPayload",
-      {
-        kind: "SET",
-        values: presetValues,
-        strict: true,
-      } as any,
-      { shouldDirty: true },
-    );
+    setValue("enumOptions", presetValues, { shouldDirty: true });
   };
 
   const enableCustom = () => {
-    const current = Array.isArray(values) ? values : [];
-    setValue("constraintKind", "SET", { shouldDirty: true });
-    setValue(
-      "constraintPayload",
-      {
-        kind: "SET",
-        values: current,
-        strict: true,
-      } as any,
-      { shouldDirty: true },
-    );
+    // Passe en mode personnalisé — les valeurs actuelles sont conservées
   };
 
   return (
@@ -90,7 +71,7 @@ export default function GenderPresetSelector({ control, watch, setValue }: Props
           control={control}
           watch={watch}
           setValue={setValue}
-          label="Valeurs"
+          label="Ajouter une valeur"
           placeholder="Ex. Homme"
         />
       )}

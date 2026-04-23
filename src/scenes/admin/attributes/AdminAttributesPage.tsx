@@ -28,12 +28,11 @@ import AttributeList from "./components/AttributeList";
 import { reorderAdminAttributes } from "../../../services/business/admin/admin.attributes.service";
 import { getAttributes } from "../../../services/business/attributes/attribute.service";
 
-import { Attribute, AttributeType } from "../../../models/commons/Attribute/Attribute";
+import { Attribute, ValueType } from "../../../models/commons/Attribute/Attribute";
+import type { Concept } from "../../../models/commons/Concept/Concept";
 
 import { useTenantData } from "../../../contexts/TenantDataContext";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
-
-type ConceptValueType = "TEXT" | "ENUM" | "DATETIME" | "NUMBER" | "BOOLEAN";
 
 type AttributeIssueTag =
   | "category-no-filter"
@@ -73,14 +72,6 @@ const ESSENTIAL_CONCEPT_CODES = new Set([
   "IDENTITY",
 ]);
 
-const CONCEPT_TYPE_COMPATIBILITY: Record<ConceptValueType, AttributeType[]> = {
-  TEXT: ["TEXT"],
-  ENUM: ["ENUM"],
-  DATETIME: ["DATE", "DATETIME"],
-  NUMBER: ["NUMBER"],
-  BOOLEAN: ["BOOLEAN"],
-};
-
 function getAttrId(a: Attribute): number | undefined {
   return (a as any)?.id;
 }
@@ -97,8 +88,8 @@ function getConceptCode(a: Attribute): string | null {
   return (a as any)?.conceptCode ?? null;
 }
 
-function getConceptValueType(a: Attribute): ConceptValueType | null {
-  return ((a as any)?.conceptValueType as ConceptValueType | null) ?? null;
+function getConceptId(a: Attribute): number | null {
+  return (a as any)?.conceptId ?? null;
 }
 
 function isConceptDerived(a: Attribute): boolean {
@@ -109,8 +100,8 @@ function isIdentityComponentEligible(a: Attribute): boolean {
   return !!(a as any)?.identityComponentEligible;
 }
 
-function getAttributeType(a: Attribute): AttributeType | null {
-  return ((a as any)?.type as AttributeType | null) ?? null;
+function getValueType(a: Attribute): ValueType | null {
+  return ((a as any)?.type as ValueType | null) ?? null;
 }
 
 function getEditPolicy(a: Attribute): string | null {
@@ -137,17 +128,58 @@ function getOptionsCount(a: Attribute): number {
   return Array.isArray((a as any)?.options) ? (a as any).options.length : 0;
 }
 
-function isAttributeTypeCompatibleWithConcept(attribute: Attribute): boolean {
-  const conceptValueType = getConceptValueType(attribute);
-  const type = getAttributeType(attribute);
+function getConceptValueType(
+  attribute: Attribute,
+  conceptsById: Map<number, Concept>,
+  conceptsByCode: Map<string, Concept>,
+): ValueType | null {
+  const conceptId = getConceptId(attribute);
+  if (conceptId != null) {
+    return conceptsById.get(conceptId)?.valueType ?? null;
+  }
 
-  if (!conceptValueType || !type) return true;
-  return CONCEPT_TYPE_COMPATIBILITY[conceptValueType]?.includes(type) ?? true;
+  const conceptCode = getConceptCode(attribute);
+  if (conceptCode) {
+    return conceptsByCode.get(conceptCode)?.valueType ?? null;
+  }
+
+  return null;
+}
+
+function isValueTypeCompatibleWithConcept(
+  attribute: Attribute,
+  conceptsById: Map<number, Concept>,
+  conceptsByCode: Map<string, Concept>,
+): boolean {
+  const attributeType = getValueType(attribute);
+  const conceptValueType = getConceptValueType(attribute, conceptsById, conceptsByCode);
+
+  if (!conceptValueType || !attributeType) {
+    return true;
+  }
+
+  return attributeType === conceptValueType;
 }
 
 export default function AdminAttributesPage() {
   const { t } = useTranslation();
   const { attributes: globalAttributes, concepts } = useTenantData();
+
+  const conceptsById = useMemo(() => {
+    const map = new Map<number, Concept>();
+    for (const concept of concepts ?? []) {
+      map.set(concept.id, concept);
+    }
+    return map;
+  }, [concepts]);
+
+  const conceptsByCode = useMemo(() => {
+    const map = new Map<string, Concept>();
+    for (const concept of concepts ?? []) {
+      map.set(concept.code, concept);
+    }
+    return map;
+  }, [concepts]);
 
   const getConceptLabel = useCallback(
     (conceptCode: string) =>
@@ -161,8 +193,8 @@ export default function AdminAttributesPage() {
     (tag: AttributeIssueTag, a: Attribute): string => {
       const name = getAttrName(a);
       const conceptCode = getConceptCode(a);
-      const type = getAttributeType(a);
-      const conceptValueType = getConceptValueType(a);
+      const attributeType = getValueType(a);
+      const conceptValueType = getConceptValueType(a, conceptsById, conceptsByCode);
       const conceptLabel = conceptCode ? getConceptLabel(conceptCode) : "?";
 
       switch (tag) {
@@ -171,39 +203,46 @@ export default function AdminAttributesPage() {
             name,
             defaultValue: `L’attribut "${name}" est marqué comme catégorie mais n’est pas filtrable.`,
           });
+
         case "useless":
           return t("ATTRIBUTE_HEALTH_MESSAGES.useless", {
             name,
             defaultValue: `L’attribut "${name}" semble peu exploitable actuellement.`,
           });
+
         case "concept-type-mismatch":
           return t("ATTRIBUTE_HEALTH_MESSAGES.concept-type-mismatch", {
             name,
-            type: type ?? "?",
+            type: attributeType ?? "?",
             concept: conceptLabel,
             conceptValueType: conceptValueType ?? "?",
-            defaultValue: `L’attribut "${name}" a un type "${type ?? "?"}" incompatible avec le concept "${conceptLabel}" (${conceptValueType ?? "?"}).`,
+            defaultValue: `L’attribut "${name}" a un type "${attributeType ?? "?"}" incohérent avec le concept "${conceptLabel}" (${conceptValueType ?? "?"}).`,
           });
+
         case "identity-source-not-eligible":
           return t("ATTRIBUTE_HEALTH_MESSAGES.identity-source-not-eligible", {
             name,
             defaultValue: `L’attribut "${name}" est défini comme source d’identité alors que son concept n’est pas éligible.`,
           });
+
         case "derived-edit-policy-mismatch":
           return t("ATTRIBUTE_HEALTH_MESSAGES.derived-edit-policy-mismatch", {
             name,
             defaultValue: `L’attribut "${name}" est lié à un concept dérivé mais son editPolicy n’est pas "DERIVED".`,
           });
+
         case "system-concept-duplicated":
           return t("ATTRIBUTE_HEALTH_MESSAGES.system-concept-duplicated", {
             concept: conceptLabel,
             defaultValue: `Le concept système "${conceptLabel}" est dupliqué dans le tenant.`,
           });
+
         case "enum-without-options":
           return t("ATTRIBUTE_HEALTH_MESSAGES.enum-without-options", {
             name,
             defaultValue: `L’attribut ENUM "${name}" ne possède aucune option active.`,
           });
+
         default:
           return t("ATTRIBUTE_HEALTH_MESSAGES.default", {
             name,
@@ -211,7 +250,7 @@ export default function AdminAttributesPage() {
           });
       }
     },
-    [getConceptLabel, t]
+    [conceptsByCode, conceptsById, getConceptLabel, t]
   );
 
   const getSetupStepLabel = useCallback(
@@ -283,7 +322,7 @@ export default function AdminAttributesPage() {
         });
       }
 
-      if (!isAttributeTypeCompatibleWithConcept(a)) {
+      if (!isValueTypeCompatibleWithConcept(a, conceptsById, conceptsByCode)) {
         items.push({
           tag: "concept-type-mismatch",
           severity: "error",
@@ -313,7 +352,7 @@ export default function AdminAttributesPage() {
         });
       }
 
-      if (getAttributeType(a) === "ENUM" && getOptionsCount(a) === 0) {
+      if (getValueType(a) === "ENUM" && getOptionsCount(a) === 0) {
         items.push({
           tag: "enum-without-options",
           severity: "warning",
@@ -340,7 +379,7 @@ export default function AdminAttributesPage() {
     }
 
     return items;
-  }, [attributes, buildIssueMessage]);
+  }, [attributes, buildIssueMessage, conceptsByCode, conceptsById]);
 
   const issuesByAttributeId = useMemo(() => {
     const map = new Map<number, AttributeIssueInfo>();

@@ -10,25 +10,13 @@ import WcRoundedIcon from "@mui/icons-material/WcRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import type { SvgIconComponent } from "@mui/icons-material";
 
-import {
-  ATTRIBUTE_TYPES,
-  type Attribute,
-  type AttributeType,
-} from "../../../../../models/commons/Attribute/Attribute";
 import type { ConstraintPayload } from "../../../../../models/commons/Attribute/constraintPayload.schema";
-import type { Concept, ConceptValueType } from "../../../../../models/commons/Concept/Concept";
+import type { Concept } from "../../../../../models/commons/Concept/Concept";
+import { Attribute } from "../../../../../models/commons/Attribute/Attribute";
 import type { AttributeCreateFormInput } from "../../validation/attributeCreate.schema";
-import {
-  CONCEPT_PRESETS,
-  CONCEPT_TYPE_COMPATIBILITY,
-} from "./attributeForm.constants";
 
 export function getConceptCode(attribute?: Attribute): string | null {
   return attribute?.conceptCode ?? null;
-}
-
-export function getConceptValueType(attribute?: Attribute): ConceptValueType | null {
-  return attribute?.conceptValueType ?? null;
 }
 
 export function isConceptDerived(attribute?: Attribute): boolean {
@@ -37,15 +25,6 @@ export function isConceptDerived(attribute?: Attribute): boolean {
 
 export function isIdentityComponentEligible(attribute?: Attribute): boolean {
   return !!attribute?.identityComponentEligible;
-}
-
-export function getAllowedTypesFromConcept(
-  concept: Concept | null | undefined,
-): AttributeType[] {
-  if (!concept) return [...ATTRIBUTE_TYPES];
-  const preset = CONCEPT_PRESETS[concept.code];
-  if (preset?.allowedTypes?.length) return [...preset.allowedTypes];
-  return CONCEPT_TYPE_COMPATIBILITY[concept.valueType] ?? [...ATTRIBUTE_TYPES];
 }
 
 export function makeDefaultValues(initial?: Attribute): AttributeCreateFormInput {
@@ -86,25 +65,27 @@ export function makeDefaultValues(initial?: Attribute): AttributeCreateFormInput
   };
 }
 
-export function getConceptIcon(code?: string | null): SvgIconComponent {
-  switch (code) {
-    case "FIRST_NAME":
+export function getConceptIcon(
+  concept?: Pick<Concept, "iconKey"> | null,
+): SvgIconComponent {
+  switch (concept?.iconKey) {
+    case "person":
       return PersonRoundedIcon;
-    case "LAST_NAME":
+    case "badge":
       return BadgeRoundedIcon;
-    case "NICKNAME":
+    case "nickname":
       return FaceRoundedIcon;
-    case "TITLE":
+    case "title":
       return WorkspacePremiumRoundedIcon;
-    case "GENDER":
+    case "gender":
       return WcRoundedIcon;
-    case "IDENTITY":
+    case "identity":
       return FingerprintRoundedIcon;
-    case "DEPARTMENT":
+    case "department":
       return BusinessRoundedIcon;
-    case "PROMOTION":
+    case "promotion":
       return SchoolRoundedIcon;
-    case "ARRIVAL_DATE":
+    case "date":
       return EventRoundedIcon;
     default:
       return ExtensionRoundedIcon;
