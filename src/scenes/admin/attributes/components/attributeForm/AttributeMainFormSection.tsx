@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
@@ -10,7 +10,6 @@ import GenderPresetSelector from "./constraintForms/GenderPresetSelector";
 import NumberRangeForm from "./constraintForms/NumberRangeForm";
 import TextCasingForm from "./constraintForms/TextCasingForm";
 import FormSection from "./FormSection";
-import CompactInfoCard from "./shared/CompactInfoCard";
 
 type Props = {
   control: Control<AttributeCreateFormInput>;
@@ -34,12 +33,6 @@ export default function AttributeMainFormSection({
   selectedType,
 }: Props) {
   const { t } = useTranslation();
-
-  const renderHint = (infoTitle: string, infoDescription: string) => (
-    <Box sx={{ py: 0.5 }}>
-      <CompactInfoCard title={infoTitle} description={infoDescription} emphasis="primary" />
-    </Box>
-  );
 
   const renderEnumSection = (texts: SectionText, label: string, placeholder: string) => (
     <FormSection eyebrow={texts.eyebrow} title={texts.title} subtitle={texts.subtitle}>
@@ -81,7 +74,7 @@ export default function AttributeMainFormSection({
           defaultValue: "Quelles valeurs proposer ?",
         })}
         subtitle={t("ATTRIBUTE_FORM.CONFIG_VALUES_SUBTITLE_GENDER", {
-          defaultValue: "Choisis une liste prête à l’emploi ou personnalise les valeurs.",
+          defaultValue: "Choisis une liste prête à l'emploi ou personnalise les valeurs.",
         })}
       >
         <GenderPresetSelector control={control} watch={watch} setValue={setValue} />
@@ -147,10 +140,6 @@ export default function AttributeMainFormSection({
     });
   }
 
-  /**
-   * Tous les champs TEXT peuvent maintenant configurer la casse,
-   * qu’ils soient liés à un modèle ou personnalisés.
-   */
   if (selectedType === "TEXT") {
     return renderTextCasingSection({
       eyebrow: t("ATTRIBUTE_FORM.CONFIG_SECTION_LABEL", {
@@ -217,21 +206,16 @@ export default function AttributeMainFormSection({
       });
     }
 
-    /**
-     * BOOLEAN : pas de paramètre utile en V1
-     * => pas de section affichée.
-     */
     if (selectedType === "BOOLEAN") {
       return null;
     }
   }
 
-  return renderHint(
-    t("ATTRIBUTE_FORM.CONFIG_DEFAULT_READY_TITLE", {
-      defaultValue: "Prêt à l’emploi",
-    }),
-    t("ATTRIBUTE_FORM.CONFIG_DEFAULT_READY_TEXT", {
-      defaultValue: "Ce champ peut être utilisé tel quel.",
-    }),
+  return (
+    <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.5 }}>
+      {t("ATTRIBUTE_FORM.CONFIG_DEFAULT_READY_TEXT", {
+        defaultValue: "Ce champ peut être utilisé tel quel.",
+      })}
+    </Typography>
   );
 }

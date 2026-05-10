@@ -1,11 +1,10 @@
 import NumbersRoundedIcon from "@mui/icons-material/NumbersRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import { Box, Stack, TextField } from "@mui/material";
+import { Box, Button, Stack, TextField } from "@mui/material";
 import { Controller } from "react-hook-form";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 import type { AttributeCreateFormInput } from "../../../validation/attributeCreate.schema";
-import ChoiceCard from "../shared/ChoiceCard";
 
 type Props = {
   control: Control<AttributeCreateFormInput>;
@@ -24,86 +23,86 @@ function toNullableNumber(value: unknown): number | null {
 export default function NumberRangeForm({ control, watch, setValue }: Props) {
   const kind = watch("constraintKind");
   const rangeMode: RangeMode = kind === "RANGE" ? "RANGE" : "NONE";
+  const noneConstraint: AttributeCreateFormInput["constraintPayload"] = { kind: "NONE" };
+  const rangeConstraint: AttributeCreateFormInput["constraintPayload"] = {
+    kind: "RANGE",
+    min: null,
+    max: null,
+    inclusive: true,
+  };
 
   const setRangeMode = (next: RangeMode) => {
     if (next === "NONE") {
       setValue("constraintKind", "NONE", { shouldDirty: true });
-      setValue("constraintPayload", { kind: "NONE" } as any, { shouldDirty: true });
+      setValue("constraintPayload", noneConstraint, { shouldDirty: true });
       return;
     }
 
     setValue("constraintKind", "RANGE", { shouldDirty: true });
-    setValue(
-      "constraintPayload",
-      {
-        kind: "RANGE",
-        min: null,
-        max: null,
-        inclusive: true,
-      } as any,
-      { shouldDirty: true },
-    );
+    setValue("constraintPayload", rangeConstraint, { shouldDirty: true });
   };
 
   return (
     <Stack spacing={1.5}>
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "repeat(2, minmax(0, 1fr))",
-          },
-          gap: 1.25,
-        }}
-      >
-        <ChoiceCard
-          selected={rangeMode === "NONE"}
-          title="Nombre libre"
-          subtitle="Aucune limite particulière"
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+        <Button
+          type="button"
+          variant={rangeMode === "NONE" ? "contained" : "outlined"}
+          startIcon={<NumbersRoundedIcon fontSize="small" />}
           onClick={() => setRangeMode("NONE")}
-          icon={<NumbersRoundedIcon fontSize="small" />}
-        />
+        >
+          Nombre libre
+        </Button>
 
-        <ChoiceCard
-          selected={rangeMode === "RANGE"}
-          title="Limiter à une plage"
-          subtitle="Définir une valeur minimale, maximale, ou les deux"
+        <Button
+          type="button"
+          variant={rangeMode === "RANGE" ? "contained" : "outlined"}
+          startIcon={<TuneRoundedIcon fontSize="small" />}
           onClick={() => setRangeMode("RANGE")}
-          icon={<TuneRoundedIcon fontSize="small" />}
-        />
-      </Box>
+        >
+          Limiter la plage
+        </Button>
+      </Stack>
 
       {rangeMode === "RANGE" && (
-        <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
-          <Controller
-            name={"constraintPayload.min" as any}
-            control={control}
-            render={({ field }) => (
-              <TextField
-                label="Valeur minimale"
-                type="number"
-                fullWidth
-                value={field.value ?? ""}
-                onChange={(event) => field.onChange(toNullableNumber(event.target.value))}
-              />
-            )}
-          />
+        <Box
+          sx={{
+            border: "1px dashed",
+            borderColor: "divider",
+            borderRadius: 2.5,
+            p: 1.5,
+          }}
+        >
+          <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+            <Controller
+              name={"constraintPayload.min" as never}
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="Valeur minimale"
+                  type="number"
+                  fullWidth
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(toNullableNumber(event.target.value))}
+                />
+              )}
+            />
 
-          <Controller
-            name={"constraintPayload.max" as any}
-            control={control}
-            render={({ field }) => (
-              <TextField
-                label="Valeur maximale"
-                type="number"
-                fullWidth
-                value={field.value ?? ""}
-                onChange={(event) => field.onChange(toNullableNumber(event.target.value))}
-              />
-            )}
-          />
-        </Stack>
+            <Controller
+              name={"constraintPayload.max" as never}
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="Valeur maximale"
+                  type="number"
+                  fullWidth
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(toNullableNumber(event.target.value))}
+                />
+              )}
+            />
+          </Stack>
+        </Box>
       )}
     </Stack>
   );

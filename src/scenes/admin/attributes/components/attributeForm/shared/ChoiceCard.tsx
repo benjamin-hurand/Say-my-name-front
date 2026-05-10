@@ -1,4 +1,4 @@
-import { Box, Paper, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 
@@ -17,47 +17,47 @@ export default function ChoiceCard({
   subtitle,
   onClick,
   icon,
-  minHeight = 100,
+  minHeight = 112,
 }: Props) {
   return (
-    <Paper
+    <Box
       component="button"
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      variant="outlined"
       sx={(theme) => ({
-        position: "relative",
-        p: { xs: 1.4, sm: 1.5 },
+        width: "100%",
         minHeight,
+        p: 1.5,
+        border: "1px solid",
+        borderRadius: 2.5,
         textAlign: "left",
         cursor: "pointer",
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected
-          ? theme.palette.primary.main
-          : alpha(theme.palette.divider, 0.75),
+        borderColor: selected ? theme.palette.primary.main : theme.palette.divider,
+        boxShadow: "none",
+        appearance: "none",
+        font: "inherit",
+        color: "inherit",
+        transition: theme.transitions.create(["border-color", "background-color"], {
+          duration: theme.transitions.duration.shorter,
+        }),
+        ...(selected && { borderWidth: 2 }),
         backgroundColor: selected
           ? alpha(theme.palette.primary.main, 0.06)
-          : alpha(theme.palette.background.paper, 0.76),
-        boxShadow: selected
-          ? `0 10px 22px ${alpha(theme.palette.primary.main, 0.12)}`
-          : `0 8px 20px ${alpha(theme.palette.common.black, 0.06)}`,
-        transition: theme.transitions.create(
-          ["transform", "box-shadow", "border-color", "background-color"],
-          {
-            duration: theme.transitions.duration.shorter,
-          },
-        ),
+          : theme.palette.background.paper,
         "&:hover": {
-          transform: "translateY(-2px)",
-          borderColor: selected
-            ? theme.palette.primary.main
-            : alpha(theme.palette.primary.main, 0.35),
-          boxShadow: `0 12px 24px ${alpha(theme.palette.common.black, 0.1)}`,
+          borderColor: selected ? theme.palette.primary.main : theme.palette.text.secondary,
+          backgroundColor: selected
+            ? alpha(theme.palette.primary.main, 0.08)
+            : alpha(theme.palette.action.hover, 0.4),
+        },
+        "&:focus-visible": {
+          outline: `2px solid ${alpha(theme.palette.primary.main, 0.24)}`,
+          outlineOffset: 2,
         },
       })}
     >
-      <Stack spacing={1}>
+      <Stack spacing={1.1} sx={{ height: "100%" }}>
         <Box
           sx={(theme) => ({
             width: 34,
@@ -96,6 +96,6 @@ export default function ChoiceCard({
           ) : null}
         </Box>
       </Stack>
-    </Paper>
+    </Box>
   );
 }

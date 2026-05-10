@@ -65,7 +65,6 @@ export default function CustomAttributeTypePicker({ options, value, onChange }: 
             subtitle={option.description}
             onClick={() => onChange(option.type)}
             icon={<Icon fontSize="small" />}
-            minHeight={116}
           />
         );
       })}

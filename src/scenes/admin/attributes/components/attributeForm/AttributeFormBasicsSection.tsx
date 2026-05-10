@@ -1,4 +1,4 @@
-import { Collapse, Fade, Stack, TextField } from "@mui/material";
+import { Collapse, Fade, Stack, TextField, Typography } from "@mui/material";
 import type { Control, FieldErrors } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -9,7 +9,6 @@ import type { AttributeCreateFormInput } from "../../validation/attributeCreate.
 import ConceptPicker from "./ConceptPicker";
 import CustomAttributeTypePicker from "./CustomAttributeTypePicker";
 import FormSection from "./FormSection";
-import CompactInfoCard from "./shared/CompactInfoCard";
 import { CUSTOM_TYPE_OPTIONS } from "./attributeForm.constants";
 import type {
   ConceptCardOption,
@@ -90,11 +89,9 @@ export default function AttributeFormBasicsSection({
             )}
           />
 
-          <CompactInfoCard
-            title={conceptTitle}
-            description={conceptDescription}
-            emphasis={selectedConcept ? "primary" : "neutral"}
-          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.5 }}>
+            {conceptTitle}. {conceptDescription}
+          </Typography>
         </Stack>
       </FormSection>
 

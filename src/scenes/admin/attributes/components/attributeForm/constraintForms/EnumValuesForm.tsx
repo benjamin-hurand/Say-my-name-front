@@ -1,7 +1,6 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import { Box, Button, Chip, Stack, TextField, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Controller } from "react-hook-form";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
@@ -35,18 +34,9 @@ function normalizeEnumValues(values: string[]): string[] {
 
 export default function EnumValuesForm({
   control,
-  watch,
-  setValue,
   label,
   placeholder,
 }: Props) {
-  const values = watch("enumOptions");
-
-  const normalizedValues = useMemo(
-    () => normalizeEnumValues(Array.isArray(values) ? values : []),
-    [values],
-  );
-
   const [inputValue, setInputValue] = useState("");
 
   return (
@@ -105,20 +95,17 @@ export default function EnumValuesForm({
             </Stack>
 
             <Box
-              sx={(theme) => ({
+              sx={{
                 minHeight: 72,
                 display: "flex",
                 flexWrap: "wrap",
                 gap: 1,
                 alignItems: "flex-start",
-                p: fieldValue.length > 0 ? 1 : 1.25,
-                borderRadius: 3,
-                border: `1px ${fieldValue.length > 0 ? "solid" : "dashed"} ${alpha(
-                  theme.palette.text.primary,
-                  fieldValue.length > 0 ? 0.08 : 0.16,
-                )}`,
-                backgroundColor: alpha(theme.palette.text.primary, 0.025),
-              })}
+                p: 1.25,
+                borderRadius: 2.5,
+                border: "1px dashed",
+                borderColor: "divider",
+              }}
             >
               {fieldValue.length > 0 ? (
                 fieldValue.map((option) => (
