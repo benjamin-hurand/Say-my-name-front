@@ -7,7 +7,7 @@ import ChoiceCard from "./shared/ChoiceCard";
 
 type Props = {
   options: ConceptCardOption[];
-  value: number | null;
+  value?: number | null;
   onChange: (next: number | null) => void;
   getLabel: ConceptLabelGetter;
   initialConceptId?: number | null;
@@ -51,7 +51,7 @@ export default function ConceptPicker({
       })}
 
       <ChoiceCard
-        selected={value == null}
+        selected={value === null}
         title="Champ personnalise"
         subtitle="Definir une information specifique"
         icon={<ExtensionRoundedIcon fontSize="small" />}

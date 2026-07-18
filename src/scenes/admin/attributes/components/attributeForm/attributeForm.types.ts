@@ -23,6 +23,8 @@ export type AttributeFormHeaderChip = {
   color: "default" | "primary" | "warning" | "error";
 };
 
+export type DrawerMode = "concept-selection" | "type-selection" | "field-config";
+
 export type ConceptLabelGetter = (concept: Concept | null | undefined) => string;
 export type ConceptDescriptionGetter = (concept: Concept | null | undefined) => string | null;
 
