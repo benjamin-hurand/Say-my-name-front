@@ -1,5 +1,4 @@
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import SellOutlinedIcon from "@mui/icons-material/SellOutlined";
 import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
@@ -7,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Concept } from "../../../../../models/commons/Concept/Concept";
 import type { ValueType } from "../../../../../models/commons/Attribute/Attribute";
-import type { ConceptDescriptionGetter, ConceptLabelGetter } from "./attributeForm.types";
+import type { ConceptLabelGetter } from "./attributeForm.types";
 
 type Props = {
   selectedConcept: Concept | null;
@@ -15,7 +14,6 @@ type Props = {
   valueTypeLabel: string;
   isCustom: boolean;
   getConceptLabel: ConceptLabelGetter;
-  getConceptDescription: ConceptDescriptionGetter;
   onChangeConcept: () => void;
   onChangeType: () => void;
 };
@@ -26,7 +24,6 @@ export default function SelectedFieldSummary({
   valueTypeLabel,
   isCustom,
   getConceptLabel,
-  getConceptDescription,
   onChangeConcept,
   onChangeType,
 }: Props) {
@@ -36,16 +33,6 @@ export default function SelectedFieldSummary({
     ? getConceptLabel(selectedConcept)
     : t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE", {
         defaultValue: "Champ personnalise",
-      });
-
-  const description = selectedConcept
-    ? getConceptDescription(selectedConcept) ||
-      t("ATTRIBUTE_FORM.CONCEPT_NO_DESCRIPTION", {
-        defaultValue: "Ce modele applique une configuration recommandee.",
-      })
-    : t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE_DESCRIPTION", {
-        defaultValue:
-          "Information specifique configuree avec le type de donnee choisi.",
       });
 
   return (
@@ -72,34 +59,12 @@ export default function SelectedFieldSummary({
 
             <Chip
               size="small"
-              icon={<SellOutlinedIcon fontSize="small" />}
-              label={
-                isCustom
-                  ? t("ATTRIBUTE_FORM.SUMMARY_CUSTOM_FIELD", {
-                      defaultValue: "Champ personnalise",
-                    })
-                  : t("ATTRIBUTE_FORM.SUMMARY_RECOGNIZED_MODEL", {
-                      defaultValue: "Modele reconnu",
-                    })
-              }
-              variant="outlined"
-            />
-
-            <Chip
-              size="small"
               color="warning"
               label={valueTypeLabel || effectiveValueType}
               variant="outlined"
             />
           </Stack>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 0.45, lineHeight: 1.45 }}
-          >
-            {description}
-          </Typography>
         </Box>
 
         <Stack direction="row" spacing={1} flexShrink={0}>

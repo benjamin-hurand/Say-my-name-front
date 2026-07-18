@@ -18,20 +18,14 @@ export type ConceptCardOption = Concept & {
   duplicateCount: number;
 };
 
-export type AttributeFormHeaderChip = {
-  label: string;
-  color: "default" | "primary" | "warning" | "error";
-};
-
 export type DrawerMode = "concept-selection" | "type-selection" | "field-config";
 
 export type ConceptLabelGetter = (concept: Concept | null | undefined) => string;
-export type ConceptDescriptionGetter = (concept: Concept | null | undefined) => string | null;
 
 export type NameEditRef = MutableRefObject<boolean>;
 
 export type CustomTypeOption = {
   type: ValueType;
   label: string;
-  description: string;
+  description?: string;
 };

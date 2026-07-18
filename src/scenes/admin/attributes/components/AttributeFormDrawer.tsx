@@ -7,7 +7,6 @@ import {
   DialogContent,
   Fade,
   Stack,
-  Typography,
   useMediaQuery,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
@@ -167,24 +166,6 @@ export default function AttributeFormDrawer({
     [t],
   );
 
-  const getConceptDescription = useCallback(
-    (concept: Concept | null | undefined): string | null => {
-      if (!concept) {
-        return t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE_DESCRIPTION", {
-          defaultValue:
-            "Utilisez cette option si aucun modele existant ne correspond a votre besoin.",
-        });
-      }
-
-      const translated = t(`CONCEPTS.${concept.code}.DESCRIPTION`, {
-        defaultValue: "",
-      });
-
-      return translated || null;
-    },
-    [t],
-  );
-
   const selectedConceptDerived = fieldContext.isDerived;
   const selectedIdentityEligible = fieldContext.identityComponentEligible;
 
@@ -319,39 +300,6 @@ export default function AttributeFormDrawer({
   const conceptTypeMismatch =
     !!selectedConcept && !!watchedType && watchedType !== selectedConcept.valueType;
 
-  const summaryChips = [
-    selectedConcept
-      ? {
-          label: getConceptLabel(selectedConcept),
-          color: "primary" as const,
-        }
-      : {
-          label: t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE", {
-            defaultValue: "Champ personnalise",
-          }),
-          color: "default" as const,
-        },
-    selectedValueType
-      ? {
-          label: getValueTypeLabel(selectedValueType, t),
-          color: "warning" as const,
-        }
-      : null,
-    duplicateSingleUseConceptBlocked
-      ? {
-          label: t("ATTRIBUTE_FORM.ALREADY_USED", {
-            defaultValue: "Deja utilise",
-          }),
-          color: "error" as const,
-        }
-      : null,
-  ].filter(Boolean) as Array<{
-    label: string;
-    color: "default" | "primary" | "warning" | "error";
-  }>;
-
-  const footerSummary = summaryChips.map((chip) => chip.label).join(" | ");
-
   const onSubmit: SubmitHandler<AttributeCreateFormOutput> = async (data) => {
     try {
       if (duplicateSingleUseConceptBlocked) {
@@ -448,7 +396,6 @@ export default function AttributeFormDrawer({
             value={hasConfirmedConceptChoice ? watchedConceptId ?? null : undefined}
             onSelect={handleSelectConcept}
             getConceptLabel={getConceptLabel}
-            getConceptDescription={getConceptDescription}
             initialConceptId={initial?.conceptId ?? null}
           />
         );
@@ -476,7 +423,6 @@ export default function AttributeFormDrawer({
             isCustom={fieldContext.isCustom}
             identityComponentEligible={fieldContext.identityComponentEligible}
             getConceptLabel={getConceptLabel}
-            getConceptDescription={getConceptDescription}
             hasUserEditedNameRef={hasUserEditedNameRef}
             onChangeConcept={() => setDrawerMode("concept-selection")}
             onChangeType={() => setDrawerMode("type-selection")}
@@ -506,7 +452,7 @@ export default function AttributeFormDrawer({
         },
       }}
     >
-      <AttributeFormHeader isEdit={isEdit} summaryChips={summaryChips} />
+      <AttributeFormHeader isEdit={isEdit} />
 
       <Box
         component="form"
@@ -559,32 +505,34 @@ export default function AttributeFormDrawer({
             flexWrap: "wrap",
           }}
         >
-          <Typography variant="caption" color="text.secondary" sx={{ mr: "auto" }}>
-            {footerSummary ||
-              t("ATTRIBUTE_FORM.FOOTER_SUMMARY", {
-                defaultValue: "Le formulaire s'adapte selon le modele choisi.",
-              })}
-          </Typography>
-
           <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
+            {drawerMode === "type-selection" ? (
+              <Button
+                type="button"
+                onClick={() => setDrawerMode("concept-selection")}
+                color="inherit"
+              >
+                {t("ATTRIBUTE_FORM.BACK", { defaultValue: "Retour" })}
+              </Button>
+            ) : null}
+
             <Button onClick={handleClose} color="inherit">
               {t("ATTRIBUTE_FORM.CANCEL", { defaultValue: "Annuler" })}
             </Button>
 
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={
-                drawerMode !== "field-config" ||
-                isSubmitting ||
-                duplicateSingleUseConceptBlocked ||
-                conceptTypeMismatch
-              }
-            >
-              {isEdit
-                ? t("ATTRIBUTE_FORM.SAVE", { defaultValue: "Enregistrer" })
-                : t("ATTRIBUTE_FORM.CREATE", { defaultValue: "Creer le champ" })}
-            </Button>
+            {drawerMode === "field-config" ? (
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={
+                  isSubmitting || duplicateSingleUseConceptBlocked || conceptTypeMismatch
+                }
+              >
+                {isEdit
+                  ? t("ATTRIBUTE_FORM.SAVE", { defaultValue: "Enregistrer" })
+                  : t("ATTRIBUTE_FORM.CREATE", { defaultValue: "Creer le champ" })}
+              </Button>
+            ) : null}
           </Stack>
         </DialogActions>
       </Box>

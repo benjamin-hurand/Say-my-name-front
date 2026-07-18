@@ -15,14 +15,8 @@ export default function ValueTypePickerScreen({ value, onSelect }: Props) {
 
   return (
     <FormSection
-      eyebrow={t("ATTRIBUTE_FORM.SECTION_TYPE_LABEL", {
-        defaultValue: "Type de donnee",
-      })}
       title={t("ATTRIBUTE_FORM.SECTION_TYPE_TITLE", {
         defaultValue: "Quel type de donnee ?",
-      })}
-      subtitle={t("ATTRIBUTE_FORM.CUSTOM_TYPE_SUBTITLE", {
-        defaultValue: "Choisis le format de l'information a enregistrer.",
       })}
     >
       <CustomAttributeTypePicker

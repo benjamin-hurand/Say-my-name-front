@@ -15,7 +15,7 @@ import type { AttributeCreateFormInput } from "../../validation/attributeCreate.
 import AttributeMainFormSection from "./AttributeMainFormSection";
 import FormSection from "./FormSection";
 import SelectedFieldSummary from "./SelectedFieldSummary";
-import type { ConceptDescriptionGetter, ConceptLabelGetter } from "./attributeForm.types";
+import type { ConceptLabelGetter } from "./attributeForm.types";
 
 type Props = {
   control: Control<AttributeCreateFormInput>;
@@ -30,7 +30,6 @@ type Props = {
   isCustom: boolean;
   identityComponentEligible: boolean;
   getConceptLabel: ConceptLabelGetter;
-  getConceptDescription: ConceptDescriptionGetter;
   hasUserEditedNameRef: MutableRefObject<boolean>;
   onChangeConcept: () => void;
   onChangeType: () => void;
@@ -49,7 +48,6 @@ export default function FieldConfigScreen({
   isCustom,
   identityComponentEligible,
   getConceptLabel,
-  getConceptDescription,
   hasUserEditedNameRef,
   onChangeConcept,
   onChangeType,
@@ -64,20 +62,13 @@ export default function FieldConfigScreen({
         valueTypeLabel={valueTypeLabel}
         isCustom={isCustom}
         getConceptLabel={getConceptLabel}
-        getConceptDescription={getConceptDescription}
         onChangeConcept={onChangeConcept}
         onChangeType={onChangeType}
       />
 
       <FormSection
-        eyebrow={t("ATTRIBUTE_FORM.SECTION_NAME_LABEL", {
-          defaultValue: "Nom",
-        })}
         title={t("ATTRIBUTE_FORM.SECTION_NAME_TITLE", {
           defaultValue: "Comment l'appelle-t-on ?",
-        })}
-        subtitle={t("ATTRIBUTE_FORM.SECTION_NAME_SUBTITLE", {
-          defaultValue: "Donne un libelle clair et visible pour les equipes admin.",
         })}
       >
         <Controller
@@ -104,32 +95,15 @@ export default function FieldConfigScreen({
                   fontWeight: 600,
                 },
               }}
-              helperText={
-                errors.name?.message ||
-                (selectedConcept
-                  ? t("ATTRIBUTE_FORM.NAME_HELP_MODEL", {
-                      defaultValue:
-                        "Le nom propose suit le modele choisi. Modifie-le seulement si necessaire.",
-                    })
-                  : t("ATTRIBUTE_FORM.NAME_HELP_CUSTOM", {
-                      defaultValue:
-                        "Nomme l'information metier avant de finaliser sa configuration.",
-                    }))
-              }
+              helperText={errors.name?.message}
             />
           )}
         />
       </FormSection>
 
       <FormSection
-        eyebrow={t("ATTRIBUTE_FORM.SECTION_OPTIONS_LABEL", {
-          defaultValue: "Options",
-        })}
         title={t("ATTRIBUTE_FORM.SECTION_OPTIONS_TITLE", {
           defaultValue: "Comment ce champ sera-t-il utilise ?",
-        })}
-        subtitle={t("ATTRIBUTE_FORM.SECTION_OPTIONS_SUBTITLE", {
-          defaultValue: "Active uniquement les usages utiles pour l'organisation et la recherche.",
         })}
       >
         <Stack spacing={1.25}>

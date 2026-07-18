@@ -25,7 +25,6 @@ type Props = {
 };
 
 type SectionText = {
-  eyebrow?: string;
   title: string;
   subtitle: string;
 };
@@ -40,7 +39,7 @@ export default function AttributeMainFormSection({
   const { t } = useTranslation();
 
   const renderEnumSection = (texts: SectionText, label: string, placeholder: string) => (
-    <FormSection eyebrow={texts.eyebrow} title={texts.title} subtitle={texts.subtitle}>
+    <FormSection title={texts.title} subtitle={texts.subtitle}>
       <EnumValuesForm
         control={control}
         watch={watch}
@@ -52,26 +51,22 @@ export default function AttributeMainFormSection({
   );
 
   const renderDateRangeSection = (texts: SectionText) => (
-    <FormSection eyebrow={texts.eyebrow} title={texts.title} subtitle={texts.subtitle}>
+    <FormSection title={texts.title} subtitle={texts.subtitle}>
       <DateRangeForm control={control} watch={watch} setValue={setValue} />
     </FormSection>
   );
 
   const renderNumberRangeSection = (texts: SectionText) => (
-    <FormSection eyebrow={texts.eyebrow} title={texts.title} subtitle={texts.subtitle}>
+    <FormSection title={texts.title} subtitle={texts.subtitle}>
       <NumberRangeForm control={control} watch={watch} setValue={setValue} />
     </FormSection>
   );
 
   const renderTextCasingSection = (texts: SectionText) => (
-    <FormSection eyebrow={texts.eyebrow} title={texts.title} subtitle={texts.subtitle}>
+    <FormSection title={texts.title} subtitle={texts.subtitle}>
       <TextCasingForm control={control} />
     </FormSection>
   );
-
-  const configEyebrow = t("ATTRIBUTE_FORM.CONFIG_SECTION_LABEL", {
-    defaultValue: "Configuration",
-  });
 
   const semanticConfig = getSemanticPresetConfig(selectedConceptCode);
   const enumCopy = resolveEnumCopy(t, selectedConceptCode);
@@ -81,7 +76,6 @@ export default function AttributeMainFormSection({
 
     return (
       <FormSection
-        eyebrow={configEyebrow}
         title={t("ATTRIBUTE_FORM.CONFIG_VALUES_TITLE", {
           defaultValue: "Quelles valeurs proposer ?",
         })}
@@ -97,7 +91,6 @@ export default function AttributeMainFormSection({
   switch (selectedType) {
     case "TEXT":
       return renderTextCasingSection({
-        eyebrow: configEyebrow,
         title: t("ATTRIBUTE_FORM.CONFIG_TEXT_CASING_TITLE", {
           defaultValue: "Comment le texte doit-il être harmonisé ?",
         }),
@@ -115,7 +108,6 @@ export default function AttributeMainFormSection({
 
       return renderEnumSection(
         {
-          eyebrow: configEyebrow,
           title: enumCopy.title,
           subtitle: enumCopy.subtitle,
         },
@@ -125,7 +117,6 @@ export default function AttributeMainFormSection({
 
     case "NUMBER":
       return renderNumberRangeSection({
-        eyebrow: configEyebrow,
         title: t("ATTRIBUTE_FORM.CONFIG_NUMBER_TITLE", {
           defaultValue: "Quelles valeurs autoriser ?",
         }),
@@ -137,7 +128,6 @@ export default function AttributeMainFormSection({
     case "DATE":
     case "DATETIME":
       return renderDateRangeSection({
-        eyebrow: configEyebrow,
         title: t("ATTRIBUTE_FORM.CONFIG_DATE_RANGE_TITLE", {
           defaultValue: "Quelle période autoriser ?",
         }),
