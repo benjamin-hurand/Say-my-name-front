@@ -83,6 +83,14 @@ export const attributeCreateSchema = z
       });
     }
 
+    if (data.type === "ENUM" && data.enumOptions.filter((value) => value.trim().length > 0).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["enumOptions"],
+        message: "Ajoutez au moins une option pour cette liste.",
+      });
+    }
+
     if (
       (data.type === "DATE" || data.type === "DATETIME" || data.type === "NUMBER") &&
       data.constraintKind === "RANGE" &&

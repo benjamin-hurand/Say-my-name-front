@@ -7,8 +7,30 @@ import type { SvgIconComponent } from "@mui/icons-material";
 
 import type { ConstraintPayload } from "../../../../../models/commons/Attribute/constraintPayload.schema";
 import type { Concept } from "../../../../../models/commons/Concept/Concept";
-import { Attribute } from "../../../../../models/commons/Attribute/Attribute";
+import { Attribute, type ValueType } from "../../../../../models/commons/Attribute/Attribute";
 import type { AttributeCreateFormInput } from "../../validation/attributeCreate.schema";
+
+export function getValueTypeLabel(
+  valueType: ValueType,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  switch (valueType) {
+    case "TEXT":
+      return t("ATTRIBUTE_FORM.VALUE_TYPE.TEXT", { defaultValue: "Texte" });
+    case "ENUM":
+      return t("ATTRIBUTE_FORM.VALUE_TYPE.ENUM", { defaultValue: "Liste de choix" });
+    case "NUMBER":
+      return t("ATTRIBUTE_FORM.VALUE_TYPE.NUMBER", { defaultValue: "Nombre" });
+    case "DATE":
+      return t("ATTRIBUTE_FORM.VALUE_TYPE.DATE", { defaultValue: "Date" });
+    case "DATETIME":
+      return t("ATTRIBUTE_FORM.VALUE_TYPE.DATETIME", { defaultValue: "Date & heure" });
+    case "BOOLEAN":
+      return t("ATTRIBUTE_FORM.VALUE_TYPE.BOOLEAN", { defaultValue: "Oui / Non" });
+    default:
+      return valueType;
+  }
+}
 
 export function getConceptCode(attribute?: Attribute): string | null {
   return attribute?.conceptCode ?? null;
@@ -22,7 +44,10 @@ export function isIdentityComponentEligible(attribute?: Attribute): boolean {
   return !!attribute?.identityComponentEligible;
 }
 
-export function makeDefaultValues(initial?: Attribute): AttributeCreateFormInput {
+export function makeDefaultValues(
+  initial?: Attribute,
+  presetIdentitySource?: boolean,
+): AttributeCreateFormInput {
   if (initial) {
     return {
       name: initial.name ?? "",
@@ -52,7 +77,7 @@ export function makeDefaultValues(initial?: Attribute): AttributeCreateFormInput
     type: "TEXT",
     casingStrategy: "NONE",
     maxValues: 1,
-    identitySource: false,
+    identitySource: !!presetIdentitySource,
     filter: false,
     sort: false,
     required: false,

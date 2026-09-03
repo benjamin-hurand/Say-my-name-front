@@ -13,6 +13,7 @@ type Props = {
   setValue: UseFormSetValue<AttributeCreateFormInput>;
   label: string;
   placeholder?: string;
+  errorMessage?: string;
 };
 
 function normalizeEnumValues(values: string[]): string[] {
@@ -37,6 +38,7 @@ export default function EnumValuesForm({
   control,
   label,
   placeholder,
+  errorMessage,
 }: Props) {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
@@ -112,6 +114,12 @@ export default function EnumValuesForm({
                 {t("ATTRIBUTE_FORM.ENUM_EMPTY", { defaultValue: "Aucune option ajoutée" })}
               </Typography>
             )}
+
+            {errorMessage ? (
+              <Typography variant="caption" color="error">
+                {errorMessage}
+              </Typography>
+            ) : null}
           </Stack>
         );
       }}

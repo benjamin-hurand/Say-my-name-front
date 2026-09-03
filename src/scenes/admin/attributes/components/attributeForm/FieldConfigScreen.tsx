@@ -99,6 +99,7 @@ export default function FieldConfigScreen({
         control={control}
         watch={watch}
         setValue={setValue}
+        errors={errors}
         selectedConceptCode={selectedConceptCode}
         selectedType={selectedType}
         casingApplicable={casingApplicable}

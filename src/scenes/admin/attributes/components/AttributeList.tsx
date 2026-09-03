@@ -2,6 +2,7 @@ import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-p
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DragIndicatorRoundedIcon from "@mui/icons-material/DragIndicatorRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import {
   Box,
@@ -16,7 +17,9 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 
-import { Attribute } from "../../../../models/commons/Attribute/Attribute";
+import { Attribute, ValueType } from "../../../../models/commons/Attribute/Attribute";
+import { getValueTypeLabel } from "./attributeForm/attributeForm.helpers";
+import { isIdentitySourceAttribute } from "./identity.utils";
 import { deleteAdminAttribute } from "../../../../services/business/admin/admin.attributes.service";
 import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 import type { AttributeIssueInfo } from "../AdminAttributesPage";
@@ -33,8 +36,6 @@ type Props = {
   issuesByAttributeId?: Map<number, AttributeIssueInfo>;
 };
 
-const ESSENTIAL_CONCEPT_CODES = new Set(["FIRST_NAME", "LAST_NAME", "GENDER", "IDENTITY"]);
-
 function getRowId(row: Attribute): number {
   return (row as any).id;
 }
@@ -47,39 +48,16 @@ function getConceptCode(row: Attribute): string | null {
   return (row as any)?.conceptCode ?? null;
 }
 
-function isConceptDerived(row: Attribute): boolean {
-  return !!(row as any)?.conceptDerived;
-}
-
-function isIdentitySource(row: Attribute): boolean {
-  return !!(row as any)?.identitySource;
+function getValueType(row: Attribute): ValueType | null {
+  return ((row as any)?.type as ValueType | null) ?? null;
 }
 
 function isFilterable(row: Attribute): boolean {
   return !!(row as any)?.filter;
 }
 
-function getAttributePurposeKeys(row: Attribute): string[] {
-  const conceptCode = getConceptCode(row);
-  const keys: string[] = [];
-
-  if (conceptCode && ESSENTIAL_CONCEPT_CODES.has(conceptCode)) {
-    keys.push("ESSENTIAL");
-  } else if (!conceptCode) {
-    keys.push("CUSTOM");
-  }
-
-  if (isIdentitySource(row)) {
-    keys.push("IDENTITY");
-  } else if (isFilterable(row)) {
-    keys.push("FILTER");
-  }
-
-  if (isConceptDerived(row)) {
-    keys.push("DERIVED");
-  }
-
-  return keys.slice(0, 2);
+function isSortable(row: Attribute): boolean {
+  return !!(row as any)?.sort;
 }
 
 export default function AttributeList({
@@ -98,32 +76,62 @@ export default function AttributeList({
 
   const getConceptLabel = (code: string | null): string => {
     if (!code) {
-      return t("ATTRIBUTE_UI.CUSTOM_ATTRIBUTE", { defaultValue: "Attribut personnalisé" });
+      return t("ATTRIBUTE_UI.CUSTOM_ATTRIBUTE", { defaultValue: "Champ personnalisé" });
     }
     return t(`CONCEPTS.${code}.LABEL`, { defaultValue: code });
   };
 
-  const getIssueTagLabel = (tag: AttributeIssueInfo["tags"][number]) => {
-    return t(`ATTRIBUTE_HEALTH_TAGS.${tag}`, { defaultValue: tag });
+  const getMainIndicatorLabel = (row: Attribute): string => {
+    const conceptCode = getConceptCode(row);
+    if (conceptCode) {
+      const conceptLabel = getConceptLabel(conceptCode);
+      return t("ATTRIBUTE_UI.MAIN_INDICATOR_STANDARD", {
+        concept: conceptLabel,
+        defaultValue: `Standard · ${conceptLabel}`,
+      });
+    }
+
+    const valueType = getValueType(row);
+    const typeLabel = valueType ? getValueTypeLabel(valueType, t) : "";
+    return t("ATTRIBUTE_UI.MAIN_INDICATOR_CUSTOM", {
+      type: typeLabel,
+      defaultValue: `Personnalisé · ${typeLabel}`,
+    });
   };
 
-  const getPurposeLabel = (key: string) => {
-    return t(`ATTRIBUTE_PURPOSE.${key}`, { defaultValue: key });
+  const getUsageLabel = (row: Attribute): string | null => {
+    const filterable = isFilterable(row);
+    const sortable = isSortable(row);
+
+    if (filterable && sortable) {
+      return t("ATTRIBUTE_UI.USAGE_FILTERABLE_SORTABLE", {
+        defaultValue: "Filtrable et triable",
+      });
+    }
+    if (filterable) {
+      return t("ATTRIBUTE_UI.USAGE_FILTERABLE", { defaultValue: "Filtrable" });
+    }
+    if (sortable) {
+      return t("ATTRIBUTE_UI.USAGE_SORTABLE", { defaultValue: "Triable" });
+    }
+    return null;
   };
 
   const handleDragEnd = (r: DropResult) => {
     if (!r.destination) return;
 
+    const movedRow = rows[r.source.index];
+    if (!movedRow || isIdentitySourceAttribute(movedRow)) return;
+
     const next = Array.from(rows);
     const [moved] = next.splice(r.source.index, 1);
     next.splice(r.destination.index, 0, moved);
 
-    const withOrder = next.map((it, i) => ({
-      ...it,
-      displayOrder: (i + 1) * 10,
-    }));
+    // Identity sources keep their displayOrder here: it is only ever
+    // changed from the "Identité des membres" reorder controls.
+    const reorderable = next.filter((row) => !isIdentitySourceAttribute(row));
 
-    onReorder(withOrder);
+    onReorder(reorderable);
   };
 
   const handleDelete = async (row: Attribute) => {
@@ -132,7 +140,7 @@ export default function AttributeList({
       !confirm(
         t("ATTRIBUTE_UI.DELETE_CONFIRM", {
           name: getRowName(row),
-          defaultValue: `Supprimer l’attribut "${getRowName(row)}" ?`,
+          defaultValue: `Supprimer le champ "${getRowName(row)}" ?`,
         })
       )
     ) {
@@ -141,17 +149,17 @@ export default function AttributeList({
 
     try {
       await deleteAdminAttribute(getRowId(row));
-      toast.success(t("ATTRIBUTE_UI.DELETED_SUCCESS", { defaultValue: "Attribut supprimé" }));
+      toast.success(t("ATTRIBUTE_UI.DELETED_SUCCESS", { defaultValue: "Champ supprimé" }));
       onDeleted();
     } catch (error: unknown) {
       const status = getApiStatus(error);
       const fallback = status === 403
         ? t("ATTRIBUTE_UI.DELETE_SYSTEM_ERROR", {
-            defaultValue: "Cet attribut système est protégé.",
+            defaultValue: "Ce champ système est protégé.",
           })
         : status === 409
           ? t("ATTRIBUTE_UI.DELETE_REFERENCED_ERROR", {
-              defaultValue: "Cet attribut est encore référencé et ne peut pas être supprimé.",
+              defaultValue: "Ce champ est encore référencé et ne peut pas être supprimé.",
             })
           : t("ATTRIBUTE_UI.DELETE_ERROR", {
               defaultValue: "Suppression impossible.",
@@ -208,13 +216,18 @@ export default function AttributeList({
                 const issue = getIssueFor(row);
                 const conceptCode = getConceptCode(row);
                 const isSystemIdentity = conceptCode === "IDENTITY";
-                const purposeKeys = getAttributePurposeKeys(row);
+                const isIdentitySource = isIdentitySourceAttribute(row);
+                const name =
+                  getRowName(row) ||
+                  t("ATTRIBUTE_UI.UNNAMED_ATTRIBUTE", { defaultValue: "Champ sans nom" });
+                const usageLabel = getUsageLabel(row);
 
                 return (
                   <Draggable
                     draggableId={String(getRowId(row))}
                     index={idx}
                     key={getRowId(row)}
+                    isDragDisabled={isIdentitySource}
                   >
                     {(dragProvided) => (
                       <Box
@@ -252,25 +265,50 @@ export default function AttributeList({
                               minWidth: 0,
                             }}
                           >
-                            <Box
-                              {...dragProvided.dragHandleProps}
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: { xs: "flex-start", sm: "center" },
-                                width: { xs: "100%", sm: 28 },
-                                minWidth: { xs: 0, sm: 28 },
-                                height: 28,
-                                color: "text.secondary",
-                                cursor: "grab",
-                                flexShrink: 0,
-                              }}
-                            >
-                              <DragIndicatorRoundedIcon fontSize="small" />
-                            </Box>
+                            {isIdentitySource ? (
+                              <Tooltip
+                                title={t("ATTRIBUTE_UI.IDENTITY_ORDER_LOCKED_TOOLTIP", {
+                                  defaultValue:
+                                    "L’ordre de ce champ se règle dans « Identité des membres ».",
+                                })}
+                              >
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: { xs: "flex-start", sm: "center" },
+                                    width: { xs: "100%", sm: 28 },
+                                    minWidth: { xs: 0, sm: 28 },
+                                    height: 28,
+                                    color: "text.disabled",
+                                    cursor: "not-allowed",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <DragIndicatorRoundedIcon fontSize="small" />
+                                </Box>
+                              </Tooltip>
+                            ) : (
+                              <Box
+                                {...dragProvided.dragHandleProps}
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: { xs: "flex-start", sm: "center" },
+                                  width: { xs: "100%", sm: 28 },
+                                  minWidth: { xs: 0, sm: 28 },
+                                  height: 28,
+                                  color: "text.secondary",
+                                  cursor: "grab",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <DragIndicatorRoundedIcon fontSize="small" />
+                              </Box>
+                            )}
 
                             <Box sx={{ minWidth: 0, width: "100%", overflow: "visible" }}>
-                              <Stack spacing={1} sx={{ minWidth: 0, overflow: "visible" }}>
+                              <Stack spacing={0.5} sx={{ minWidth: 0, overflow: "visible" }}>
                                 <Stack
                                   direction={{ xs: "column", md: "row" }}
                                   spacing={0.75}
@@ -278,28 +316,47 @@ export default function AttributeList({
                                   justifyContent="space-between"
                                   sx={{ minWidth: 0 }}
                                 >
-                                  <Typography
-                                    variant="subtitle1"
-                                    fontWeight={700}
-                                    sx={{
-                                      minWidth: 0,
-                                      width: "100%",
-                                      lineHeight: 1.25,
-                                      wordBreak: "break-word",
-                                    }}
+                                  <Stack
+                                    direction="row"
+                                    spacing={0.5}
+                                    alignItems="center"
+                                    sx={{ minWidth: 0 }}
                                   >
-                                    {getRowName(row) ||
-                                      t("ATTRIBUTE_UI.UNNAMED_ATTRIBUTE", {
-                                        defaultValue: "Attribut sans nom",
-                                      })}
-                                  </Typography>
+                                    <Typography
+                                      variant="subtitle1"
+                                      fontWeight={700}
+                                      sx={{
+                                        minWidth: 0,
+                                        lineHeight: 1.25,
+                                        wordBreak: "break-word",
+                                      }}
+                                    >
+                                      {name}
+                                    </Typography>
+
+                                    {isIdentitySource && (
+                                      <Tooltip
+                                        title={t("ATTRIBUTE_UI.IDENTITY_ICON_TOOLTIP", {
+                                          defaultValue: "Utilisé pour identifier une personne",
+                                        })}
+                                      >
+                                        <FingerprintRoundedIcon
+                                          fontSize="small"
+                                          color="primary"
+                                          aria-label={t("ATTRIBUTE_UI.IDENTITY_ICON_TOOLTIP", {
+                                            defaultValue: "Utilisé pour identifier une personne",
+                                          })}
+                                        />
+                                      </Tooltip>
+                                    )}
+                                  </Stack>
 
                                   {issue && (
                                     <Tooltip
                                       title={
                                         <Stack gap={0.5}>
-                                          {issue.tags.map((tag, i) => (
-                                            <span key={i}>• {getIssueTagLabel(tag)}</span>
+                                          {issue.messages.map((message, i) => (
+                                            <span key={i}>• {message}</span>
                                           ))}
                                         </Stack>
                                       }
@@ -335,76 +392,15 @@ export default function AttributeList({
                                   )}
                                 </Stack>
 
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 0.75,
-                                    alignItems: "flex-start",
-                                    width: "100%",
-                                    minWidth: 0,
-                                    overflow: "visible",
-                                  }}
-                                >
-                                  <Chip
-                                    size="small"
-                                    variant="outlined"
-                                    label={getConceptLabel(conceptCode)}
-                                    sx={{
-                                      height: "auto",
-                                      maxWidth: "100%",
-                                      "& .MuiChip-label": {
-                                        display: "block",
-                                        py: 0.5,
-                                        px: 1,
-                                        lineHeight: 1.2,
-                                        whiteSpace: "normal",
-                                      },
-                                    }}
-                                  />
-
-                                  {purposeKeys.map((key) => {
-                                    const isEssential = key === "ESSENTIAL";
-                                    return (
-                                      <Chip
-                                        key={key}
-                                        size="small"
-                                        label={getPurposeLabel(key)}
-                                        color={isEssential ? "primary" : "default"}
-                                        variant={isEssential ? "filled" : "outlined"}
-                                        sx={{
-                                          height: "auto",
-                                          "& .MuiChip-label": {
-                                            display: "block",
-                                            py: 0.5,
-                                            px: 1,
-                                            lineHeight: 1.2,
-                                            whiteSpace: "normal",
-                                          },
-                                        }}
-                                      />
-                                    );
-                                  })}
-                                </Box>
-
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{
-                                    lineHeight: 1.4,
-                                    wordBreak: "break-word",
-                                  }}
-                                >
-                                  {conceptCode
-                                    ? t("ATTRIBUTE_UI.ROLE_WITH_LABEL", {
-                                        role: getConceptLabel(conceptCode),
-                                        defaultValue: `Rôle : ${getConceptLabel(conceptCode)}`,
-                                      })
-                                    : t("ATTRIBUTE_UI.FREE_ROLE_DESCRIPTION", {
-                                        defaultValue:
-                                          "Rôle libre pour un besoin métier spécifique.",
-                                      })}
+                                <Typography variant="body2" color="text.secondary">
+                                  {getMainIndicatorLabel(row)}
                                 </Typography>
+
+                                {usageLabel && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {usageLabel}
+                                  </Typography>
+                                )}
                               </Stack>
                             </Box>
 
@@ -421,10 +417,18 @@ export default function AttributeList({
                               }}
                             >
                               <Tooltip title={isSystemIdentity
-                                ? t("ATTRIBUTE_UI.SYSTEM_PROTECTED", { defaultValue: "Attribut système protégé" })
+                                ? t("ATTRIBUTE_UI.SYSTEM_PROTECTED", { defaultValue: "Champ système protégé" })
                                 : t("ATTRIBUTE_UI.EDIT", { defaultValue: "Modifier" })}>
                                 <span>
-                                <IconButton size="small" disabled={isSystemIdentity} onClick={() => onEdit(row)}>
+                                <IconButton
+                                  size="small"
+                                  disabled={isSystemIdentity}
+                                  onClick={() => onEdit(row)}
+                                  aria-label={t("ATTRIBUTE_UI.EDIT_ARIA", {
+                                    name,
+                                    defaultValue: `Modifier le champ ${name}`,
+                                  })}
+                                >
                                   <EditRoundedIcon fontSize="small" />
                                 </IconButton>
                                 </span>
@@ -434,7 +438,15 @@ export default function AttributeList({
                                 title={t("ATTRIBUTE_UI.DELETE", { defaultValue: "Supprimer" })}
                               >
                                 <span>
-                                <IconButton size="small" disabled={isSystemIdentity} onClick={() => handleDelete(row)}>
+                                <IconButton
+                                  size="small"
+                                  disabled={isSystemIdentity}
+                                  onClick={() => handleDelete(row)}
+                                  aria-label={t("ATTRIBUTE_UI.DELETE_ARIA", {
+                                    name,
+                                    defaultValue: `Supprimer le champ ${name}`,
+                                  })}
+                                >
                                   <DeleteRoundedIcon fontSize="small" />
                                 </IconButton>
                                 </span>

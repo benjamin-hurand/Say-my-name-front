@@ -7,6 +7,12 @@ import type { Concept } from "../../../../../models/commons/Concept/Concept";
 export type AttributeFormDrawerProps = {
   open: boolean;
   initial?: Attribute;
+  /**
+   * Shortcut for the "add a custom identity source" CTA: on create, skips
+   * both wizard picker steps and opens configuration with a TEXT,
+   * single-value, identitySource-checked field ready to name.
+   */
+  presetIdentitySource?: boolean;
   onClose: (changed: boolean) => void;
   onEditAttribute: (attribute: Attribute) => void;
   conceptOptions: Concept[];

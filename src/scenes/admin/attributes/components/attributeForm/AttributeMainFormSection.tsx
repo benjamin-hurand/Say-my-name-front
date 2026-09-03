@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import type { Control, FieldErrors, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 import type {
   CasingStrategy,
@@ -23,6 +23,7 @@ type Props = {
   control: Control<AttributeCreateFormInput>;
   watch: UseFormWatch<AttributeCreateFormInput>;
   setValue: UseFormSetValue<AttributeCreateFormInput>;
+  errors: FieldErrors<AttributeCreateFormInput>;
   selectedConceptCode: string | null;
   selectedType: ValueType;
   casingApplicable: boolean;
@@ -42,6 +43,7 @@ export default function AttributeMainFormSection({
   control,
   watch,
   setValue,
+  errors,
   selectedConceptCode,
   selectedType,
   casingApplicable,
@@ -49,6 +51,7 @@ export default function AttributeMainFormSection({
   onCasingCustomizationChange,
 }: Props) {
   const { t } = useTranslation();
+  const enumOptionsError = errors.enumOptions?.message as string | undefined;
 
   const renderEnumSection = (texts: SectionText, label: string, placeholder: string) => (
     <FormSection title={texts.title} subtitle={texts.subtitle}>
@@ -58,6 +61,7 @@ export default function AttributeMainFormSection({
         setValue={setValue}
         label={label}
         placeholder={placeholder}
+        errorMessage={enumOptionsError}
       />
     </FormSection>
   );
@@ -100,7 +104,12 @@ export default function AttributeMainFormSection({
           defaultValue: "Choisis une liste prête à l'emploi ou personnalise les valeurs.",
         })}
       >
-        <GenderPresetSelector control={control} watch={watch} setValue={setValue} />
+        <GenderPresetSelector
+          control={control}
+          watch={watch}
+          setValue={setValue}
+          errorMessage={enumOptionsError}
+        />
       </FormSection>
     );
   };

@@ -5,6 +5,7 @@ import {
   filterAvailableConcepts,
   resolveConceptAvailability,
   resolveConfiguredConceptItems,
+  shouldSkipConceptPicker,
 } from "./attributeForm.conceptAvailability.ts";
 
 const concepts = [{ id: 1 }, { id: 2 }, { id: 3 }];
@@ -213,4 +214,13 @@ test("keeps a stale configured concept visible without exposing an impossible ed
   assert.equal(item.attributeId, 999);
   assert.equal(item.attributeName, "Ancien prénom");
   assert.equal(item.attribute, undefined);
+});
+
+test("skips the concept picker when creating and only the custom tile remains", () => {
+  assert.equal(shouldSkipConceptPicker(false, []), true);
+  assert.equal(shouldSkipConceptPicker(false, [{ id: 1 }]), false);
+});
+
+test("never skips the concept picker while editing an existing attribute", () => {
+  assert.equal(shouldSkipConceptPicker(true, []), false);
 });

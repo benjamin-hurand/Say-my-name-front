@@ -65,6 +65,9 @@ export default function AdvancedAttributeSettings({
                 label={t("ATTRIBUTE_FORM.SETTINGS.FILTER_LABEL", {
                   defaultValue: "Disponible dans les filtres",
                 })}
+                description={t("ATTRIBUTE_FORM.SETTINGS.FILTER_DESC", {
+                  defaultValue: "Permet d'utiliser ce champ pour filtrer le trombinoscope.",
+                })}
                 checked={!!field.value}
                 onChange={field.onChange}
               />
@@ -78,6 +81,9 @@ export default function AdvancedAttributeSettings({
               <SettingRow
                 label={t("ATTRIBUTE_FORM.SETTINGS.SORT_LABEL", {
                   defaultValue: "Disponible pour le tri",
+                })}
+                description={t("ATTRIBUTE_FORM.SETTINGS.SORT_DESC", {
+                  defaultValue: "Permet de trier les personnes selon ce champ.",
                 })}
                 checked={!!field.value}
                 onChange={field.onChange}

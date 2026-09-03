@@ -54,6 +54,19 @@ export function filterAvailableConcepts<T extends Pick<Concept, "id" | "code">>(
   );
 }
 
+/**
+ * The concept picker step is only worth showing when it offers a real
+ * choice. Once every standard concept is already configured, the sole
+ * remaining option is the custom field tile, so creation can jump straight
+ * to picking a value type.
+ */
+export function shouldSkipConceptPicker(
+  isEdit: boolean,
+  availableConcepts: readonly unknown[],
+): boolean {
+  return !isEdit && availableConcepts.length === 0;
+}
+
 export function resolveConfiguredConceptItems(
   concepts: readonly Concept[],
   attributes: readonly Attribute[],

@@ -1,52 +1,44 @@
 import { Button, Stack } from "@mui/material";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 import type { AttributeCreateFormInput } from "../../../validation/attributeCreate.schema";
 import EnumValuesForm from "./EnumValuesForm";
+import {
+  CUSTOM_GENDER_PRESET_KEY,
+  GENDER_PRESETS,
+  resolveActiveGenderPresetKey,
+} from "./genderPreset.utils";
 
 type Props = {
   control: Control<AttributeCreateFormInput>;
   watch: UseFormWatch<AttributeCreateFormInput>;
   setValue: UseFormSetValue<AttributeCreateFormInput>;
+  errorMessage?: string;
 };
 
-const PRESETS = [
-  { key: "HF", label: "Homme / Femme", values: ["Homme", "Femme"] },
-  { key: "HFA", label: "Homme / Femme / Autre", values: ["Homme", "Femme", "Autre"] },
-  { key: "MF", label: "Masculin / Féminin", values: ["Masculin", "Féminin"] },
-];
-
-export default function GenderPresetSelector({ control, watch, setValue }: Props) {
+export default function GenderPresetSelector({ control, watch, setValue, errorMessage }: Props) {
   const values = watch("enumOptions");
+  const [manualMode, setManualMode] = useState(false);
 
-  const activeKey = useMemo(() => {
-    const current = Array.isArray(values) ? values : [];
-
-    for (const preset of PRESETS) {
-      if (
-        preset.values.length === current.length &&
-        preset.values.every((v, index) => v === current[index])
-      ) {
-        return preset.key;
-      }
-    }
-
-    return "CUSTOM";
-  }, [values]);
+  const activeKey = useMemo(
+    () => resolveActiveGenderPresetKey(values, manualMode),
+    [values, manualMode],
+  );
 
   const applyPreset = (presetValues: string[]) => {
+    setManualMode(false);
     setValue("enumOptions", presetValues, { shouldDirty: true });
   };
 
   const enableCustom = () => {
-    // Passe en mode personnalisé — les valeurs actuelles sont conservées
+    setManualMode(true);
   };
 
   return (
     <Stack spacing={1.5}>
       <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap>
-        {PRESETS.map((preset) => (
+        {GENDER_PRESETS.map((preset) => (
           <Button
             key={preset.key}
             type="button"
@@ -59,20 +51,21 @@ export default function GenderPresetSelector({ control, watch, setValue }: Props
 
         <Button
           type="button"
-          variant={activeKey === "CUSTOM" ? "contained" : "outlined"}
+          variant={activeKey === CUSTOM_GENDER_PRESET_KEY ? "contained" : "outlined"}
           onClick={enableCustom}
         >
           Liste personnalisée
         </Button>
       </Stack>
 
-      {activeKey === "CUSTOM" && (
+      {activeKey === CUSTOM_GENDER_PRESET_KEY && (
         <EnumValuesForm
           control={control}
           watch={watch}
           setValue={setValue}
           label="Ajouter une valeur"
           placeholder="Ex. Homme"
+          errorMessage={errorMessage}
         />
       )}
     </Stack>

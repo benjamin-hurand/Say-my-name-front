@@ -23,6 +23,7 @@ import SelectedFieldSummary from "./attributeForm/SelectedFieldSummary";
 import ValueTypePickerScreen from "./attributeForm/ValueTypePickerScreen";
 import {
   makeDefaultValues,
+  getValueTypeLabel,
 } from "./attributeForm/attributeForm.helpers";
 import {
   DEFAULT_CUSTOM_VALUE_TYPE,
@@ -39,6 +40,8 @@ import {
   resolveConceptAvailability,
   resolveConfiguredConceptItems,
   isNormalAttributeConcept,
+  filterAvailableConcepts,
+  shouldSkipConceptPicker,
 } from "./attributeForm/attributeForm.conceptAvailability";
 import type {
   AttributeFormDrawerProps,
@@ -67,31 +70,10 @@ import { notifyError, notifySuccess } from "../../../../services/notification/to
 import { glassDialog } from "../../../../styles/glassStyles";
 import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 
-function getValueTypeLabel(
-  valueType: ValueType,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  switch (valueType) {
-    case "TEXT":
-      return t("ATTRIBUTE_FORM.VALUE_TYPE.TEXT", { defaultValue: "Texte" });
-    case "ENUM":
-      return t("ATTRIBUTE_FORM.VALUE_TYPE.ENUM", { defaultValue: "Liste de choix" });
-    case "NUMBER":
-      return t("ATTRIBUTE_FORM.VALUE_TYPE.NUMBER", { defaultValue: "Nombre" });
-    case "DATE":
-      return t("ATTRIBUTE_FORM.VALUE_TYPE.DATE", { defaultValue: "Date" });
-    case "DATETIME":
-      return t("ATTRIBUTE_FORM.VALUE_TYPE.DATETIME", { defaultValue: "Date & heure" });
-    case "BOOLEAN":
-      return t("ATTRIBUTE_FORM.VALUE_TYPE.BOOLEAN", { defaultValue: "Oui / Non" });
-    default:
-      return valueType;
-  }
-}
-
 export default function AttributeFormDrawer({
   open,
   initial,
+  presetIdentitySource,
   onClose,
   onEditAttribute,
   conceptOptions,
@@ -111,11 +93,24 @@ export default function AttributeFormDrawer({
       ),
     [allAttributes, conceptOptions, initial?.id],
   );
-
-  const [view, setView] = useState<AttributeCreationView>(
-    isEdit ? "configuration" : "template-selection",
+  const availableConceptOptions = useMemo(
+    () => filterAvailableConcepts(conceptOptions, availabilityByConceptId),
+    [availabilityByConceptId, conceptOptions],
   );
-  const [hasConfirmedConceptChoice, setHasConfirmedConceptChoice] = useState(isEdit);
+  const skipConceptPicker =
+    !presetIdentitySource && shouldSkipConceptPicker(isEdit, availableConceptOptions);
+
+  const initialView: AttributeCreationView =
+    isEdit || presetIdentitySource
+      ? "configuration"
+      : skipConceptPicker
+        ? "custom-type-selection"
+        : "template-selection";
+
+  const [view, setView] = useState<AttributeCreationView>(initialView);
+  const [hasConfirmedConceptChoice, setHasConfirmedConceptChoice] = useState(
+    isEdit || Boolean(presetIdentitySource) || skipConceptPicker,
+  );
 
   const isNameCustomizedRef = useRef(isEdit);
   const isCasingCustomizedRef = useRef(isEdit);
@@ -138,15 +133,17 @@ export default function AttributeFormDrawer({
     reset,
   } = useForm<AttributeCreateFormInput, unknown, AttributeCreateFormOutput>({
     resolver: zodResolver(attributeCreateSchema),
-    defaultValues: makeDefaultValues(initial),
+    defaultValues: makeDefaultValues(initial, presetIdentitySource),
   });
 
   useEffect(() => {
     if (!open) return;
 
-    reset(makeDefaultValues(initial));
-    setView(initial?.id ? "configuration" : "template-selection");
-    setHasConfirmedConceptChoice(Boolean(initial?.id));
+    reset(makeDefaultValues(initial, presetIdentitySource));
+    setView(initialView);
+    setHasConfirmedConceptChoice(
+      Boolean(initial?.id) || Boolean(presetIdentitySource) || skipConceptPicker,
+    );
     isNameCustomizedRef.current = Boolean(initial?.id);
     isCasingCustomizedRef.current = Boolean(initial?.id);
     lastTextCasingStrategyRef.current =
@@ -154,7 +151,7 @@ export default function AttributeFormDrawer({
     wasLastTextCasingCustomizedRef.current =
       Boolean(initial?.id) && initial?.type === "TEXT";
     previousEffectiveValueTypeRef.current = null;
-  }, [open, initial, reset]);
+  }, [open, initial, reset, presetIdentitySource, initialView, skipConceptPicker]);
 
   useEffect(() => {
     if (!open) return;

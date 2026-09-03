@@ -31,18 +31,33 @@
     "SECTION_MODEL_TITLE": "What information would you like to add?",
     "SECTION_TYPE_TITLE": "What type of information would you like to store?",
     "BACK": "Back",
+    "CANCEL": "Cancel",
+    "SAVE": "Save",
+    "CREATE": "Create field",
     "CUSTOM_TEMPLATE": "Custom field",
     "CUSTOM_TEMPLATE_SUBTITLE": "Define specific information",
     "CONFIGURED_FIELDS_TITLE": "Already configured ({{count}})",
-    "CONFIGURED_FIELD_NAME": "Field: \u201c{{name}}\u201d",
+    "CONFIGURED_FIELD_NAME": "Field: “{{name}}”",
     "UNKNOWN_FIELD_NAME": "Field not found",
     "EDIT_CONFIGURED_FIELD": "Edit",
     "EDIT_CONFIGURED_FIELD_ARIA": "Edit field {{name}}",
     "ERROR_SAVE": "Unable to save the field",
+    "SUCCESS_CREATED": "Field created",
+    "SUCCESS_UPDATED": "Field updated",
+    "CONFIRM_CLOSE_DIRTY": "Unsaved changes will be lost. Close anyway?",
+    "IDENTITY_PROTECTED": "The system Identity attribute cannot be edited here.",
     "CARDINALITY_TITLE": "Number of values per person",
     "MODEL_MAX_VALUES_SINGLE": "The template allows one value per person",
     "MODEL_MAX_VALUES_MULTIPLE": "The template allows up to {{count}} values per person",
     "CONFIG_TEXT_CASING_TITLE_DIRECT": "Text format",
+    "VALUE_TYPE": {
+      "TEXT": "Text",
+      "ENUM": "Choice list",
+      "NUMBER": "Number",
+      "DATE": "Date",
+      "DATETIME": "Date & time",
+      "BOOLEAN": "Yes / No"
+    },
     "CASING": {
       "GROUP_LABEL": "Text format",
       "NONE_LABEL": "Keep entered text",
@@ -65,18 +80,96 @@
       "IDENTITY_LABEL": "Use to identify a person",
       "IDENTITY_DESC": "This value will be part of the person's displayed name.",
       "FILTER_LABEL": "Available in filters",
-      "SORT_LABEL": "Available for sorting"
+      "FILTER_DESC": "Lets you use this field to filter the directory.",
+      "SORT_LABEL": "Available for sorting",
+      "SORT_DESC": "Lets you sort people by this field."
     },
     "ENUM_ADD": "Add",
     "ENUM_EMPTY": "No option added yet"
   },
 
   "ATTRIBUTE_PAGE": {
+    "TITLE": "Fields",
+    "SUBTITLE": "Define the information used to identify and organize the group's members.",
+    "REFRESH": "Refresh",
+    "REFRESH_ERROR": "Error while refreshing the fields",
+    "ADD_ATTRIBUTE": "Add a field",
+    "EMPTY_TITLE": "No fields to display",
+    "EMPTY_TEXT": "Start by adding the essential information, then progressively enrich the schema with business fields.",
+    "RESULTS_COUNT_one": "{{count}} result",
+    "RESULTS_COUNT_other": "{{count}} results",
+    "ISSUES_TITLE_ERROR": "Corrections are needed",
+    "ISSUES_TITLE_WARNING": "A few adjustments are recommended",
+    "SUCCESS_TITLE": "Basic configuration ready",
+    "SUCCESS_TEXT": "The essential fields are in place. You can now fine-tune or add business fields.",
+    "QUICK_FILTER_TYPES_TO_FIX": "Types to fix",
+    "QUICK_FILTER_INCOMPLETE_LISTS": "Incomplete lists",
+    "REORDER_SUCCESS": "Order updated",
+    "REORDER_ERROR": "Reordering error",
+    "SAVED_SUCCESS": "Field saved",
+    "VIEWS": {
+      "ALL": "All",
+      "ESSENTIAL": "Essential",
+      "CUSTOM": "Custom",
+      "NEEDS_ATTENTION": "Needs attention"
+    },
+    "TOP_ISSUES": {
+      "concept-type-mismatch": "Some fields have a type that is incompatible with their concept.",
+      "identity-source-not-eligible": "Some identity sources are not consistent with their concept.",
+      "default-error": "Some fields need to be fixed to keep a consistent schema.",
+      "enum-without-options": "Some lists don't have any options configured yet.",
+      "default-warning": "A few improvements are recommended to finalize the configuration."
+    },
     "SETUP": {
-      "PROGRESS_LABEL": "{{done}} / {{total}} essential attributes",
+      "TITLE": "Start with the essential fields",
+      "SUBTITLE": "For a reliable photo quiz, start by framing the basic information.",
+      "PROGRESS_LABEL": "{{done}} / {{total}} essential fields",
       "PROGRESS_PERCENT": "{{percent}}%",
+      "NEXT_STEP_TITLE": "Recommended next step",
       "NEXT_STEP_TEXT_SINGLE": "Add {{concept}} to complete the basic setup.",
       "ADD_CONCEPT": "Add {{concept}}"
+    }
+  },
+
+  "ATTRIBUTE_HEALTH_MESSAGES": {
+    "useless": "The field \"{{name}}\" doesn't seem to be put to much use right now.",
+    "concept-type-mismatch": "The field \"{{name}}\" has a type \"{{type}}\" that is inconsistent with the concept \"{{concept}}\" ({{conceptValueType}}).",
+    "identity-source-not-eligible": "The field \"{{name}}\" is not a single-value text field eligible as an identity source.",
+    "enum-without-options": "The list field \"{{name}}\" has no active options.",
+    "default": "An issue was detected on \"{{name}}\"."
+  },
+
+  "ATTRIBUTE_UI": {
+    "CUSTOM_ATTRIBUTE": "Custom field",
+    "UNNAMED_ATTRIBUTE": "Unnamed field",
+    "EDIT": "Edit",
+    "DELETE": "Delete",
+    "EDIT_ARIA": "Edit field {{name}}",
+    "DELETE_ARIA": "Delete field {{name}}",
+    "SYSTEM_PROTECTED": "Protected system field",
+    "NEEDS_FIXING": "Needs fixing",
+    "NEEDS_REVIEW": "Needs review",
+    "DELETE_CONFIRM": "Delete the field \"{{name}}\"?",
+    "DELETED_SUCCESS": "Field deleted",
+    "DELETE_SYSTEM_ERROR": "This system field is protected.",
+    "DELETE_REFERENCED_ERROR": "This field is still referenced and cannot be deleted.",
+    "DELETE_ERROR": "Deletion failed.",
+    "MAIN_INDICATOR_STANDARD": "Standard · {{concept}}",
+    "MAIN_INDICATOR_CUSTOM": "Custom · {{type}}",
+    "USAGE_FILTERABLE": "Filterable",
+    "USAGE_SORTABLE": "Sortable",
+    "USAGE_FILTERABLE_SORTABLE": "Filterable and sortable",
+    "IDENTITY_ICON_TOOLTIP": "Used to identify a person",
+    "IDENTITY_ORDER_LOCKED_TOOLTIP": "This field's order is set in “Members identity”.",
+    "IDENTITY": {
+      "TITLE": "Members identity",
+      "SUBTITLE": "These fields make up, in this order, the displayed name of every person.",
+      "EMPTY": "No identity source configured yet.",
+      "PREVIEW_LABEL": "Preview",
+      "PREVIEW_EMPTY": "—",
+      "MOVE_UP_ARIA": "Move {{name}} up",
+      "MOVE_DOWN_ARIA": "Move {{name}} down",
+      "ADD_SOURCE_CTA": "Add a field as an identity source"
     }
   }
 }

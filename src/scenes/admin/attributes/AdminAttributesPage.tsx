@@ -24,6 +24,13 @@ import { useTranslation } from "react-i18next";
 
 import AttributeFormDrawer from "./components/AttributeFormDrawer";
 import AttributeList from "./components/AttributeList";
+import IdentityMembersCard from "./components/IdentityMembersCard";
+import {
+  buildIdentityReorderSwap,
+  excludeSystemIdentity,
+  isIdentitySourceAttribute,
+  sortByDisplayOrder,
+} from "./components/identity.utils";
 
 import {
   getAdminAttributes,
@@ -40,11 +47,11 @@ type AttributeIssueTag =
   | "useless"
   | "concept-type-mismatch"
   | "identity-source-not-eligible"
-  | "derived-edit-policy-mismatch"
   | "enum-without-options";
 
 export type AttributeIssueInfo = {
   tags: AttributeIssueTag[];
+  messages: string[];
   severity: "warning" | "error";
 };
 
@@ -85,20 +92,12 @@ function getConceptId(a: Attribute): number | null {
   return (a as any)?.conceptId ?? null;
 }
 
-function isConceptDerived(a: Attribute): boolean {
-  return !!(a as any)?.conceptDerived;
-}
-
 function isIdentityComponentEligible(a: Attribute): boolean {
   return !!(a as any)?.identityComponentEligible;
 }
 
 function getValueType(a: Attribute): ValueType | null {
   return ((a as any)?.type as ValueType | null) ?? null;
-}
-
-function getEditPolicy(a: Attribute): string | null {
-  return ((a as any)?.editPolicy as string | null) ?? null;
 }
 
 function isFilterable(a: Attribute): boolean {
@@ -196,7 +195,7 @@ export default function AdminAttributesPage() {
         case "useless":
           return t("ATTRIBUTE_HEALTH_MESSAGES.useless", {
             name,
-            defaultValue: `L’attribut "${name}" semble peu exploitable actuellement.`,
+            defaultValue: `Le champ "${name}" semble peu exploité actuellement.`,
           });
 
         case "concept-type-mismatch":
@@ -205,25 +204,19 @@ export default function AdminAttributesPage() {
             type: attributeType ?? "?",
             concept: conceptLabel,
             conceptValueType: conceptValueType ?? "?",
-            defaultValue: `L’attribut "${name}" a un type "${attributeType ?? "?"}" incohérent avec le concept "${conceptLabel}" (${conceptValueType ?? "?"}).`,
+            defaultValue: `Le champ "${name}" a un type "${attributeType ?? "?"}" incohérent avec le concept "${conceptLabel}" (${conceptValueType ?? "?"}).`,
           });
 
         case "identity-source-not-eligible":
           return t("ATTRIBUTE_HEALTH_MESSAGES.identity-source-not-eligible", {
             name,
-            defaultValue: `L’attribut "${name}" n’est pas un texte à valeur unique éligible comme source d’identité.`,
-          });
-
-        case "derived-edit-policy-mismatch":
-          return t("ATTRIBUTE_HEALTH_MESSAGES.derived-edit-policy-mismatch", {
-            name,
-            defaultValue: `L’attribut "${name}" est lié à un concept dérivé mais son editPolicy n’est pas "DERIVED".`,
+            defaultValue: `Le champ "${name}" n’est pas un texte à valeur unique éligible comme source d’identité.`,
           });
 
         case "enum-without-options":
           return t("ATTRIBUTE_HEALTH_MESSAGES.enum-without-options", {
             name,
-            defaultValue: `L’attribut ENUM "${name}" ne possède aucune option active.`,
+            defaultValue: `Le champ liste "${name}" ne possède aucune option active.`,
           });
 
         default:
@@ -260,7 +253,7 @@ export default function AdminAttributesPage() {
       notifyError(
         e?.message ||
           t("ATTRIBUTE_PAGE.REFRESH_ERROR", {
-            defaultValue: "Erreur lors de l’actualisation des attributs",
+            defaultValue: "Erreur lors de l’actualisation des champs",
           })
       );
     } finally {
@@ -268,8 +261,20 @@ export default function AdminAttributesPage() {
     }
   }, [t]);
 
+  // IDENTITY is a system-managed derived field: it is never shown as a
+  // normal row, in the list or in its health diagnostics.
+  const visibleAttributes = useMemo(
+    () => excludeSystemIdentity(attributes ?? []),
+    [attributes],
+  );
+
+  const identitySources = useMemo(
+    () => sortByDisplayOrder(visibleAttributes.filter(isIdentitySourceAttribute)),
+    [visibleAttributes],
+  );
+
   const diagnostics = useMemo(() => {
-    const rows = attributes ?? [];
+    const rows = visibleAttributes;
     const items: HealthDiagnostic[] = [];
 
     for (const a of rows) {
@@ -307,16 +312,6 @@ export default function AdminAttributesPage() {
         });
       }
 
-      if (isConceptDerived(a) && getEditPolicy(a) !== "DERIVED") {
-        items.push({
-          tag: "derived-edit-policy-mismatch",
-          severity: "error",
-          attributeId: id,
-          attributeName: name,
-          message: buildIssueMessage("derived-edit-policy-mismatch", a),
-        });
-      }
-
       if (getValueType(a) === "ENUM" && getOptionsCount(a) === 0) {
         items.push({
           tag: "enum-without-options",
@@ -329,7 +324,7 @@ export default function AdminAttributesPage() {
     }
 
     return items;
-  }, [attributes, buildIssueMessage, conceptsByCode, conceptsById]);
+  }, [visibleAttributes, buildIssueMessage, conceptsByCode, conceptsById]);
 
   const issuesByAttributeId = useMemo(() => {
     const map = new Map<number, AttributeIssueInfo>();
@@ -339,11 +334,15 @@ export default function AdminAttributesPage() {
 
       const prev = map.get(diag.attributeId);
       if (prev) {
-        if (!prev.tags.includes(diag.tag)) prev.tags.push(diag.tag);
+        if (!prev.tags.includes(diag.tag)) {
+          prev.tags.push(diag.tag);
+          prev.messages.push(diag.message);
+        }
         if (diag.severity === "error") prev.severity = "error";
       } else {
         map.set(diag.attributeId, {
           tags: [diag.tag],
+          messages: [diag.message],
           severity: diag.severity,
         });
       }
@@ -353,7 +352,7 @@ export default function AdminAttributesPage() {
   }, [diagnostics]);
 
   const health = useMemo(() => {
-    const rows = attributes ?? [];
+    const rows = visibleAttributes;
     const warnings = diagnostics.filter((d) => d.severity === "warning");
     const errors = diagnostics.filter((d) => d.severity === "error");
 
@@ -378,13 +377,13 @@ export default function AdminAttributesPage() {
       missingRecommendedConcepts,
       hasIssues: warnings.length > 0 || errors.length > 0,
     };
-  }, [attributes, diagnostics]);
+  }, [visibleAttributes, diagnostics]);
 
   const topIssuesSummary = useMemo(() => {
     if (health.errorsCount > 0) {
       if ((health.byTagCount["concept-type-mismatch"] ?? 0) > 0) {
         return t("ATTRIBUTE_PAGE.TOP_ISSUES.concept-type-mismatch", {
-          defaultValue: "Certains attributs ont un type incompatible avec leur concept.",
+          defaultValue: "Certains champs ont un type incompatible avec leur concept.",
         });
       }
       if ((health.byTagCount["identity-source-not-eligible"] ?? 0) > 0) {
@@ -392,13 +391,8 @@ export default function AdminAttributesPage() {
           defaultValue: "Certaines sources d’identité ne sont pas cohérentes avec leur concept.",
         });
       }
-      if ((health.byTagCount["derived-edit-policy-mismatch"] ?? 0) > 0) {
-        return t("ATTRIBUTE_PAGE.TOP_ISSUES.derived-edit-policy-mismatch", {
-          defaultValue: "Certaines règles de calcul d’attribut doivent être corrigées.",
-        });
-      }
       return t("ATTRIBUTE_PAGE.TOP_ISSUES.default-error", {
-        defaultValue: "Des attributs doivent être corrigés pour garantir un schéma cohérent.",
+        defaultValue: "Des champs doivent être corrigés pour garantir un schéma cohérent.",
       });
     }
 
@@ -417,7 +411,7 @@ export default function AdminAttributesPage() {
   }, [health, t]);
 
   const filteredAttributes = useMemo(() => {
-    return (attributes ?? [])
+    return visibleAttributes
       .filter((a) => {
         if (viewMode === "all") return true;
 
@@ -444,7 +438,7 @@ export default function AdminAttributesPage() {
         if (dx !== dy) return dx - dy;
         return getAttrName(x).localeCompare(getAttrName(y));
       });
-  }, [attributes, issuesByAttributeId, viewMode]);
+  }, [visibleAttributes, issuesByAttributeId, viewMode]);
 
   const totalA = filteredAttributes.length;
   const pageStart = page * pageSize;
@@ -482,7 +476,11 @@ export default function AdminAttributesPage() {
     }
   };
 
-  const [drawerA, setDrawerA] = useState<{ open: boolean; initial?: Attribute | null }>({
+  const [drawerA, setDrawerA] = useState<{
+    open: boolean;
+    initial?: Attribute | null;
+    presetIdentitySource?: boolean;
+  }>({
     open: false,
   });
 
@@ -490,16 +488,50 @@ export default function AdminAttributesPage() {
     setDrawerA({ open: true, initial: attribute });
   }, []);
 
+  const openCreateIdentitySource = useCallback(() => {
+    setDrawerA({ open: true, initial: null, presetIdentitySource: true });
+  }, []);
+
   const onCloseAttributeDrawer = async (changed?: boolean) => {
     setDrawerA({ open: false });
     if (changed) {
       await hardRefreshAttributes();
-      notifySuccess(t("ATTRIBUTE_PAGE.SAVED_SUCCESS", { defaultValue: "Attribut enregistré" }));
+      notifySuccess(t("ATTRIBUTE_PAGE.SAVED_SUCCESS", { defaultValue: "Champ enregistré" }));
     }
   };
 
+  const handleMoveIdentitySource = useCallback(
+    async (attributeId: number, direction: "up" | "down") => {
+      const index = identitySources.findIndex((a) => getAttrId(a) === attributeId);
+      const swap = buildIdentityReorderSwap(identitySources, index, direction);
+      if (!swap) return;
+
+      try {
+        await reorderAdminAttributes(swap);
+
+        setAttributes((prev) => {
+          const map = new Map(prev.map((a) => [getAttrId(a), { ...a }]));
+          for (const item of swap) {
+            const found = map.get(item.id);
+            if (found) found.displayOrder = item.displayOrder;
+          }
+          return [...map.values()];
+        });
+
+        notifySuccess(t("ATTRIBUTE_PAGE.REORDER_SUCCESS", { defaultValue: "Ordre mis à jour" }));
+      } catch (e: any) {
+        notifyError(
+          e?.message ||
+            t("ATTRIBUTE_PAGE.REORDER_ERROR", { defaultValue: "Erreur de réordonnancement" })
+        );
+        await hardRefreshAttributes();
+      }
+    },
+    [identitySources, hardRefreshAttributes, t]
+  );
+
   const essentialSetupProgress = RECOMMENDED_BOOTSTRAP_CONCEPT_CODES.map((conceptCode) => {
-    const exists = attributes.some((a) => getConceptCode(a) === conceptCode);
+    const exists = visibleAttributes.some((a) => getConceptCode(a) === conceptCode);
     return {
       conceptCode,
       exists,
@@ -554,7 +586,7 @@ export default function AdminAttributesPage() {
       >
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="h5" fontWeight={700}>
-            {t("ATTRIBUTE_PAGE.TITLE", { defaultValue: "Attributs" })}
+            {t("ATTRIBUTE_PAGE.TITLE", { defaultValue: "Champs" })}
           </Typography>
           <Typography
             variant="body2"
@@ -596,7 +628,7 @@ export default function AdminAttributesPage() {
             onClick={() => setDrawerA({ open: true, initial: null })}
             sx={{ whiteSpace: "nowrap" }}
           >
-            {t("ATTRIBUTE_PAGE.ADD_ATTRIBUTE", { defaultValue: "Ajouter un attribut" })}
+            {t("ATTRIBUTE_PAGE.ADD_ATTRIBUTE", { defaultValue: "Ajouter un champ" })}
           </Button>
         </Stack>
       </Stack>
@@ -615,7 +647,7 @@ export default function AdminAttributesPage() {
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>
                   {t("ATTRIBUTE_PAGE.SETUP.TITLE", {
-                    defaultValue: "Commencer par les attributs essentiels",
+                    defaultValue: "Commencer par les champs essentiels",
                   })}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -638,7 +670,7 @@ export default function AdminAttributesPage() {
                     {t("ATTRIBUTE_PAGE.SETUP.PROGRESS_LABEL", {
                       done: completedEssentialCount,
                       total: essentialSetupProgress.length,
-                      defaultValue: `${completedEssentialCount} / ${essentialSetupProgress.length} attributs essentiels`,
+                      defaultValue: `${completedEssentialCount} / ${essentialSetupProgress.length} champs essentiels`,
                     })}
                   </Typography>
 
@@ -754,10 +786,17 @@ export default function AdminAttributesPage() {
           </AlertTitle>
           {t("ATTRIBUTE_PAGE.SUCCESS_TEXT", {
             defaultValue:
-              "Les attributs essentiels sont en place. Tu peux maintenant affiner ou ajouter des attributs métier.",
+              "Les champs essentiels sont en place. Tu peux maintenant affiner ou ajouter des champs métier.",
           })}
         </Alert>
       )}
+
+      <IdentityMembersCard
+        sources={identitySources}
+        onMove={handleMoveIdentitySource}
+        onEditSource={openAttributeEditor}
+        onCreateSource={openCreateIdentitySource}
+      />
 
       <Card
         variant="outlined"
@@ -860,12 +899,12 @@ export default function AdminAttributesPage() {
               <CardContent sx={{ py: 4 }}>
                 <Stack spacing={1.5} alignItems="flex-start">
                   <Typography variant="subtitle1" fontWeight={700}>
-                    {t("ATTRIBUTE_PAGE.EMPTY_TITLE", { defaultValue: "Aucun attribut à afficher" })}
+                    {t("ATTRIBUTE_PAGE.EMPTY_TITLE", { defaultValue: "Aucun champ à afficher" })}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t("ATTRIBUTE_PAGE.EMPTY_TEXT", {
                       defaultValue:
-                        "Commence par ajouter les informations essentielles, puis enrichis progressivement le schéma avec des attributs métier.",
+                        "Commence par ajouter les informations essentielles, puis enrichis progressivement le schéma avec des champs métier.",
                     })}
                   </Typography>
                   <Button
@@ -901,6 +940,7 @@ export default function AdminAttributesPage() {
         key={drawerA.initial?.id ?? "create"}
         open={drawerA.open}
         initial={drawerA.initial || undefined}
+        presetIdentitySource={drawerA.presetIdentitySource}
         onClose={onCloseAttributeDrawer}
         onEditAttribute={openAttributeEditor}
         conceptOptions={concepts}
