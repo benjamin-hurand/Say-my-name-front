@@ -9,6 +9,7 @@ import {
   isConceptDerived,
   isIdentityComponentEligible,
 } from "./attributeForm.helpers";
+import { isCasingApplicable } from "./attributeForm.casing";
 
 export const DEFAULT_CUSTOM_VALUE_TYPE: ValueType = "TEXT";
 
@@ -21,6 +22,8 @@ export type FieldSemanticContext = {
   isDerived: boolean;
   identityComponentEligible: boolean;
   defaultCasingStrategy: CasingStrategy | null;
+  casingApplicable: boolean;
+  requiredMaxValues: number | null;
 };
 
 type GetEffectiveValueTypeArgs = {
@@ -68,6 +71,7 @@ export function resolveFieldSemanticContext({
     initial,
     fallback: fallbackValueType,
   });
+  const derived = concept?.derived ?? (!custom ? isConceptDerived(initial) : false);
 
   return {
     isCustom: custom,
@@ -75,10 +79,12 @@ export function resolveFieldSemanticContext({
     semanticPresetCode,
     effectiveValueType,
     lockedValueType,
-    isDerived: concept?.derived ?? (!custom ? isConceptDerived(initial) : false),
+    isDerived: derived,
     identityComponentEligible:
       concept?.identityComponentEligible ??
       (!custom ? isIdentityComponentEligible(initial) : false),
     defaultCasingStrategy: concept?.defaultCasingStrategy ?? null,
+    casingApplicable: isCasingApplicable(effectiveValueType, derived),
+    requiredMaxValues: concept?.requiredMaxValues ?? null,
   };
 }

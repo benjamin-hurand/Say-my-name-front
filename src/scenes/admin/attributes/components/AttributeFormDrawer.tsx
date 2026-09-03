@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import {
   Box,
   Button,
@@ -18,6 +19,7 @@ import AttributeFormAlerts from "./attributeForm/AttributeFormAlerts";
 import AttributeFormHeader from "./attributeForm/AttributeFormHeader";
 import ConceptPickerScreen from "./attributeForm/ConceptPickerScreen";
 import FieldConfigScreen from "./attributeForm/FieldConfigScreen";
+import SelectedFieldSummary from "./attributeForm/SelectedFieldSummary";
 import ValueTypePickerScreen from "./attributeForm/ValueTypePickerScreen";
 import {
   makeDefaultValues,
@@ -30,10 +32,15 @@ import {
   sanitizeConfigForValueType,
   type SanitizedAttributeConfig,
 } from "./attributeForm/attributeForm.compatibility";
+import { resolveConceptMaxValues } from "./attributeForm/attributeForm.cardinality";
+import { resolveSuggestedCasingStrategy } from "./attributeForm/attributeForm.casing";
+import {
+  resolveConceptAvailability,
+  resolveConfiguredConceptItems,
+} from "./attributeForm/attributeForm.conceptAvailability";
 import type {
   AttributeFormDrawerProps,
-  ConceptCardOption,
-  DrawerMode,
+  AttributeCreationView,
 } from "./attributeForm/attributeForm.types";
 import {
   attributeCreateSchema,
@@ -46,6 +53,7 @@ import type {
 } from "../../../../models/commons/Attribute/Attribute.dto";
 import type { Concept } from "../../../../models/commons/Concept/Concept";
 import {
+  type CasingStrategy,
   type EditPolicy,
   type ValueType,
 } from "../../../../models/commons/Attribute/Attribute";
@@ -55,6 +63,7 @@ import {
 } from "../../../../services/business/admin/admin.attributes.service";
 import { notifyError, notifySuccess } from "../../../../services/notification/toast.service";
 import { glassDialog } from "../../../../styles/glassStyles";
+import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 
 function getValueTypeLabel(
   valueType: ValueType,
@@ -82,20 +91,38 @@ export default function AttributeFormDrawer({
   open,
   initial,
   onClose,
+  onEditAttribute,
   conceptOptions,
   allAttributes,
+  onRefreshAttributes,
 }: AttributeFormDrawerProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const isEdit = Boolean(initial?.id);
+  const availabilityByConceptId = useMemo(
+    () =>
+      resolveConceptAvailability(
+        conceptOptions,
+        allAttributes,
+        initial?.id,
+      ),
+    [allAttributes, conceptOptions, initial?.id],
+  );
 
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>(
-    isEdit ? "field-config" : "concept-selection",
+  const [view, setView] = useState<AttributeCreationView>(
+    isEdit ? "configuration" : "template-selection",
   );
   const [hasConfirmedConceptChoice, setHasConfirmedConceptChoice] = useState(isEdit);
 
-  const hasUserEditedNameRef = useRef(false);
+  const isNameCustomizedRef = useRef(isEdit);
+  const isCasingCustomizedRef = useRef(isEdit);
+  const lastTextCasingStrategyRef = useRef<CasingStrategy>(
+    initial?.type === "TEXT" ? initial.casingStrategy ?? "NONE" : "NONE",
+  );
+  const wasLastTextCasingCustomizedRef = useRef(
+    isEdit && initial?.type === "TEXT",
+  );
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
   const previousEffectiveValueTypeRef = useRef<ValueType | null>(null);
 
@@ -116,9 +143,14 @@ export default function AttributeFormDrawer({
     if (!open) return;
 
     reset(makeDefaultValues(initial));
-    setDrawerMode(initial?.id ? "field-config" : "concept-selection");
+    setView(initial?.id ? "configuration" : "template-selection");
     setHasConfirmedConceptChoice(Boolean(initial?.id));
-    hasUserEditedNameRef.current = false;
+    isNameCustomizedRef.current = Boolean(initial?.id);
+    isCasingCustomizedRef.current = Boolean(initial?.id);
+    lastTextCasingStrategyRef.current =
+      initial?.type === "TEXT" ? initial.casingStrategy ?? "NONE" : "NONE";
+    wasLastTextCasingCustomizedRef.current =
+      Boolean(initial?.id) && initial?.type === "TEXT";
     previousEffectiveValueTypeRef.current = null;
   }, [open, initial, reset]);
 
@@ -129,12 +161,10 @@ export default function AttributeFormDrawer({
       top: 0,
       behavior: "auto",
     });
-  }, [drawerMode, open]);
+  }, [view, open]);
 
   const watchedConceptId = watch("conceptId");
   const watchedType = watch("type");
-  const watchedName = watch("name");
-
   const fieldContext = useMemo(
     () =>
       resolveFieldSemanticContext({
@@ -155,7 +185,7 @@ export default function AttributeFormDrawer({
     (concept: Concept | null | undefined): string => {
       if (!concept) {
         return t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE", {
-          defaultValue: "Champ personnalise",
+          defaultValue: "Champ personnalisé",
         });
       }
 
@@ -165,40 +195,24 @@ export default function AttributeFormDrawer({
     },
     [t],
   );
+  const configuredConceptItems = useMemo(
+    () =>
+      resolveConfiguredConceptItems(
+        conceptOptions,
+        allAttributes,
+        availabilityByConceptId,
+        getConceptLabel,
+      ),
+    [
+      allAttributes,
+      availabilityByConceptId,
+      conceptOptions,
+      getConceptLabel,
+    ],
+  );
 
   const selectedConceptDerived = fieldContext.isDerived;
   const selectedIdentityEligible = fieldContext.identityComponentEligible;
-
-  const currentAttributeId = initial?.id ?? null;
-
-  const duplicateConceptCount = useMemo(() => {
-    if (!selectedConceptCode) return 0;
-
-    return allAttributes.filter(
-      (attribute) =>
-        attribute.conceptCode === selectedConceptCode && attribute.id !== currentAttributeId,
-    ).length;
-  }, [allAttributes, currentAttributeId, selectedConceptCode]);
-
-  const duplicateSingleUseConceptBlocked =
-    !!selectedConcept &&
-    selectedConcept.tenantUsagePolicy === "SINGLE" &&
-    duplicateConceptCount > 0;
-
-  const conceptCardOptions = useMemo<ConceptCardOption[]>(() => {
-    return conceptOptions.map((concept) => {
-      const duplicateCount = allAttributes.filter(
-        (attribute) =>
-          attribute.conceptCode === concept.code && attribute.id !== currentAttributeId,
-      ).length;
-
-      return {
-        ...concept,
-        blocked: concept.tenantUsagePolicy === "SINGLE" && duplicateCount > 0,
-        duplicateCount,
-      };
-    });
-  }, [conceptOptions, allAttributes, currentAttributeId]);
 
   const applySanitizedConfig = useCallback(
     (patch: SanitizedAttributeConfig) => {
@@ -207,7 +221,7 @@ export default function AttributeFormDrawer({
       }
 
       if (patch.casingStrategy !== undefined) {
-        setValue("casingStrategy", patch.casingStrategy, { shouldDirty: true });
+        setValue("casingStrategy", patch.casingStrategy, { shouldDirty: false });
       }
 
       if (patch.constraintKind !== undefined) {
@@ -234,6 +248,11 @@ export default function AttributeFormDrawer({
 
     if (previousValueType === nextValueType) return;
 
+    if (previousValueType === "TEXT" && nextValueType !== "TEXT") {
+      lastTextCasingStrategyRef.current = getValues("casingStrategy") ?? "NONE";
+      wasLastTextCasingCustomizedRef.current = isCasingCustomizedRef.current;
+    }
+
     const patch = sanitizeConfigForValueType({
       previousValueType,
       nextValueType,
@@ -241,16 +260,97 @@ export default function AttributeFormDrawer({
     });
 
     applySanitizedConfig(patch);
+
+    if (previousValueType !== "TEXT" && nextValueType === "TEXT") {
+      isCasingCustomizedRef.current = wasLastTextCasingCustomizedRef.current;
+      setValue(
+        "casingStrategy",
+        resolveSuggestedCasingStrategy({
+          recommendedStrategy: fieldContext.defaultCasingStrategy,
+          currentValue: lastTextCasingStrategyRef.current,
+          isCustomized: wasLastTextCasingCustomizedRef.current,
+          valueType: nextValueType,
+        }),
+        { shouldDirty: false },
+      );
+    }
+
     previousEffectiveValueTypeRef.current = nextValueType;
-  }, [applySanitizedConfig, fieldContext.effectiveValueType, getValues, open]);
+  }, [
+    applySanitizedConfig,
+    fieldContext.defaultCasingStrategy,
+    fieldContext.effectiveValueType,
+    getValues,
+    open,
+    setValue,
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const maxValues = getValues("maxValues")!;
+    const conceptMaxValues = resolveConceptMaxValues(
+      fieldContext.requiredMaxValues,
+      maxValues,
+    );
+    if (!conceptMaxValues.locked || maxValues === conceptMaxValues.value) return;
+
+    setValue("maxValues", conceptMaxValues.value, {
+      shouldValidate: true,
+    });
+  }, [fieldContext.requiredMaxValues, getValues, open, setValue]);
+
+  const applyAutomaticName = useCallback(
+    (name: string) => {
+      if (isNameCustomizedRef.current) return;
+
+      setValue("name", name, {
+        shouldDirty: false,
+        shouldValidate: name.length > 0,
+      });
+    },
+    [setValue],
+  );
+
+  const applyAutomaticCasing = useCallback(
+    (recommendedStrategy: CasingStrategy | null, valueType: ValueType) => {
+      if (valueType !== "TEXT") return;
+
+      const currentValue = getValues("casingStrategy") ?? "NONE";
+      const nextValue = resolveSuggestedCasingStrategy({
+        recommendedStrategy,
+        currentValue,
+        isCustomized: isCasingCustomizedRef.current,
+        valueType,
+      });
+
+      if (nextValue !== currentValue) {
+        setValue("casingStrategy", nextValue, { shouldDirty: false });
+      }
+
+      if (valueType === "TEXT") {
+        lastTextCasingStrategyRef.current = nextValue;
+        wasLastTextCasingCustomizedRef.current = isCasingCustomizedRef.current;
+      }
+    },
+    [getValues, setValue],
+  );
+
+  const handleCasingCustomizationChange = useCallback(
+    (isCustomized: boolean, strategy: CasingStrategy) => {
+      isCasingCustomizedRef.current = isCustomized;
+      lastTextCasingStrategyRef.current = strategy;
+      wasLastTextCasingCustomizedRef.current = isCustomized;
+    },
+    [],
+  );
 
   const applyConceptDefaults = useCallback(
     (concept: Concept) => {
       const conceptLabel = getConceptLabel(concept);
 
-      if (!hasUserEditedNameRef.current && !getValues("name")) {
-        setValue("name", conceptLabel, { shouldDirty: true });
-      }
+      applyAutomaticName(conceptLabel);
+      applyAutomaticCasing(concept.defaultCasingStrategy, concept.valueType);
 
       setValue("type", concept.valueType, { shouldDirty: true });
 
@@ -262,20 +362,26 @@ export default function AttributeFormDrawer({
         setValue("editPolicy", "DERIVED", { shouldDirty: true });
       }
 
-      if (concept.defaultCasingStrategy && getValues("casingStrategy") === "NONE") {
-        setValue("casingStrategy", concept.defaultCasingStrategy, { shouldDirty: true });
-      }
     },
-    [getConceptLabel, getValues, setValue],
+    [applyAutomaticCasing, applyAutomaticName, getConceptLabel, getValues, setValue],
   );
 
   const handleSelectConcept = useCallback(
     (nextConceptId: number | null) => {
+      if (
+        nextConceptId != null &&
+        availabilityByConceptId.get(nextConceptId)?.available === false
+      ) {
+        return;
+      }
+
       setHasConfirmedConceptChoice(true);
       setValue("conceptId", nextConceptId, { shouldDirty: true });
 
       if (nextConceptId == null) {
-        setDrawerMode("type-selection");
+        applyAutomaticName("");
+        applyAutomaticCasing(null, "TEXT");
+        setView("custom-type-selection");
         return;
       }
 
@@ -284,43 +390,61 @@ export default function AttributeFormDrawer({
         applyConceptDefaults(nextConcept);
       }
 
-      setDrawerMode("field-config");
+      setView("configuration");
     },
-    [applyConceptDefaults, conceptOptions, setValue],
+    [
+      applyAutomaticCasing,
+      applyAutomaticName,
+      applyConceptDefaults,
+      availabilityByConceptId,
+      conceptOptions,
+      setValue,
+    ],
   );
 
   const handleSelectValueType = useCallback(
     (nextType: ValueType) => {
       setValue("type", nextType, { shouldDirty: true });
-      setDrawerMode("field-config");
+      setView("configuration");
     },
     [setValue],
   );
 
   const conceptTypeMismatch =
     !!selectedConcept && !!watchedType && watchedType !== selectedConcept.valueType;
+  const selectedConceptUnavailable =
+    watchedConceptId != null &&
+    availabilityByConceptId.get(watchedConceptId)?.available === false;
+
+  const currentStep: 1 | 2 = view === "configuration" ? 2 : 1;
+
+  const handleBack = useCallback(() => {
+    if (view === "custom-type-selection") {
+      setView("template-selection");
+      return;
+    }
+
+    if (view === "configuration") {
+      setView(fieldContext.isCustom ? "custom-type-selection" : "template-selection");
+    }
+  }, [fieldContext.isCustom, view]);
 
   const onSubmit: SubmitHandler<AttributeCreateFormOutput> = async (data) => {
     try {
-      if (duplicateSingleUseConceptBlocked) {
-        notifyError(
-          t("ATTRIBUTE_FORM.ERROR_DUPLICATE_SYSTEM_CONCEPT", {
-            defaultValue: "Ce modele ne peut etre utilise qu'une seule fois dans cet espace.",
-          }),
-        );
-        return;
-      }
-
       const effectiveEditPolicy: EditPolicy = selectedConceptDerived ? "DERIVED" : data.editPolicy;
       const effectivePrimaryField = selectedIdentityEligible ? data.primaryField : false;
       const effectiveType: ValueType = fieldContext.effectiveValueType;
+      const effectiveMaxValues = resolveConceptMaxValues(
+        fieldContext.requiredMaxValues,
+        data.maxValues,
+      ).value;
 
       const commonPayload = {
         name: data.name,
         conceptId: data.conceptId ?? null,
         primaryField: effectivePrimaryField,
         category: data.category,
-        maxValues: data.maxValues,
+        maxValues: effectiveMaxValues,
         filter: data.filter,
         sort: data.sort,
         required: data.required,
@@ -363,12 +487,14 @@ export default function AttributeFormDrawer({
 
       onClose(true);
     } catch (error: unknown) {
-      notifyError(
-        (error instanceof Error ? error.message : null) ||
-          t("ATTRIBUTE_FORM.ERROR_SAVE", {
-            defaultValue: "Erreur lors de l'enregistrement",
-          }),
-      );
+      const fallback = t("ATTRIBUTE_FORM.ERROR_SAVE", {
+        defaultValue: "Erreur lors de l'enregistrement",
+      });
+      notifyError(getApiErrorMessage(error, fallback));
+
+      if (getApiStatus(error) === 409) {
+        await onRefreshAttributes();
+      }
     }
   };
 
@@ -387,20 +513,22 @@ export default function AttributeFormDrawer({
     onClose(false);
   };
 
-  const renderDrawerMode = () => {
-    switch (drawerMode) {
-      case "concept-selection":
+  const renderView = () => {
+    switch (view) {
+      case "template-selection":
         return (
           <ConceptPickerScreen
-            options={conceptCardOptions}
+            options={conceptOptions}
             value={hasConfirmedConceptChoice ? watchedConceptId ?? null : undefined}
             onSelect={handleSelectConcept}
             getConceptLabel={getConceptLabel}
-            initialConceptId={initial?.conceptId ?? null}
+            availabilityByConceptId={availabilityByConceptId}
+            configuredConceptItems={configuredConceptItems}
+            onEditAttribute={onEditAttribute}
           />
         );
 
-      case "type-selection":
+      case "custom-type-selection":
         return (
           <ValueTypePickerScreen
             value={selectedValueType}
@@ -408,24 +536,24 @@ export default function AttributeFormDrawer({
           />
         );
 
-      case "field-config":
+      case "configuration":
         return (
           <FieldConfigScreen
             control={control}
             errors={errors}
             watch={watch}
             setValue={setValue}
-            watchedName={watchedName}
-            selectedConcept={selectedConcept}
             selectedConceptCode={selectedConceptCode}
             selectedType={selectedValueType}
-            valueTypeLabel={getValueTypeLabel(selectedValueType, t)}
-            isCustom={fieldContext.isCustom}
+            casingApplicable={fieldContext.casingApplicable}
+            recommendedCasingStrategy={fieldContext.defaultCasingStrategy}
+            onCasingCustomizationChange={handleCasingCustomizationChange}
             identityComponentEligible={fieldContext.identityComponentEligible}
-            getConceptLabel={getConceptLabel}
-            hasUserEditedNameRef={hasUserEditedNameRef}
-            onChangeConcept={() => setDrawerMode("concept-selection")}
-            onChangeType={() => setDrawerMode("type-selection")}
+            requiredMaxValues={fieldContext.requiredMaxValues}
+            advancedSettingsInitiallyExpanded={Boolean(
+              initial && (initial.filter || initial.sort || initial.category),
+            )}
+            isNameCustomizedRef={isNameCustomizedRef}
           />
         );
 
@@ -452,7 +580,21 @@ export default function AttributeFormDrawer({
         },
       }}
     >
-      <AttributeFormHeader isEdit={isEdit} />
+      <AttributeFormHeader
+        currentStep={currentStep}
+        isEdit={isEdit}
+        summary={
+          view === "configuration" ? (
+            <SelectedFieldSummary
+              selectedConcept={selectedConcept}
+              valueTypeLabel={getValueTypeLabel(selectedValueType, t)}
+              isCustom={fieldContext.isCustom}
+              requiredMaxValues={fieldContext.requiredMaxValues}
+              getConceptLabel={getConceptLabel}
+            />
+          ) : undefined
+        }
+      />
 
       <Box
         component="form"
@@ -472,12 +614,9 @@ export default function AttributeFormDrawer({
           }}
         >
           <Stack spacing={3.5}>
-            <AttributeFormAlerts
-              duplicateSystemConceptBlocked={duplicateSingleUseConceptBlocked}
-              conceptTypeMismatch={conceptTypeMismatch}
-            />
+            <AttributeFormAlerts conceptTypeMismatch={conceptTypeMismatch} />
 
-            <Fade key={drawerMode} in timeout={160}>
+            <Fade key={view} in timeout={160}>
               <Box
                 sx={(muiTheme) => ({
                   transition: muiTheme.transitions.create(["opacity", "transform"], {
@@ -486,7 +625,7 @@ export default function AttributeFormDrawer({
                   transform: "translateY(0)",
                 })}
               >
-                {renderDrawerMode()}
+                {renderView()}
               </Box>
             </Fade>
           </Stack>
@@ -505,27 +644,30 @@ export default function AttributeFormDrawer({
             flexWrap: "wrap",
           }}
         >
-          <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
-            {drawerMode === "type-selection" ? (
-              <Button
-                type="button"
-                onClick={() => setDrawerMode("concept-selection")}
-                color="inherit"
-              >
-                {t("ATTRIBUTE_FORM.BACK", { defaultValue: "Retour" })}
-              </Button>
-            ) : null}
+          {!isEdit && view !== "template-selection" ? (
+            <Button
+              type="button"
+              size="small"
+              variant="text"
+              startIcon={<ArrowBackRoundedIcon fontSize="small" />}
+              onClick={handleBack}
+              color="inherit"
+            >
+              {t("ATTRIBUTE_FORM.BACK", { defaultValue: "Retour" })}
+            </Button>
+          ) : null}
 
+          <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
             <Button onClick={handleClose} color="inherit">
               {t("ATTRIBUTE_FORM.CANCEL", { defaultValue: "Annuler" })}
             </Button>
 
-            {drawerMode === "field-config" ? (
+            {view === "configuration" ? (
               <Button
                 type="submit"
                 variant="contained"
                 disabled={
-                  isSubmitting || duplicateSingleUseConceptBlocked || conceptTypeMismatch
+                  isSubmitting || conceptTypeMismatch || selectedConceptUnavailable
                 }
               >
                 {isEdit

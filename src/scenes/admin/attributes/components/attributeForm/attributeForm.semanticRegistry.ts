@@ -23,6 +23,7 @@ export type ResolvedEnumCopy = {
 export type SemanticPresetConfig = {
   enumAffordance?: EnumAffordance;
   enumCopy?: EnumCopyDefinition;
+  casingPreviewSource?: string;
 };
 
 const CONFIG_VALUES_TITLE = {
@@ -31,10 +32,26 @@ const CONFIG_VALUES_TITLE = {
 };
 
 export const semanticPresetRegistry: Record<string, SemanticPresetConfig> = {
+  FIRST_NAME: {
+    casingPreviewSource: "jean baptiste",
+  },
+  LAST_NAME: {
+    casingPreviewSource: "dupont martin",
+  },
+  NICKNAME: {
+    casingPreviewSource: "super ben",
+  },
+  TITLE: {
+    casingPreviewSource: "responsable produit",
+  },
   GENDER: {
     enumAffordance: "GENDER_PRESET",
   },
+  IDENTITY: {
+    casingPreviewSource: "jean dupont",
+  },
   DEPARTMENT: {
+    casingPreviewSource: "direction produit",
     enumCopy: {
       titleKey: CONFIG_VALUES_TITLE.key,
       titleDefault: CONFIG_VALUES_TITLE.defaultValue,
@@ -47,6 +64,7 @@ export const semanticPresetRegistry: Record<string, SemanticPresetConfig> = {
     },
   },
   PROMOTION: {
+    casingPreviewSource: "promotion hiver 2026",
     enumCopy: {
       titleKey: CONFIG_VALUES_TITLE.key,
       titleDefault: CONFIG_VALUES_TITLE.defaultValue,
@@ -59,6 +77,8 @@ export const semanticPresetRegistry: Record<string, SemanticPresetConfig> = {
     },
   },
 };
+
+const DEFAULT_CASING_PREVIEW_SOURCE = "exemple de texte";
 
 export function getSemanticPresetConfig(
   semanticPresetCode: string | null | undefined,
@@ -90,4 +110,13 @@ export function resolveEnumCopy(
     addLabel: t(copy.addLabelKey, { defaultValue: copy.addLabelDefault }),
     placeholder: t(copy.placeholderKey, { defaultValue: copy.placeholderDefault }),
   };
+}
+
+export function resolveCasingPreviewSource(
+  semanticPresetCode: string | null | undefined,
+): string {
+  return (
+    getSemanticPresetConfig(semanticPresetCode)?.casingPreviewSource ??
+    DEFAULT_CASING_PREVIEW_SOURCE
+  );
 }

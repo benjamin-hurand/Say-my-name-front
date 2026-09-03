@@ -1,4 +1,3 @@
-import type { MutableRefObject } from "react";
 import type {
   Attribute,
   ValueType,
@@ -9,20 +8,26 @@ export type AttributeFormDrawerProps = {
   open: boolean;
   initial?: Attribute;
   onClose: (changed: boolean) => void;
+  onEditAttribute: (attribute: Attribute) => void;
   conceptOptions: Concept[];
   allAttributes: Attribute[];
+  onRefreshAttributes: () => Promise<void>;
 };
 
-export type ConceptCardOption = Concept & {
-  blocked: boolean;
-  duplicateCount: number;
-};
-
-export type DrawerMode = "concept-selection" | "type-selection" | "field-config";
+export type AttributeCreationView =
+  | "template-selection"
+  | "custom-type-selection"
+  | "configuration";
 
 export type ConceptLabelGetter = (concept: Concept | null | undefined) => string;
 
-export type NameEditRef = MutableRefObject<boolean>;
+export type ConfiguredConceptItem = {
+  conceptId: number;
+  conceptLabel: string;
+  attributeId: number | null;
+  attributeName: string;
+  attribute?: Attribute;
+};
 
 export type CustomTypeOption = {
   type: ValueType;

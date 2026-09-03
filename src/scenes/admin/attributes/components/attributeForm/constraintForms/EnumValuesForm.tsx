@@ -1,8 +1,9 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import { Box, Button, Chip, Stack, TextField, Typography } from "@mui/material";
+import { Button, Chip, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import type { AttributeCreateFormInput } from "../../../validation/attributeCreate.schema";
 
@@ -37,6 +38,7 @@ export default function EnumValuesForm({
   label,
   placeholder,
 }: Props) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
 
   return (
@@ -80,7 +82,7 @@ export default function EnumValuesForm({
               />
 
               <Button
-                variant="contained"
+                variant="outlined"
                 startIcon={<AddRoundedIcon />}
                 onClick={addValue}
                 disabled={!inputValue.trim()}
@@ -90,38 +92,26 @@ export default function EnumValuesForm({
                   alignSelf: { xs: "stretch", sm: "auto" },
                 }}
               >
-                Ajouter
+                {t("ATTRIBUTE_FORM.ENUM_ADD", { defaultValue: "Ajouter" })}
               </Button>
             </Stack>
 
-            <Box
-              sx={{
-                minHeight: 72,
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 1,
-                alignItems: "flex-start",
-                p: 1.25,
-                borderRadius: 2.5,
-                border: "1px dashed",
-                borderColor: "divider",
-              }}
-            >
-              {fieldValue.length > 0 ? (
-                fieldValue.map((option) => (
+            {fieldValue.length > 0 ? (
+              <Stack direction="row" gap={0.75} flexWrap="wrap" useFlexGap>
+                {fieldValue.map((option) => (
                   <Chip
                     key={option}
                     label={option}
                     onDelete={() => removeValue(option)}
                     variant="outlined"
                   />
-                ))
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Ajoute au moins une option.
-                </Typography>
-              )}
-            </Box>
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {t("ATTRIBUTE_FORM.ENUM_EMPTY", { defaultValue: "Aucune option ajoutée" })}
+              </Typography>
+            )}
           </Stack>
         );
       }}

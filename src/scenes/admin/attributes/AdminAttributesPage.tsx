@@ -40,7 +40,6 @@ type AttributeIssueTag =
   | "concept-type-mismatch"
   | "identity-source-not-eligible"
   | "derived-edit-policy-mismatch"
-  | "system-concept-duplicated"
   | "enum-without-options";
 
 export type AttributeIssueInfo = {
@@ -57,13 +56,6 @@ type HealthDiagnostic = {
 };
 
 type ListViewMode = "all" | "essential" | "custom" | "needsAttention";
-
-const UNIQUE_SYSTEM_CONCEPT_CODES = new Set([
-  "FIRST_NAME",
-  "LAST_NAME",
-  "GENDER",
-  "IDENTITY",
-]);
 
 const RECOMMENDED_BOOTSTRAP_CONCEPT_CODES = ["FIRST_NAME", "LAST_NAME", "GENDER"];
 
@@ -231,12 +223,6 @@ export default function AdminAttributesPage() {
             defaultValue: `L’attribut "${name}" est lié à un concept dérivé mais son editPolicy n’est pas "DERIVED".`,
           });
 
-        case "system-concept-duplicated":
-          return t("ATTRIBUTE_HEALTH_MESSAGES.system-concept-duplicated", {
-            concept: conceptLabel,
-            defaultValue: `Le concept système "${conceptLabel}" est dupliqué dans le tenant.`,
-          });
-
         case "enum-without-options":
           return t("ATTRIBUTE_HEALTH_MESSAGES.enum-without-options", {
             name,
@@ -288,14 +274,6 @@ export default function AdminAttributesPage() {
   const diagnostics = useMemo(() => {
     const rows = attributes ?? [];
     const items: HealthDiagnostic[] = [];
-
-    const conceptGroups = new Map<string, Attribute[]>();
-    for (const a of rows) {
-      const code = getConceptCode(a);
-      if (!code) continue;
-      if (!conceptGroups.has(code)) conceptGroups.set(code, []);
-      conceptGroups.get(code)!.push(a);
-    }
 
     for (const a of rows) {
       const id = getAttrId(a);
@@ -363,21 +341,6 @@ export default function AdminAttributesPage() {
       }
     }
 
-    for (const [conceptCode, rowsForConcept] of conceptGroups.entries()) {
-      if (!UNIQUE_SYSTEM_CONCEPT_CODES.has(conceptCode)) continue;
-      if (rowsForConcept.length <= 1) continue;
-
-      for (const a of rowsForConcept) {
-        items.push({
-          tag: "system-concept-duplicated",
-          severity: "error",
-          attributeId: getAttrId(a),
-          attributeName: getAttrName(a),
-          message: buildIssueMessage("system-concept-duplicated", a),
-        });
-      }
-    }
-
     return items;
   }, [attributes, buildIssueMessage, conceptsByCode, conceptsById]);
 
@@ -432,11 +395,6 @@ export default function AdminAttributesPage() {
 
   const topIssuesSummary = useMemo(() => {
     if (health.errorsCount > 0) {
-      if ((health.byTagCount["system-concept-duplicated"] ?? 0) > 0) {
-        return t("ATTRIBUTE_PAGE.TOP_ISSUES.system-concept-duplicated", {
-          defaultValue: "Certains concepts système sont dupliqués et doivent être corrigés.",
-        });
-      }
       if ((health.byTagCount["concept-type-mismatch"] ?? 0) > 0) {
         return t("ATTRIBUTE_PAGE.TOP_ISSUES.concept-type-mismatch", {
           defaultValue: "Certains attributs ont un type incompatible avec leur concept.",
@@ -545,6 +503,10 @@ export default function AdminAttributesPage() {
   const [drawerA, setDrawerA] = useState<{ open: boolean; initial?: Attribute | null }>({
     open: false,
   });
+
+  const openAttributeEditor = useCallback((attribute: Attribute) => {
+    setDrawerA({ open: true, initial: attribute });
+  }, []);
 
   const onCloseAttributeDrawer = async (changed?: boolean) => {
     setDrawerA({ open: false });
@@ -862,22 +824,6 @@ export default function AdminAttributesPage() {
             </Stack>
 
             <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap alignItems="center">
-              {(health.byTagCount["system-concept-duplicated"] ?? 0) > 0 && (
-                <Chip
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                  label={t("ATTRIBUTE_PAGE.QUICK_FILTER_DUPLICATED_SYSTEM_CONCEPTS", {
-                    defaultValue: "Concepts système dupliqués",
-                  })}
-                  onClick={() => {
-                    setPage(0);
-                    setViewMode("needsAttention");
-                  }}
-                  sx={{ cursor: "pointer" }}
-                />
-              )}
-
               {(health.byTagCount["concept-type-mismatch"] ?? 0) > 0 && (
                 <Chip
                   size="small"
@@ -959,7 +905,7 @@ export default function AdminAttributesPage() {
               total={totalA}
               onPageChange={setPage}
               onReorder={onReorder}
-              onEdit={(row) => setDrawerA({ open: true, initial: row })}
+              onEdit={openAttributeEditor}
               onDeleted={async () => {
                 await hardRefreshAttributes();
               }}
@@ -970,11 +916,14 @@ export default function AdminAttributesPage() {
       </Card>
 
       <AttributeFormDrawer
+        key={drawerA.initial?.id ?? "create"}
         open={drawerA.open}
         initial={drawerA.initial || undefined}
         onClose={onCloseAttributeDrawer}
+        onEditAttribute={openAttributeEditor}
         conceptOptions={concepts}
         allAttributes={attributes}
+        onRefreshAttributes={hardRefreshAttributes}
       />
     </Box>
   );

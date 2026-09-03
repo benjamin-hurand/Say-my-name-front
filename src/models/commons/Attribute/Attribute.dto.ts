@@ -12,6 +12,7 @@ import type { ConstraintPayload } from "./constraintPayload.schema";
 export interface CreateAttributePayload {
   name: string;
   type: ValueType;
+  conceptId?: number | null;
   casingStrategy?: CasingStrategy;
 
   maxValues?: number;          // 0 = illimité

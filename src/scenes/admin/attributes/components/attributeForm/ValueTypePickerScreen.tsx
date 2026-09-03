@@ -16,7 +16,7 @@ export default function ValueTypePickerScreen({ value, onSelect }: Props) {
   return (
     <FormSection
       title={t("ATTRIBUTE_FORM.SECTION_TYPE_TITLE", {
-        defaultValue: "Quel type de donnee ?",
+        defaultValue: "Quel type d'information souhaitez-vous enregistrer ?",
       })}
     >
       <CustomAttributeTypePicker

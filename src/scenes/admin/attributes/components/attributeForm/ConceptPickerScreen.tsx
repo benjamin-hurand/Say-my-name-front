@@ -1,16 +1,25 @@
+import { Stack } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
+import ConfiguredConceptList from "./ConfiguredConceptList";
 import ConceptPicker from "./ConceptPicker";
 import FormSection from "./FormSection";
-import type { ConceptCardOption, ConceptLabelGetter } from "./attributeForm.types";
+import type { Attribute } from "../../../../../models/commons/Attribute/Attribute";
 import type { Concept } from "../../../../../models/commons/Concept/Concept";
+import type { ConceptAvailability } from "./attributeForm.conceptAvailability";
+import type {
+  ConfiguredConceptItem,
+  ConceptLabelGetter,
+} from "./attributeForm.types";
 
 type Props = {
-  options: ConceptCardOption[];
+  options: Concept[];
   value?: number | null;
   onSelect: (next: number | null) => void;
   getConceptLabel: ConceptLabelGetter;
-  initialConceptId?: number | null;
+  availabilityByConceptId: ReadonlyMap<number, ConceptAvailability>;
+  configuredConceptItems: ConfiguredConceptItem[];
+  onEditAttribute: (attribute: Attribute) => void;
 };
 
 export default function ConceptPickerScreen({
@@ -18,22 +27,31 @@ export default function ConceptPickerScreen({
   value,
   onSelect,
   getConceptLabel,
-  initialConceptId,
+  availabilityByConceptId,
+  configuredConceptItems,
+  onEditAttribute,
 }: Props) {
   const { t } = useTranslation();
   return (
-    <FormSection
-      title={t("ATTRIBUTE_FORM.SECTION_MODEL_TITLE", {
-        defaultValue: "Quel type d'information ?",
-      })}
-    >
-      <ConceptPicker
-        options={options}
-        value={value}
-        onChange={onSelect}
-        getLabel={(concept: Concept | null | undefined) => getConceptLabel(concept)}
-        initialConceptId={initialConceptId ?? null}
+    <Stack spacing={3.5}>
+      <FormSection
+        title={t("ATTRIBUTE_FORM.SECTION_MODEL_TITLE", {
+          defaultValue: "Quelle information voulez-vous ajouter ?",
+        })}
+      >
+        <ConceptPicker
+          options={options}
+          value={value}
+          onChange={onSelect}
+          getLabel={(concept: Concept | null | undefined) => getConceptLabel(concept)}
+          availabilityByConceptId={availabilityByConceptId}
+        />
+      </FormSection>
+
+      <ConfiguredConceptList
+        items={configuredConceptItems}
+        onEditAttribute={onEditAttribute}
       />
-    </FormSection>
+    </Stack>
   );
 }

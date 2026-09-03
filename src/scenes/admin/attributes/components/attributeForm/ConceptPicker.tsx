@@ -1,16 +1,23 @@
 import ExtensionRoundedIcon from "@mui/icons-material/ExtensionRounded";
 import { Box } from "@mui/material";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import { getConceptIcon } from "./attributeForm.helpers";
-import type { ConceptCardOption, ConceptLabelGetter } from "./attributeForm.types";
+import type { Concept } from "../../../../../models/commons/Concept/Concept";
+import {
+  filterAvailableConcepts,
+  type ConceptAvailability,
+} from "./attributeForm.conceptAvailability";
+import type { ConceptLabelGetter } from "./attributeForm.types";
 import ChoiceCard from "./shared/ChoiceCard";
 
 type Props = {
-  options: ConceptCardOption[];
+  options: Concept[];
   value?: number | null;
   onChange: (next: number | null) => void;
   getLabel: ConceptLabelGetter;
-  initialConceptId?: number | null;
+  availabilityByConceptId: ReadonlyMap<number, ConceptAvailability>;
 };
 
 export default function ConceptPicker({
@@ -18,10 +25,12 @@ export default function ConceptPicker({
   value,
   onChange,
   getLabel,
-  initialConceptId,
+  availabilityByConceptId,
 }: Props) {
-  const visibleOptions = options.filter(
-    (concept) => !concept.blocked || concept.id === initialConceptId,
+  const { t } = useTranslation();
+  const availableOptions = useMemo(
+    () => filterAvailableConcepts(options, availabilityByConceptId),
+    [availabilityByConceptId, options],
   );
 
   return (
@@ -36,7 +45,7 @@ export default function ConceptPicker({
         gap: { xs: 1, sm: 1.25 },
       }}
     >
-      {visibleOptions.map((concept) => {
+      {availableOptions.map((concept) => {
         const Icon = getConceptIcon(concept);
 
         return (
@@ -52,8 +61,12 @@ export default function ConceptPicker({
 
       <ChoiceCard
         selected={value === null}
-        title="Champ personnalise"
-        subtitle="Definir une information specifique"
+        title={t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE", {
+          defaultValue: "Champ personnalisé",
+        })}
+        subtitle={t("ATTRIBUTE_FORM.CUSTOM_TEMPLATE_SUBTITLE", {
+          defaultValue: "Définir une information spécifique",
+        })}
         icon={<ExtensionRoundedIcon fontSize="small" />}
         onClick={() => onChange(null)}
       />

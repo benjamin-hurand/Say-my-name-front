@@ -1,7 +1,6 @@
-import { ValueType } from "../Attribute/Attribute";
+import type { ValueType } from "../Attribute/Attribute";
 
 export type ConceptPortabilityKind = "NONE" | "VALUE_ONLY" | "WITH_CONTEXT";
-export type ConceptTenantUsagePolicy = "SINGLE" | "MULTIPLE";
 export type ConceptDefaultCasingStrategy =
   | "NONE"
   | "TITLE_CASE"
@@ -16,6 +15,6 @@ export interface Concept {
   derived: boolean;
   portabilityKind: ConceptPortabilityKind;
   identityComponentEligible: boolean;
-  tenantUsagePolicy: ConceptTenantUsagePolicy;
+  requiredMaxValues?: number | null;
   defaultCasingStrategy: ConceptDefaultCasingStrategy | null;
 }

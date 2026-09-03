@@ -4,14 +4,10 @@ import { alpha } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
 type Props = {
-  duplicateSystemConceptBlocked: boolean;
   conceptTypeMismatch: boolean;
 };
 
-export default function AttributeFormAlerts({
-  duplicateSystemConceptBlocked,
-  conceptTypeMismatch,
-}: Props) {
+export default function AttributeFormAlerts({ conceptTypeMismatch }: Props) {
   const { t } = useTranslation();
 
   const commonSx = (theme: Theme) => ({
@@ -34,14 +30,6 @@ export default function AttributeFormAlerts({
 
   return (
     <Stack spacing={1.25}>
-      {duplicateSystemConceptBlocked ? (
-        <Alert severity="error" sx={commonSx}>
-          {t("ATTRIBUTE_FORM.DUPLICATE_SYSTEM_CONCEPT_TEXT", {
-            defaultValue: "Ce modele ne peut etre utilise qu'une seule fois dans cet espace.",
-          })}
-        </Alert>
-      ) : null}
-
       {conceptTypeMismatch ? (
         <Alert severity="error" sx={commonSx}>
           {t("ATTRIBUTE_FORM.TYPE_MISMATCH_TEXT", {

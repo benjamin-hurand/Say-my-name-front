@@ -42,6 +42,55 @@
       "DESCRIPTION": "Date à laquelle la personne a rejoint le groupe"
     }
   },
+  "ATTRIBUTE_FORM": {
+    "WIZARD_TITLE_CREATE": "Cr\u00e9er un champ",
+    "WIZARD_TITLE_CONFIGURE": "Configurer le champ",
+    "WIZARD_TITLE_EDIT": "Modifier le champ",
+    "WIZARD_STEP": "\u00c9tape {{current}} sur {{total}}",
+    "SECTION_MODEL_TITLE": "Quelle information voulez-vous ajouter ?",
+    "SECTION_TYPE_TITLE": "Quel type d'information souhaitez-vous enregistrer ?",
+    "BACK": "Retour",
+    "CUSTOM_TEMPLATE": "Champ personnalis\u00e9",
+    "CUSTOM_TEMPLATE_SUBTITLE": "D\u00e9finir une information sp\u00e9cifique",
+    "CONFIGURED_FIELDS_TITLE": "D\u00e9j\u00e0 configur\u00e9s ({{count}})",
+    "CONFIGURED_FIELD_NAME": "Champ : \u00ab {{name}} \u00bb",
+    "UNKNOWN_FIELD_NAME": "Champ introuvable",
+    "EDIT_CONFIGURED_FIELD": "Modifier",
+    "EDIT_CONFIGURED_FIELD_ARIA": "Modifier le champ {{name}}",
+    "ERROR_SAVE": "Erreur lors de l'enregistrement",
+    "CARDINALITY_TITLE": "Nombre de valeurs par personne",
+    "MODEL_MAX_VALUES_SINGLE": "Le mod\u00e8le impose : une seule valeur par personne",
+    "MODEL_MAX_VALUES_MULTIPLE": "Le mod\u00e8le impose : jusqu'\u00e0 {{count}} valeurs par personne",
+    "CONFIG_TEXT_CASING_TITLE_DIRECT": "Format du texte",
+    "CASING": {
+      "GROUP_LABEL": "Format du texte",
+      "NONE_LABEL": "Conserver la saisie",
+      "SENTENCE_PRESERVE_LABEL": "Majuscule initiale",
+      "TITLE_CASE_LABEL": "Majuscule \u00e0 chaque mot",
+      "UPPERCASE_LABEL": "Tout en majuscules",
+      "USE_RECOMMENDED": "Utiliser le format recommand\u00e9"
+    },
+    "CARDINALITY": {
+      "SINGLE": "Une seule valeur",
+      "MULTIPLE": "Plusieurs valeurs",
+      "MAX_LABEL": "Max.",
+      "GROUP_ARIA": "Nombre de valeurs autoris\u00e9es",
+      "MAX_ARIA": "Nombre maximal de valeurs"
+    },
+    "ADVANCED_SETTINGS_TITLE": "R\u00e9glages avanc\u00e9s",
+    "SETTINGS": {
+      "REQUIRED_LABEL": "Valeur obligatoire",
+      "REQUIRED_DESC": "Chaque personne devra avoir une valeur.",
+      "IDENTITY_LABEL": "Utiliser pour identifier une personne",
+      "IDENTITY_DESC": "Cette valeur participera au nom affich\u00e9 de la personne.",
+      "FILTER_LABEL": "Disponible dans les filtres",
+      "SORT_LABEL": "Disponible pour le tri",
+      "CATEGORY_LABEL": "Afficher comme cat\u00e9gorie",
+      "CATEGORY_DESC": "Pr\u00e9sente cette information comme une cat\u00e9gorie dans les profils."
+    },
+    "ENUM_ADD": "Ajouter",
+    "ENUM_EMPTY": "Aucune option ajout\u00e9e"
+  },
   "ATTRIBUTE_PAGE": {
     "SETUP": {
       "PROGRESS_LABEL": "{{done}} / {{total}} attributs essentiels",

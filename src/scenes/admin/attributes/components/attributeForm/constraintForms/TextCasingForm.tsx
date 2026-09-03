@@ -1,70 +1,62 @@
-import AbcRoundedIcon from "@mui/icons-material/AbcRounded";
-import KeyboardCapslockRoundedIcon from "@mui/icons-material/KeyboardCapslockRounded";
-import ShortTextRoundedIcon from "@mui/icons-material/ShortTextRounded";
-import TitleRoundedIcon from "@mui/icons-material/TitleRounded";
-import { Box, Typography } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import { Controller } from "react-hook-form";
 import type { Control } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import type { AttributeCreateFormInput } from "../../../validation/attributeCreate.schema";
 import type { CasingStrategy } from "../../../../../../models/commons/Attribute/Attribute";
+import { applyCasingPreview } from "../attributeForm.casing";
+import { resolveCasingPreviewSource } from "../attributeForm.semanticRegistry";
 import ChoiceCard from "../shared/ChoiceCard";
 
 type Props = {
   control: Control<AttributeCreateFormInput>;
+  selectedConceptCode: string | null;
+  recommendedCasingStrategy: CasingStrategy | null;
+  onCustomizationChange: (
+    isCustomized: boolean,
+    strategy: CasingStrategy,
+  ) => void;
 };
 
 type CasingOption = {
   value: CasingStrategy;
   label: string;
-  preview: string;
-  icon: React.ReactNode;
 };
 
-export default function TextCasingForm({ control }: Props) {
+export default function TextCasingForm({
+  control,
+  selectedConceptCode,
+  recommendedCasingStrategy,
+  onCustomizationChange,
+}: Props) {
   const { t } = useTranslation();
+  const previewSource = resolveCasingPreviewSource(selectedConceptCode);
 
   const options: CasingOption[] = [
     {
       value: "NONE",
       label: t("ATTRIBUTE_FORM.CASING.NONE_LABEL", {
-        defaultValue: "Saisie libre",
+        defaultValue: "Conserver la saisie",
       }),
-      preview: t("ATTRIBUTE_FORM.CASING.NONE_PREVIEW", {
-        defaultValue: "direction produit",
-      }),
-      icon: <AbcRoundedIcon fontSize="small" />,
     },
     {
       value: "SENTENCE_PRESERVE",
       label: t("ATTRIBUTE_FORM.CASING.SENTENCE_PRESERVE_LABEL", {
-        defaultValue: "Première lettre en majuscule",
+        defaultValue: "Majuscule initiale",
       }),
-      preview: t("ATTRIBUTE_FORM.CASING.SENTENCE_PRESERVE_PREVIEW", {
-        defaultValue: "Direction produit",
-      }),
-      icon: <ShortTextRoundedIcon fontSize="small" />,
     },
     {
       value: "TITLE_CASE",
       label: t("ATTRIBUTE_FORM.CASING.TITLE_CASE_LABEL", {
-        defaultValue: "Chaque mot en capitale",
+        defaultValue: "Majuscule a chaque mot",
       }),
-      preview: t("ATTRIBUTE_FORM.CASING.TITLE_CASE_PREVIEW", {
-        defaultValue: "Direction Produit",
-      }),
-      icon: <TitleRoundedIcon fontSize="small" />,
     },
     {
       value: "UPPERCASE",
       label: t("ATTRIBUTE_FORM.CASING.UPPERCASE_LABEL", {
         defaultValue: "Tout en majuscules",
       }),
-      preview: t("ATTRIBUTE_FORM.CASING.UPPERCASE_PREVIEW", {
-        defaultValue: "DIRECTION PRODUIT",
-      }),
-      icon: <KeyboardCapslockRoundedIcon fontSize="small" />,
     },
   ];
 
@@ -72,46 +64,60 @@ export default function TextCasingForm({ control }: Props) {
     <Controller
       name="casingStrategy"
       control={control}
-      render={({ field }) => (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "repeat(2, minmax(0, 1fr))",
-            },
-            gap: 1.5,
-          }}
-        >
-          {options.map((option) => {
-            const selected = field.value === option.value;
+      render={({ field }) => {
+        const currentValue = field.value ?? "NONE";
 
-            return (
-              <ChoiceCard
-                key={option.value}
-                selected={selected}
-                onClick={() => field.onChange(option.value)}
-                icon={option.icon}
-                minHeight={124}
-                title={
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: "1.05rem",
-                      fontWeight: 700,
-                      lineHeight: 1.2,
-                      letterSpacing: option.value === "UPPERCASE" ? 0.45 : 0,
-                    }}
-                  >
-                    {option.preview}
-                  </Typography>
-                }
-                subtitle={option.label}
-              />
-            );
-          })}
-        </Box>
-      )}
+        return (
+          <>
+            <Box
+              role="group"
+              aria-label={t("ATTRIBUTE_FORM.CASING.GROUP_LABEL", {
+                defaultValue: "Format du texte",
+              })}
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  md: "repeat(2, minmax(0, 1fr))",
+                },
+                gap: 1,
+              }}
+            >
+              {options.map((option) => (
+                <ChoiceCard
+                  key={option.value}
+                  selected={currentValue === option.value}
+                  title={option.label}
+                  subtitle={applyCasingPreview(previewSource, option.value)}
+                  minHeight={82}
+                  onClick={() => {
+                    field.onChange(option.value);
+                    onCustomizationChange(true, option.value);
+                  }}
+                />
+              ))}
+            </Box>
+
+            {recommendedCasingStrategy != null &&
+            currentValue !== recommendedCasingStrategy ? (
+              <Button
+                type="button"
+                variant="text"
+                size="small"
+                onClick={() => {
+                  field.onChange(recommendedCasingStrategy);
+                  onCustomizationChange(false, recommendedCasingStrategy);
+                }}
+                sx={{ mt: 0.5, px: 0.75 }}
+              >
+                {t("ATTRIBUTE_FORM.CASING.USE_RECOMMENDED", {
+                  defaultValue: "Utiliser le format recommande",
+                })}
+              </Button>
+            ) : null}
+          </>
+        );
+      }}
     />
   );
 }

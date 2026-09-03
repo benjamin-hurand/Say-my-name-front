@@ -43,6 +43,56 @@
     }
   },
 
+  "ATTRIBUTE_FORM": {
+    "WIZARD_TITLE_CREATE": "Create a field",
+    "WIZARD_TITLE_CONFIGURE": "Configure the field",
+    "WIZARD_TITLE_EDIT": "Edit field",
+    "WIZARD_STEP": "Step {{current}} of {{total}}",
+    "SECTION_MODEL_TITLE": "What information would you like to add?",
+    "SECTION_TYPE_TITLE": "What type of information would you like to store?",
+    "BACK": "Back",
+    "CUSTOM_TEMPLATE": "Custom field",
+    "CUSTOM_TEMPLATE_SUBTITLE": "Define specific information",
+    "CONFIGURED_FIELDS_TITLE": "Already configured ({{count}})",
+    "CONFIGURED_FIELD_NAME": "Field: \u201c{{name}}\u201d",
+    "UNKNOWN_FIELD_NAME": "Field not found",
+    "EDIT_CONFIGURED_FIELD": "Edit",
+    "EDIT_CONFIGURED_FIELD_ARIA": "Edit field {{name}}",
+    "ERROR_SAVE": "Unable to save the field",
+    "CARDINALITY_TITLE": "Number of values per person",
+    "MODEL_MAX_VALUES_SINGLE": "The template allows one value per person",
+    "MODEL_MAX_VALUES_MULTIPLE": "The template allows up to {{count}} values per person",
+    "CONFIG_TEXT_CASING_TITLE_DIRECT": "Text format",
+    "CASING": {
+      "GROUP_LABEL": "Text format",
+      "NONE_LABEL": "Keep entered text",
+      "SENTENCE_PRESERVE_LABEL": "Initial capital",
+      "TITLE_CASE_LABEL": "Capitalize every word",
+      "UPPERCASE_LABEL": "All uppercase",
+      "USE_RECOMMENDED": "Use recommended format"
+    },
+    "CARDINALITY": {
+      "SINGLE": "One value only",
+      "MULTIPLE": "Multiple values",
+      "MAX_LABEL": "Max.",
+      "GROUP_ARIA": "Number of allowed values",
+      "MAX_ARIA": "Maximum number of values"
+    },
+    "ADVANCED_SETTINGS_TITLE": "Advanced settings",
+    "SETTINGS": {
+      "REQUIRED_LABEL": "Required value",
+      "REQUIRED_DESC": "Every person will need to have a value.",
+      "IDENTITY_LABEL": "Use to identify a person",
+      "IDENTITY_DESC": "This value will be part of the person's displayed name.",
+      "FILTER_LABEL": "Available in filters",
+      "SORT_LABEL": "Available for sorting",
+      "CATEGORY_LABEL": "Show as a category",
+      "CATEGORY_DESC": "Presents this information as a category on profiles."
+    },
+    "ENUM_ADD": "Add",
+    "ENUM_EMPTY": "No option added yet"
+  },
+
   "ATTRIBUTE_PAGE": {
     "SETUP": {
       "PROGRESS_LABEL": "{{done}} / {{total}} essential attributes",

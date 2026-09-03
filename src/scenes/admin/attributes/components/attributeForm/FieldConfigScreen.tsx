@@ -1,4 +1,4 @@
-import { FormControlLabel, Stack, Switch, TextField } from "@mui/material";
+import { Box, Stack, TextField } from "@mui/material";
 import type { MutableRefObject } from "react";
 import { Controller } from "react-hook-form";
 import type {
@@ -9,30 +9,34 @@ import type {
 } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
-import type { ValueType } from "../../../../../models/commons/Attribute/Attribute";
-import type { Concept } from "../../../../../models/commons/Concept/Concept";
+import type {
+  CasingStrategy,
+  ValueType,
+} from "../../../../../models/commons/Attribute/Attribute";
 import type { AttributeCreateFormInput } from "../../validation/attributeCreate.schema";
+import AdvancedAttributeSettings from "./AdvancedAttributeSettings";
+import AttributeCardinalityControl from "./AttributeCardinalityControl";
 import AttributeMainFormSection from "./AttributeMainFormSection";
 import FormSection from "./FormSection";
-import SelectedFieldSummary from "./SelectedFieldSummary";
-import type { ConceptLabelGetter } from "./attributeForm.types";
+import SettingRow from "./shared/SettingRow";
 
 type Props = {
   control: Control<AttributeCreateFormInput>;
   errors: FieldErrors<AttributeCreateFormInput>;
   watch: UseFormWatch<AttributeCreateFormInput>;
   setValue: UseFormSetValue<AttributeCreateFormInput>;
-  watchedName: string;
-  selectedConcept: Concept | null;
   selectedConceptCode: string | null;
   selectedType: ValueType;
-  valueTypeLabel: string;
-  isCustom: boolean;
+  casingApplicable: boolean;
+  recommendedCasingStrategy: CasingStrategy | null;
+  onCasingCustomizationChange: (
+    isCustomized: boolean,
+    strategy: CasingStrategy,
+  ) => void;
   identityComponentEligible: boolean;
-  getConceptLabel: ConceptLabelGetter;
-  hasUserEditedNameRef: MutableRefObject<boolean>;
-  onChangeConcept: () => void;
-  onChangeType: () => void;
+  requiredMaxValues: number | null;
+  advancedSettingsInitiallyExpanded: boolean;
+  isNameCustomizedRef: MutableRefObject<boolean>;
 };
 
 export default function FieldConfigScreen({
@@ -40,35 +44,23 @@ export default function FieldConfigScreen({
   errors,
   watch,
   setValue,
-  watchedName,
-  selectedConcept,
   selectedConceptCode,
   selectedType,
-  valueTypeLabel,
-  isCustom,
+  casingApplicable,
+  recommendedCasingStrategy,
+  onCasingCustomizationChange,
   identityComponentEligible,
-  getConceptLabel,
-  hasUserEditedNameRef,
-  onChangeConcept,
-  onChangeType,
+  requiredMaxValues,
+  advancedSettingsInitiallyExpanded,
+  isNameCustomizedRef,
 }: Props) {
   const { t } = useTranslation();
 
   return (
-    <Stack spacing={3.5}>
-      <SelectedFieldSummary
-        selectedConcept={selectedConcept}
-        effectiveValueType={selectedType}
-        valueTypeLabel={valueTypeLabel}
-        isCustom={isCustom}
-        getConceptLabel={getConceptLabel}
-        onChangeConcept={onChangeConcept}
-        onChangeType={onChangeType}
-      />
-
+    <Stack spacing={{ xs: 2.75, sm: 3.25 }}>
       <FormSection
-        title={t("ATTRIBUTE_FORM.SECTION_NAME_TITLE", {
-          defaultValue: "Comment l'appelle-t-on ?",
+        title={t("ATTRIBUTE_FORM.FIELD_NAME_TITLE", {
+          defaultValue: "Nom du champ",
         })}
       >
         <Controller
@@ -77,17 +69,19 @@ export default function FieldConfigScreen({
           render={({ field }) => (
             <TextField
               {...field}
-              label={t("ATTRIBUTE_FORM.NAME_LABEL", {
-                defaultValue: "Nom du champ",
-              })}
               fullWidth
+              placeholder={t("ATTRIBUTE_FORM.NAME_PLACEHOLDER", {
+                defaultValue: "Ex. Bureau",
+              })}
               error={!!errors.name}
               onChange={(event) => {
-                hasUserEditedNameRef.current = true;
+                isNameCustomizedRef.current = true;
                 field.onChange(event);
               }}
-              InputLabelProps={{
-                shrink: !!watchedName,
+              inputProps={{
+                "aria-label": t("ATTRIBUTE_FORM.FIELD_NAME_TITLE", {
+                  defaultValue: "Nom du champ",
+                }),
               }}
               InputProps={{
                 sx: {
@@ -101,122 +95,71 @@ export default function FieldConfigScreen({
         />
       </FormSection>
 
-      <FormSection
-        title={t("ATTRIBUTE_FORM.SECTION_OPTIONS_TITLE", {
-          defaultValue: "Comment ce champ sera-t-il utilise ?",
-        })}
-      >
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} useFlexGap flexWrap="wrap">
-            <Controller
-              name="required"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label={t("ATTRIBUTE_FORM.OPTION_REQUIRED", { defaultValue: "Obligatoire" })}
-                />
-              )}
-            />
-
-            <Controller
-              name="filter"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label={t("ATTRIBUTE_FORM.OPTION_FILTER", { defaultValue: "Filtrable" })}
-                />
-              )}
-            />
-
-            <Controller
-              name="sort"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label={t("ATTRIBUTE_FORM.OPTION_SORT", { defaultValue: "Triable" })}
-                />
-              )}
-            />
-
-            <Controller
-              name="category"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label={t("ATTRIBUTE_FORM.OPTION_CATEGORY", { defaultValue: "Categorie" })}
-                />
-              )}
-            />
-
-            <Controller
-              name="primaryField"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value && identityComponentEligible}
-                      disabled={!identityComponentEligible}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label={t("ATTRIBUTE_FORM.OPTION_PRIMARY_FIELD", {
-                    defaultValue: "Source d'identite",
-                  })}
-                />
-              )}
-            />
-          </Stack>
-
-          <Controller
-            name="maxValues"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                label={t("ATTRIBUTE_FORM.MAX_VALUES_LABEL", {
-                  defaultValue: "Nombre maximal de valeurs",
-                })}
-                type="number"
-                value={field.value ?? 1}
-                onChange={(event) => field.onChange(Number(event.target.value) || 1)}
-                inputProps={{ min: 1 }}
-                sx={{ maxWidth: { sm: 260 } }}
-              />
-            )}
-          />
-        </Stack>
-      </FormSection>
-
       <AttributeMainFormSection
         control={control}
         watch={watch}
         setValue={setValue}
         selectedConceptCode={selectedConceptCode}
         selectedType={selectedType}
+        casingApplicable={casingApplicable}
+        recommendedCasingStrategy={recommendedCasingStrategy}
+        onCasingCustomizationChange={onCasingCustomizationChange}
+      />
+
+      {requiredMaxValues == null ? (
+        <FormSection
+          title={t("ATTRIBUTE_FORM.CARDINALITY_TITLE", {
+            defaultValue: "Nombre de valeurs par personne",
+          })}
+        >
+          <AttributeCardinalityControl control={control} />
+        </FormSection>
+      ) : null}
+
+      <Stack
+        divider={<Box sx={{ borderTop: "1px solid", borderColor: "divider" }} />}
+        sx={{ borderTop: "1px solid", borderColor: "divider" }}
+      >
+        <Controller
+          name="required"
+          control={control}
+          render={({ field }) => (
+            <SettingRow
+              label={t("ATTRIBUTE_FORM.SETTINGS.REQUIRED_LABEL", {
+                defaultValue: "Valeur obligatoire",
+              })}
+              description={t("ATTRIBUTE_FORM.SETTINGS.REQUIRED_DESC", {
+                defaultValue: "Chaque personne devra avoir une valeur.",
+              })}
+              checked={!!field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+
+        {identityComponentEligible ? (
+          <Controller
+            name="primaryField"
+            control={control}
+            render={({ field }) => (
+              <SettingRow
+                label={t("ATTRIBUTE_FORM.SETTINGS.IDENTITY_LABEL", {
+                  defaultValue: "Utiliser pour identifier une personne",
+                })}
+                description={t("ATTRIBUTE_FORM.SETTINGS.IDENTITY_DESC", {
+                  defaultValue: "Cette valeur participera au nom affiché de la personne.",
+                })}
+                checked={!!field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        ) : null}
+      </Stack>
+
+      <AdvancedAttributeSettings
+        control={control}
+        initiallyExpanded={advancedSettingsInitiallyExpanded}
       />
     </Stack>
   );

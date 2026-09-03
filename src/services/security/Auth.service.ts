@@ -80,10 +80,11 @@ const extractAxiosStatus = (error: unknown): number => {
 };
 
 const getGoogleClientIdOrThrow = (clientId?: string): string => {
+  const nodeClientId = (globalThis as any).process?.env?.REACT_APP_GOOGLE_CLIENT_ID;
   const cid =
     clientId ??
     (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ??
-    (process.env as any)?.REACT_APP_GOOGLE_CLIENT_ID;
+    nodeClientId;
 
   if (!cid) {
     throw new Error(
