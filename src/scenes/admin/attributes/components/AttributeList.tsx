@@ -18,6 +18,7 @@ import { toast } from "react-toastify";
 
 import { Attribute } from "../../../../models/commons/Attribute/Attribute";
 import { deleteAdminAttribute } from "../../../../services/business/admin/admin.attributes.service";
+import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 import type { AttributeIssueInfo } from "../AdminAttributesPage";
 
 type Props = {
@@ -58,10 +59,6 @@ function isFilterable(row: Attribute): boolean {
   return !!(row as any)?.filter;
 }
 
-function isCategory(row: Attribute): boolean {
-  return !!(row as any)?.category;
-}
-
 function getAttributePurposeKeys(row: Attribute): string[] {
   const conceptCode = getConceptCode(row);
   const keys: string[] = [];
@@ -74,7 +71,7 @@ function getAttributePurposeKeys(row: Attribute): string[] {
 
   if (isIdentitySource(row)) {
     keys.push("IDENTITY");
-  } else if (isCategory(row) || isFilterable(row)) {
+  } else if (isFilterable(row)) {
     keys.push("FILTER");
   }
 
@@ -130,6 +127,7 @@ export default function AttributeList({
   };
 
   const handleDelete = async (row: Attribute) => {
+    if (getConceptCode(row) === "IDENTITY") return;
     if (
       !confirm(
         t("ATTRIBUTE_UI.DELETE_CONFIRM", {
@@ -145,13 +143,20 @@ export default function AttributeList({
       await deleteAdminAttribute(getRowId(row));
       toast.success(t("ATTRIBUTE_UI.DELETED_SUCCESS", { defaultValue: "Attribut supprimé" }));
       onDeleted();
-    } catch (e: any) {
-      toast.error(
-        e?.message ||
-          t("ATTRIBUTE_UI.DELETE_ERROR", {
-            defaultValue: "Suppression impossible (déjà utilisé ?)",
+    } catch (error: unknown) {
+      const status = getApiStatus(error);
+      const fallback = status === 403
+        ? t("ATTRIBUTE_UI.DELETE_SYSTEM_ERROR", {
+            defaultValue: "Cet attribut système est protégé.",
           })
-      );
+        : status === 409
+          ? t("ATTRIBUTE_UI.DELETE_REFERENCED_ERROR", {
+              defaultValue: "Cet attribut est encore référencé et ne peut pas être supprimé.",
+            })
+          : t("ATTRIBUTE_UI.DELETE_ERROR", {
+              defaultValue: "Suppression impossible.",
+            });
+      toast.error(getApiErrorMessage(error, fallback));
     }
   };
 
@@ -202,6 +207,7 @@ export default function AttributeList({
               {rows.map((row, idx) => {
                 const issue = getIssueFor(row);
                 const conceptCode = getConceptCode(row);
+                const isSystemIdentity = conceptCode === "IDENTITY";
                 const purposeKeys = getAttributePurposeKeys(row);
 
                 return (
@@ -414,18 +420,24 @@ export default function AttributeList({
                                 flexShrink: 0,
                               }}
                             >
-                              <Tooltip title={t("ATTRIBUTE_UI.EDIT", { defaultValue: "Modifier" })}>
-                                <IconButton size="small" onClick={() => onEdit(row)}>
+                              <Tooltip title={isSystemIdentity
+                                ? t("ATTRIBUTE_UI.SYSTEM_PROTECTED", { defaultValue: "Attribut système protégé" })
+                                : t("ATTRIBUTE_UI.EDIT", { defaultValue: "Modifier" })}>
+                                <span>
+                                <IconButton size="small" disabled={isSystemIdentity} onClick={() => onEdit(row)}>
                                   <EditRoundedIcon fontSize="small" />
                                 </IconButton>
+                                </span>
                               </Tooltip>
 
                               <Tooltip
                                 title={t("ATTRIBUTE_UI.DELETE", { defaultValue: "Supprimer" })}
                               >
-                                <IconButton size="small" onClick={() => handleDelete(row)}>
+                                <span>
+                                <IconButton size="small" disabled={isSystemIdentity} onClick={() => handleDelete(row)}>
                                   <DeleteRoundedIcon fontSize="small" />
                                 </IconButton>
+                                </span>
                               </Tooltip>
                             </Stack>
                           </Box>

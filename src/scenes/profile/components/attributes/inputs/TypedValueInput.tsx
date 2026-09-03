@@ -38,9 +38,6 @@ type Props = {
   hideEmptyOption?: boolean;
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const URL_RE = /^https?:\/\/.+/i;
-
 /** Fix minimal anti-label coupé */
 const labelCutFixSx = {
   overflow: "visible",
@@ -401,8 +398,6 @@ const TypedValueInput: React.FC<Props> = ({
   }
 
   const showError = touched && invalid;
-  const disableSave = showError || status === "saving";
-
   const tryBlur = () => {
     const coerced = coerceOnBlurValue(attribute, value);
     if (coerced !== value) onChange(coerced);

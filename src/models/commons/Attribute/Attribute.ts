@@ -89,7 +89,6 @@ export interface Attribute {
   name: string;
   displayOrder?: number | null;
   identitySource?: boolean | null;
-  category?: boolean | null;
   maxValues?: number | null;
   filter?: boolean | null;
   sort?: boolean | null;

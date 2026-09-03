@@ -19,6 +19,7 @@ export interface DirectoryDataSource {
 // ✅ carte admin => PersonCardDto de type AdminPersonCardDto (pas de `followed`)
 const adaptAdminCard = (a: AdminPersonCardDto): PersonCardDto => ({
   idPerson: a.idPerson,
+  displayName: a.displayName,
   photoSmallUrl: a.photoSmallUrl,
   photoLargeUrl: a.photoLargeUrl,
   primaryAttributes: a.primaryAttributes,

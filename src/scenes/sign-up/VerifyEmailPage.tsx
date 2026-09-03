@@ -1,5 +1,5 @@
 // src/scenes/sign-up/VerifyEmailPage.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Avatar,

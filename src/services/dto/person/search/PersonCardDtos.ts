@@ -7,7 +7,7 @@ export interface PersonAttributeExtraDto {
 
 export interface BasePersonCardDto {
   idPerson: number;
-  displayName?: string;
+  displayName: string;
   photoSmallUrl: string | null;
   photoLargeUrl: string | null;
   primaryAttributes: PersonAttributeExtraDto[];

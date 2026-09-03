@@ -52,7 +52,6 @@ export default function CourseQuickStart({
   modeLabel,
   progressPercent,
   actionHint,
-  rightNote, // eslint-disable-line @typescript-eslint/no-unused-vars
   onPrimary,
   showMenu = false,
   menuItems = [],

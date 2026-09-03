@@ -41,6 +41,7 @@ import { submitPhotoForApproval } from "../../../services/business/photos/photo.
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 import getCroppedImg from "../../../utils/getCroppedImg";
 import { getApiErrorMessage } from "../../../utils/apiError";
+import { getPersonDisplayName } from "../../../utils/personDisplayName";
 
 const MIN_UPLOAD_SIZE = 1024 * 1; // 1 KB
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 5; // 5 MB
@@ -59,7 +60,9 @@ const PhotoAvatarSection: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, onboarding, loading, refreshProfile, setProfile } = useProfile();
 
-  const displayName = user?.displayName ?? "Moi";
+  const displayName = profile
+    ? getPersonDisplayName(profile)
+    : user?.displayName ?? "Moi";
   const profileCurrentPhotoUrl =
     profile?.photos?.find((p) => p.status === "APPROVED")?.url ?? undefined;
 

@@ -4,7 +4,6 @@ import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import {
   Box,
   Button,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -135,10 +134,6 @@ export default function PersonPeekDialog({
       .sort((a, b) => getAttrOrder(a.attributeId) - getAttrOrder(b.attributeId));
   }, [p?.extraAttributes, fetchedExtras, getAttrOrder, isPrimaryAttr]);
 
-  // On **désactive** l’affichage des catégories sous le nom (tu préfères sans)
-  const SHOW_CATEGORY_CHIPS_UNDER_NAME = false;
-  const categoryLabels: string[] = [];
-
   // Hauteur max adaptative de la photo si viewport “court”
   const vh = typeof window !== "undefined" ? window.innerHeight : 900;
   const photoMaxVh = vh >= 900 ? 62 : vh >= 780 ? 58 : vh >= 680 ? 54 : 50;
@@ -202,13 +197,6 @@ export default function PersonPeekDialog({
                 {name}
               </Typography>
 
-              {SHOW_CATEGORY_CHIPS_UNDER_NAME && !!categoryLabels.length && (
-                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                  {categoryLabels.map((label, i) => (
-                    <Chip key={i} size="small" variant="filled" label={label} sx={{ maxWidth: "100%" }} />
-                  ))}
-                </Stack>
-              )}
             </Stack>
 
             <Tooltip title={followed ? "Ne plus suivre" : "Suivre"}>

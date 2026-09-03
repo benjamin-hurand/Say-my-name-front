@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Box, Paper, Skeleton, Stack, Typography, useMediaQuery } from "@mui/material";
+import React, { useRef, useState } from "react";
+import { Box, Paper, Skeleton, Stack, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import TrombiCard from "./TrombiCard";
 import { PersonCardDto } from "../../../services/dto/person/search/PersonCardDtos";
@@ -66,25 +66,8 @@ const TrombiGrid: React.FC<TrombiGridProps> = ({
   const localScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = externalScrollRef ?? localScrollRef;
 
-  // Élément "grille" (pour ResizeObserver)
-  const gridRef = useRef<HTMLDivElement>(null);
-
   const minCardWidth = downSm ? 120 : 150;
-  const gapPx = downSm ? 8 : 10;
   const skeletonInitialCount = downSm ? 8 : 14;
-
-  const [cols, setCols] = useState(1);
-  React.useEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width;
-      const n = Math.max(1, Math.floor((w + gapPx) / (minCardWidth + gapPx)));
-      setCols(n);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [minCardWidth, gapPx]);
 
   const gridTemplate = `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`;
   const showInitialSkeletons = loading && items.length === 0;
@@ -149,7 +132,6 @@ const TrombiGrid: React.FC<TrombiGridProps> = ({
     >
       {/* Grille responsives (observée pour calcul des colonnes) */}
       <Box
-        ref={gridRef}
         sx={{
           display: "grid",
           gap: downSm ? 1 : 1.25,

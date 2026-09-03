@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -46,8 +46,6 @@ const EmailsPanel: React.FC<Props> = ({ personId }) => {
   const [newEmail, setNewEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-
-  const primary = useMemo(() => emails.find((e) => e.primary) || null, [emails]);
 
   const refresh = async () => {
     if (!personId) return;

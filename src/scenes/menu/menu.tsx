@@ -70,7 +70,7 @@ const Menu: React.FC = () => {
     focus,
   } = useCourse();
 
-  const { get, isLoading, refresh, progress } = useCourseStats();
+  const { isLoading, refresh, progress } = useCourseStats();
 
   const [loadingCourse, setLoadingCourse] = useState<boolean>(true);
 

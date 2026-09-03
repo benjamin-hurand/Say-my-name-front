@@ -423,8 +423,6 @@ const ChangeRequestDialog: React.FC<Props> = ({
   };
 
   /** Checklist de raisons expliquant pourquoi le bouton est désactivé */
-  const charLimit = 1024;
-  const charCount = globalReason.length;
   const reasons: string[] = [];
   if (ops.length === 0) reasons.push("Ajoutez au moins un changement");
   if (hasBlockingError) {

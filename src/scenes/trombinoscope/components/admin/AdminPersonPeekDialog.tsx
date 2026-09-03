@@ -30,9 +30,9 @@ import AttributeGrid, {
 } from "../personPeek/AttributeGrid";
 import PhotoResponsive from "../personPeek/PhotoResponsive";
 import {
-  displayName as buildDisplayName,
   useAttributeMeta,
 } from "../personPeek/utils";
+import { getPersonDisplayName } from "../../../../utils/personDisplayName";
 
 import { ChangeRequestSummary } from "../../../../models/commons/Profile/ChangeRequest";
 import { formatRole } from "../../../../models/tenants/TenantMembership";
@@ -171,57 +171,9 @@ export default function AdminPersonPeekDialog({
     if (snapshot === "future" && !hasFutureAttributes) setSnapshot("current");
   }, [snapshot, hasFutureAttributes]);
 
-  /**
-   * DisplayName robuste
-   */
   const resolvedDisplayName = useMemo(() => {
-    if (!p) return "(Nom indisponible)";
-
-    const fromDetails = (details?.person as any)?.displayName;
-    if (fromDetails != null && String(fromDetails).trim()) {
-      return String(fromDetails).trim();
-    }
-
-    const direct = (p as any).displayName;
-    if (direct != null && String(direct).trim()) {
-      return String(direct).trim();
-    }
-
-    const primVals: string[] = (details?.person?.attributes ?? [])
-      .filter((a) => isPrimaryAttr(a.attributeId))
-      .filter((a) =>
-        isActiveAt(now, a.validFrom, a.validTo, a.pendingDelete)
-      )
-      .map((a) => (a.value ?? "").trim())
-      .filter(Boolean);
-
-    if (primVals.length > 0) {
-      const uniq: string[] = [];
-      for (const v of primVals) {
-        if (!uniq.includes(v)) uniq.push(v);
-      }
-      const joined = uniq.join(" ").trim();
-      if (joined) return joined;
-    }
-
-    const fallbackSource = (details?.person as any) ?? (p as any);
-    const fallback = buildDisplayName(fallbackSource);
-    const asString = fallback != null ? String(fallback).trim() : "";
-
-    if (!asString || /^#?\d+$/.test(asString)) {
-      console.warn(
-        "[AdminPersonPeekDialog] Impossible de construire un displayName correct pour la fiche :",
-        {
-          personProp: p,
-          details,
-          computed: asString,
-        }
-      );
-      return "(Nom indisponible)";
-    }
-
-    return asString;
-  }, [p, details, isPrimaryAttr, now]);
+    return getPersonDisplayName(details?.person ?? p);
+  }, [details?.person, p]);
 
   const photoUrl = useMemo(() => {
     const approved =
@@ -306,35 +258,6 @@ export default function AdminPersonPeekDialog({
   );
 
   // =========================
-  //  Lien d’invitation (pour lien / QR)
-  // =========================
-  const inviteUrl: string | null = useMemo(() => {
-    const raw =
-      (details as any)?.defaultInviteUrl ??
-      (details as any)?.inviteUrl ??
-      (details as any)?.person?.defaultInviteUrl ??
-      null;
-    if (typeof raw === "string" && raw.trim().length > 0) {
-      return raw.trim();
-    }
-    return null;
-  }, [details]);
-
-  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
-  const [showQrInline, setShowQrInline] = useState(false);
-
-  const handleCopyInviteLink = async () => {
-    if (!inviteUrl) return;
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setInviteLinkCopied(true);
-      window.setTimeout(() => setInviteLinkCopied(false), 1800);
-    } catch (e) {
-      console.error("[AdminPersonPeekDialog] copy invite link failed", e);
-    }
-  };
-
-  // =========================
   //  Change requests
   // =========================
   const hasChangeRequests = (details?.changeRequests?.length ?? 0) > 0;
@@ -342,8 +265,6 @@ export default function AdminPersonPeekDialog({
   // ====== Review dialog state ======
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewCR, setReviewCR] = useState<ChangeRequestSummary | null>(null);
-  const invitationSectionRef = useRef<HTMLDivElement | null>(null);
-  const [inviteFormSignal, setInviteFormSignal] = useState(0);
 
   const handleSubmitResolution = async (
     changeRequestId: number,
@@ -375,30 +296,6 @@ export default function AdminPersonPeekDialog({
   const photoMaxHeight = isCollapsed ? 220 : 420;
   const photoMaxVh = isCollapsed ? 40 : 62;
   const photoMinShortEdge = isCollapsed ? 220 : 320;
-
-  // =========================
-  //  Compte utilisateur – vue simplifiée + zone avancée
-  // =========================
-  const [accessDetailsOpen, setAccessDetailsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) {
-      setAccessDetailsOpen(false);
-      setShowQrInline(false);
-      setInviteLinkCopied(false);
-    }
-  }, [open]);
-
-  const openInviteForm = () => {
-    setAccessDetailsOpen(true);
-    setInviteFormSignal((v) => v + 1);
-    window.setTimeout(() => {
-      invitationSectionRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 60);
-  };
 
   const scrollToChangeRequests = () => {
     const el = document.getElementById("change-requests-section");

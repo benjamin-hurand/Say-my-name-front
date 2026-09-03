@@ -25,7 +25,6 @@ import {
   Refresh as RefreshIcon,
   ErrorOutline as ErrorOutlineIcon,
   MoreVert as MoreVertIcon,
-  Lock as LockIcon,
 } from "@mui/icons-material";
 import { useProfile } from "../../../contexts/ProfileContext";
 import { updateDisplayName } from "../../../services/business/profile/profile.service";

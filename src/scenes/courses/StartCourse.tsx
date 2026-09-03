@@ -29,6 +29,7 @@ import { CreateCourseDto } from "../../services/dto/courses/CourseDto";
 import { PersonCardDto } from "../../services/dto/person/search/PersonCardDtos";
 import { notifyError, notifySuccess } from "../../services/notification/toast.service";
 import { Attribute } from "../../models/commons/Attribute/Attribute";
+import { getPersonDisplayName } from "../../utils/personDisplayName";
 
 // PopulationScope côté front = "FOLLOWED" | "ALL". On force "FOLLOWED" ici.
 const StartCourse: React.FC = () => {
@@ -112,11 +113,6 @@ const StartCourse: React.FC = () => {
     }
   };
 
-  const getPrimaryText = (p: PersonCardDto) => {
-    const parts = (p.primaryAttributes || []).map((a) => a.value).filter(Boolean);
-    return parts.join(" ").trim() || `#${p.idPerson}`;
-  };
-
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Box
@@ -178,12 +174,12 @@ const StartCourse: React.FC = () => {
                       p.photoSmallUrl ? (
                         <img
                           src={p.photoSmallUrl}
-                          alt={getPrimaryText(p)}
+                          alt={getPersonDisplayName(p)}
                           style={{ width: 24, height: 24, borderRadius: "50%" }}
                         />
                       ) : undefined
                     }
-                    label={getPrimaryText(p)}
+                    label={getPersonDisplayName(p)}
                     variant="outlined"
                     sx={{ maxWidth: "100%" }}
                   />

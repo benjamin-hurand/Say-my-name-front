@@ -13,14 +13,6 @@
       "LABEL": "Last name",
       "DESCRIPTION": "Person's family name"
     },
-    "NICKNAME": {
-      "LABEL": "Nickname",
-      "DESCRIPTION": "Informal or preferred name"
-    },
-    "TITLE": {
-      "LABEL": "Title",
-      "DESCRIPTION": "Title or honorific (Dr., Prof., etc.)"
-    },
     "GENDER": {
       "LABEL": "Gender",
       "DESCRIPTION": "Gender of the person"
@@ -28,18 +20,6 @@
     "IDENTITY": {
       "LABEL": "Identity",
       "DESCRIPTION": "Derived identity combining multiple identity components"
-    },
-    "DEPARTMENT": {
-      "LABEL": "Department",
-      "DESCRIPTION": "Department or organizational unit"
-    },
-    "PROMOTION": {
-      "LABEL": "Promotion",
-      "DESCRIPTION": "Promotion, class or cohort"
-    },
-    "ARRIVAL_DATE": {
-      "LABEL": "Arrival date",
-      "DESCRIPTION": "Date when the person joined the group"
     }
   },
 
@@ -85,9 +65,7 @@
       "IDENTITY_LABEL": "Use to identify a person",
       "IDENTITY_DESC": "This value will be part of the person's displayed name.",
       "FILTER_LABEL": "Available in filters",
-      "SORT_LABEL": "Available for sorting",
-      "CATEGORY_LABEL": "Show as a category",
-      "CATEGORY_DESC": "Presents this information as a category on profiles."
+      "SORT_LABEL": "Available for sorting"
     },
     "ENUM_ADD": "Add",
     "ENUM_EMPTY": "No option added yet"

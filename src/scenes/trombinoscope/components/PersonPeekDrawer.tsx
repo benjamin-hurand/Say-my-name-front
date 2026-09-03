@@ -3,6 +3,7 @@ import { Drawer, Box, Stack, Typography, Chip, IconButton, Tooltip } from "@mui/
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import CloseIcon from "@mui/icons-material/Close";
 import { PersonCardDto } from "../../../services/dto/person/search/PersonCardDtos";
+import { getPersonDisplayName } from "../../../utils/personDisplayName";
 
 type Props = {
   open: boolean;
@@ -20,11 +21,7 @@ const PersonPeekDrawer: React.FC<Props> = ({
   isFollowed, followOverrides, followPending,
   onToggleFollow,
 }) => {
-  const name = useMemo(
-    () => (person?.primaryAttributes ?? [])
-      .map(a => a?.value).filter(Boolean).join(" "),
-    [person]
-  );
+  const name = useMemo(() => getPersonDisplayName(person), [person]);
 
   const followed = useMemo(() => {
     if (!person) return false;
@@ -57,7 +54,7 @@ const PersonPeekDrawer: React.FC<Props> = ({
           {/* Header simple */}
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1 }}>
             <Typography variant="h6" fontWeight={700} noWrap title={name}>
-              {name || `#${person.idPerson}`}
+              {name}
             </Typography>
             <IconButton onClick={onClose} aria-label="Fermer"><CloseIcon /></IconButton>
           </Stack>

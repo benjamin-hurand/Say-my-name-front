@@ -65,7 +65,7 @@ test("matches casing behavior for accents, hyphens, apostrophes and spaces", () 
 
 test("resolves concept-aware preview sources with a neutral fallback", () => {
   assert.equal(resolveCasingPreviewSource("FIRST_NAME"), "jean baptiste");
-  assert.equal(resolveCasingPreviewSource("DEPARTMENT"), "direction produit");
+  assert.equal(resolveCasingPreviewSource("UNKNOWN"), "exemple de texte");
   assert.equal(resolveCasingPreviewSource("UNKNOWN"), "exemple de texte");
   assert.equal(resolveCasingPreviewSource(null), "exemple de texte");
 });

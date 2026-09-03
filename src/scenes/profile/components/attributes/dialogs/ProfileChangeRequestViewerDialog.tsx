@@ -101,7 +101,6 @@ const statusLabel = (s: ChangeRequestStatus): string => {
 ======================= */
 const ChangeRequestViewerDialog: React.FC<Props> = ({
   open,
-  personId,
   cr,
   attr,
   currentChips,

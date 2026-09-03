@@ -26,11 +26,6 @@ export type SemanticPresetConfig = {
   casingPreviewSource?: string;
 };
 
-const CONFIG_VALUES_TITLE = {
-  key: "ATTRIBUTE_FORM.CONFIG_VALUES_TITLE",
-  defaultValue: "Quelles valeurs proposer ?",
-};
-
 export const semanticPresetRegistry: Record<string, SemanticPresetConfig> = {
   FIRST_NAME: {
     casingPreviewSource: "jean baptiste",
@@ -38,43 +33,8 @@ export const semanticPresetRegistry: Record<string, SemanticPresetConfig> = {
   LAST_NAME: {
     casingPreviewSource: "dupont martin",
   },
-  NICKNAME: {
-    casingPreviewSource: "super ben",
-  },
-  TITLE: {
-    casingPreviewSource: "responsable produit",
-  },
   GENDER: {
     enumAffordance: "GENDER_PRESET",
-  },
-  IDENTITY: {
-    casingPreviewSource: "jean dupont",
-  },
-  DEPARTMENT: {
-    casingPreviewSource: "direction produit",
-    enumCopy: {
-      titleKey: CONFIG_VALUES_TITLE.key,
-      titleDefault: CONFIG_VALUES_TITLE.defaultValue,
-      subtitleKey: "ATTRIBUTE_FORM.CONFIG_VALUES_SUBTITLE_DEPARTMENT",
-      subtitleDefault: "Definis les departements disponibles.",
-      addLabelKey: "ATTRIBUTE_FORM.ENUM_ADD_DEPARTMENT",
-      addLabelDefault: "Ajouter un departement",
-      placeholderKey: "ATTRIBUTE_FORM.ENUM_DEPARTMENT_PLACEHOLDER",
-      placeholderDefault: "Ex. Marketing",
-    },
-  },
-  PROMOTION: {
-    casingPreviewSource: "promotion hiver 2026",
-    enumCopy: {
-      titleKey: CONFIG_VALUES_TITLE.key,
-      titleDefault: CONFIG_VALUES_TITLE.defaultValue,
-      subtitleKey: "ATTRIBUTE_FORM.CONFIG_VALUES_SUBTITLE_PROMOTION",
-      subtitleDefault: "Definis les promotions disponibles.",
-      addLabelKey: "ATTRIBUTE_FORM.ENUM_ADD_PROMOTION",
-      addLabelDefault: "Ajouter une promotion",
-      placeholderKey: "ATTRIBUTE_FORM.ENUM_PROMOTION_PLACEHOLDER",
-      placeholderDefault: "Ex. 2026",
-    },
   },
 };
 

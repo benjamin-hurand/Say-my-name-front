@@ -42,7 +42,6 @@ import { useNavigate } from "react-router-dom";
 
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
-import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";

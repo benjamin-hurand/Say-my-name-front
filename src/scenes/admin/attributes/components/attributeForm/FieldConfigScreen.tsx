@@ -33,7 +33,7 @@ type Props = {
     isCustomized: boolean,
     strategy: CasingStrategy,
   ) => void;
-  identityComponentEligible: boolean;
+  identitySourceEligible: boolean;
   requiredMaxValues: number | null;
   advancedSettingsInitiallyExpanded: boolean;
   isNameCustomizedRef: MutableRefObject<boolean>;
@@ -49,7 +49,7 @@ export default function FieldConfigScreen({
   casingApplicable,
   recommendedCasingStrategy,
   onCasingCustomizationChange,
-  identityComponentEligible,
+  identitySourceEligible,
   requiredMaxValues,
   advancedSettingsInitiallyExpanded,
   isNameCustomizedRef,
@@ -137,9 +137,9 @@ export default function FieldConfigScreen({
           )}
         />
 
-        {identityComponentEligible ? (
+        {identitySourceEligible ? (
           <Controller
-            name="primaryField"
+            name="identitySource"
             control={control}
             render={({ field }) => (
               <SettingRow

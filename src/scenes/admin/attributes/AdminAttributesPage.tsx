@@ -25,8 +25,10 @@ import { useTranslation } from "react-i18next";
 import AttributeFormDrawer from "./components/AttributeFormDrawer";
 import AttributeList from "./components/AttributeList";
 
-import { reorderAdminAttributes } from "../../../services/business/admin/admin.attributes.service";
-import { getAttributes } from "../../../services/business/attributes/attribute.service";
+import {
+  getAdminAttributes,
+  reorderAdminAttributes,
+} from "../../../services/business/admin/admin.attributes.service";
 
 import { Attribute, ValueType } from "../../../models/commons/Attribute/Attribute";
 import type { Concept } from "../../../models/commons/Concept/Concept";
@@ -35,7 +37,6 @@ import { useTenantData } from "../../../contexts/TenantDataContext";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
 
 type AttributeIssueTag =
-  | "category-no-filter"
   | "useless"
   | "concept-type-mismatch"
   | "identity-source-not-eligible"
@@ -64,8 +65,8 @@ const ESSENTIAL_CONCEPT_CODES = new Set([
   "IDENTITY",
 ]);
 
-function getAttrId(a: Attribute): number | undefined {
-  return (a as any)?.id;
+function getAttrId(a: Attribute): number {
+  return a.id;
 }
 
 function getAttrName(a: Attribute): string {
@@ -108,12 +109,14 @@ function isSortable(a: Attribute): boolean {
   return !!(a as any)?.sort;
 }
 
-function isCategory(a: Attribute): boolean {
-  return !!(a as any)?.category;
-}
-
 function isIdentitySource(a: Attribute): boolean {
   return !!(a as any)?.identitySource;
+}
+
+function isValidIdentitySourceConfiguration(a: Attribute): boolean {
+  if (getConceptCode(a) === "IDENTITY") return false;
+  const conceptAllowsIdentity = getConceptId(a) == null || isIdentityComponentEligible(a);
+  return conceptAllowsIdentity && getValueType(a) === "TEXT" && a.maxValues === 1;
 }
 
 function getOptionsCount(a: Attribute): number {
@@ -190,12 +193,6 @@ export default function AdminAttributesPage() {
       const conceptLabel = conceptCode ? getConceptLabel(conceptCode) : "?";
 
       switch (tag) {
-        case "category-no-filter":
-          return t("ATTRIBUTE_HEALTH_MESSAGES.category-no-filter", {
-            name,
-            defaultValue: `L’attribut "${name}" est marqué comme catégorie mais n’est pas filtrable.`,
-          });
-
         case "useless":
           return t("ATTRIBUTE_HEALTH_MESSAGES.useless", {
             name,
@@ -214,7 +211,7 @@ export default function AdminAttributesPage() {
         case "identity-source-not-eligible":
           return t("ATTRIBUTE_HEALTH_MESSAGES.identity-source-not-eligible", {
             name,
-            defaultValue: `L’attribut "${name}" est défini comme source d’identité alors que son concept n’est pas éligible.`,
+            defaultValue: `L’attribut "${name}" n’est pas un texte à valeur unique éligible comme source d’identité.`,
           });
 
         case "derived-edit-policy-mismatch":
@@ -257,7 +254,7 @@ export default function AdminAttributesPage() {
   const hardRefreshAttributes = useCallback(async () => {
     try {
       setLoadingA(true);
-      const fresh = await getAttributes({ options: true });
+      const fresh = await getAdminAttributes();
       setAttributes(fresh ?? []);
     } catch (e: any) {
       notifyError(
@@ -278,16 +275,6 @@ export default function AdminAttributesPage() {
     for (const a of rows) {
       const id = getAttrId(a);
       const name = getAttrName(a);
-
-      if (isCategory(a) && !isFilterable(a)) {
-        items.push({
-          tag: "category-no-filter",
-          severity: "warning",
-          attributeId: id,
-          attributeName: name,
-          message: buildIssueMessage("category-no-filter", a),
-        });
-      }
 
       const isUseful = isFilterable(a) || isSortable(a) || isIdentitySource(a);
       if (!isUseful) {
@@ -310,7 +297,7 @@ export default function AdminAttributesPage() {
         });
       }
 
-      if (isIdentitySource(a) && !isIdentityComponentEligible(a)) {
+      if (isIdentitySource(a) && !isValidIdentitySourceConfiguration(a)) {
         items.push({
           tag: "identity-source-not-eligible",
           severity: "error",
@@ -421,11 +408,6 @@ export default function AdminAttributesPage() {
           defaultValue: "Certaines listes n’ont pas encore d’options configurées.",
         });
       }
-      if ((health.byTagCount["category-no-filter"] ?? 0) > 0) {
-        return t("ATTRIBUTE_PAGE.TOP_ISSUES.category-no-filter", {
-          defaultValue: "Certaines catégories ne sont pas encore exploitables comme filtres.",
-        });
-      }
       return t("ATTRIBUTE_PAGE.TOP_ISSUES.default-warning", {
         defaultValue: "Quelques améliorations sont recommandées pour finaliser la configuration.",
       });
@@ -477,7 +459,7 @@ export default function AdminAttributesPage() {
     }));
 
     try {
-      await reorderAdminAttributes(items as Array<{ id: number; displayOrder: number }>);
+      await reorderAdminAttributes(items);
 
       setAttributes((prev) => {
         const map = new Map(prev.map((a) => [getAttrId(a), { ...a }]));

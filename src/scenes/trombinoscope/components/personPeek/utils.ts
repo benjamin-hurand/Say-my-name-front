@@ -2,44 +2,10 @@
 import { useMemo } from "react";
 import { Attribute } from "../../../../models/commons/Attribute/Attribute";
 import { PersonAttributeExtraDto } from "../../../../services/dto/person/search/PersonCardDtos";
+import { getPersonDisplayName } from "../../../../utils/personDisplayName";
 
-/**
- * Affiche un nom robuste :
- * 1) p.displayName s’il existe (quel que soit son type → cast string)
- * 2) sinon à partir de primaryAttributes (valeurs concaténées)
- * 3) sinon "—" (et log console en dev pour debug)
- */
-export const displayName = (p: any | null | undefined) => {
-  if (!p) return "—";
-
-  const raw = (p as any).displayName;
-  const fromProp = raw == null ? "" : String(raw).trim();
-  if (fromProp) return fromProp;
-
-  const primaryAttributes = (p as any).primaryAttributes as any[] | undefined;
-
-  const prim =
-    primaryAttributes && Array.isArray(primaryAttributes)
-      ? primaryAttributes
-          .filter((x: any) => !!x?.value)
-          .map((x: any) => String(x.value).trim())
-          .filter(Boolean)
-          .join(" ")
-          .trim()
-      : "";
-
-  if (prim) return prim;
-
-  // Cas anormal : aucune info exploitable → on log pour pouvoir corriger côté données
-  // eslint-disable-next-line no-console
-  console.warn("[displayName] Impossible de déterminer un nom pour la personne :", {
-    idPerson: (p as any)?.idPerson,
-    rawDisplayName: raw,
-    primaryAttributes,
-  });
-
-  return "—";
-};
+/** Nom canonique fourni par le backend, avec fallback UI partagé. */
+export const displayName = getPersonDisplayName;
 
 function isIsoDateLike(s: string) {
   return /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)?$/.test(s);
@@ -57,7 +23,6 @@ export function useAttributeMeta(source: Attribute[] | undefined) {
     const getAttrMaxValues = (id: number) => map.get(id)?.maxValues ?? 1;
     const getAttrOrder =
       (id: number) => map.get(id)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
-    const isCategoryAttr = (id: number) => !!map.get(id)?.category;
     const isPrimaryAttr = (id: number) => !!map.get(id)?.identitySource;
 
     const isDateAttr = (id: number) => {
@@ -108,7 +73,6 @@ export function useAttributeMeta(source: Attribute[] | undefined) {
       getAttrMaxValues,
       getAttrOrder,
       prettyValue,
-      isCategoryAttr,
       isPrimaryAttr,
       isLongTextAttr,
     };

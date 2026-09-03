@@ -7,6 +7,11 @@ import type {
 
 const ADMIN_ENDPOINT = "/admin";
 
+export async function getAdminAttributes(): Promise<Attribute[]> {
+  const { data } = await API.get<Attribute[]>(`${ADMIN_ENDPOINT}/attributes`);
+  return data;
+}
+
 export async function createAdminAttribute(payload: CreateAttributePayload): Promise<Attribute> {
   const { data } = await API.post<Attribute>(`${ADMIN_ENDPOINT}/attributes`, payload);
   return data;
@@ -15,15 +20,8 @@ export async function createAdminAttribute(payload: CreateAttributePayload): Pro
 export async function updateAdminAttribute(
   id: number,
   payload: UpdateAttributePayload,
-  opts?: { useIfMatch?: boolean }
 ): Promise<Attribute> {
-  const maybeVersion = (payload as any)?.version;
-  const headers =
-    opts?.useIfMatch && maybeVersion != null
-      ? { "If-Match": `W/"${maybeVersion}"` }
-      : undefined;
-
-  const { data } = await API.put<Attribute>(`${ADMIN_ENDPOINT}/attributes/${id}`, payload, { headers });
+  const { data } = await API.put<Attribute>(`${ADMIN_ENDPOINT}/attributes/${id}`, payload);
   return data;
 }
 

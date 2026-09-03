@@ -35,6 +35,10 @@ import {
   previewInvitation,
   acceptInvitation,
 } from "../../services/business/invitations/publicInvitation.service";
+import {
+  getPersonDisplayName,
+  getPersonInitials,
+} from "../../utils/personDisplayName";
 
 // ---- Constantes / helpers ----
 const PENDING_INVITATION_KEY = "invitation.pendingToken";
@@ -80,21 +84,12 @@ type PersonProfileProps = {
 
 const PersonProfilePreview: React.FC<PersonProfileProps> = ({ person }) => {
   const attrs = person.attributes || [];
-
-  // NOTE: idéalement, ne pas hardcoder 2/3. À terme, utilisez un mapping d'attributs depuis GlobalDataContext.
-  const firstName =
-    attrs.find((a) => a.attributeId === 2)?.value || undefined;
-  const lastName =
-    attrs.find((a) => a.attributeId === 3)?.value || undefined;
-
-  const fullName =
-    [firstName, lastName].filter(Boolean).join(" ") || "Profil de la personne";
+  const fullName = getPersonDisplayName(person);
+  const initials = getPersonInitials(person);
   const primaryPhoto =
     person.photos && person.photos.length > 0 ? person.photos[0] : null;
 
-  const otherAttributes = attrs
-    .filter((a) => ![2, 3].includes(a.attributeId))
-    .slice(0, 4);
+  const otherAttributes = attrs.slice(0, 4);
 
   return (
     <Box
@@ -109,8 +104,7 @@ const PersonProfilePreview: React.FC<PersonProfileProps> = ({ person }) => {
       }}
     >
       <Avatar src={primaryPhoto?.url || undefined} alt={fullName} sx={{ width: 56, height: 56 }}>
-        {(firstName?.[0] || "").toUpperCase()}
-        {(lastName?.[0] || "").toUpperCase()}
+        {initials}
       </Avatar>
 
       <Box sx={{ flex: 1 }}>

@@ -84,23 +84,6 @@ export default function AdvancedAttributeSettings({
               />
             )}
           />
-
-          <Controller
-            name="category"
-            control={control}
-            render={({ field }) => (
-              <SettingRow
-                label={t("ATTRIBUTE_FORM.SETTINGS.CATEGORY_LABEL", {
-                  defaultValue: "Afficher comme catégorie",
-                })}
-                description={t("ATTRIBUTE_FORM.SETTINGS.CATEGORY_DESC", {
-                  defaultValue: "Présente cette information comme une catégorie dans les profils.",
-                })}
-                checked={!!field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
         </Stack>
       </AccordionDetails>
     </Accordion>

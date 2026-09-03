@@ -16,6 +16,7 @@ import {
 import ClearIcon from "@mui/icons-material/Clear";
 import { AttributeFilterDto } from "../../../services/dto/person/search/PersonSearchRequestDto";
 import { Attribute, ValueType, isRange } from "../../../models/commons/Attribute/Attribute";
+import { resolveEnumSelectionMode } from "../utils/enumSelection";
 
 type Props = {
   filtersAttributes: Attribute[];
@@ -40,8 +41,11 @@ const getOptions = (a: Attribute) => a.options ?? [];
 const isEnumAttr = (a: Attribute) =>
   getType(a) === "ENUM" || getOptions(a).length > 0;
 
-const isCategoryAttr = (a: Attribute) =>
-  Boolean(a.category) || (isEnumAttr(a) && (a.maxValues === 1 || a.required));
+const isSingleSelectEnum = (a: Attribute) =>
+  isEnumAttr(a) && resolveEnumSelectionMode(a.maxValues) === "single";
+
+const isMultiSelectEnum = (a: Attribute) =>
+  isEnumAttr(a) && resolveEnumSelectionMode(a.maxValues) === "multiple";
 
 const isNumberAttr = (a: Attribute) =>
   getType(a) === "NUMBER" || (isRange(a.constraint) && !!a.constraint.range?.step);
@@ -193,8 +197,7 @@ const TrombiFilters: React.FC<Props> = ({
                   : 0;
 
                 const isBigEnum =
-                  (isEnumAttr(attr) || isCategoryAttr(attr)) &&
-                  (options.length >= 10 || avgLabelLen >= 16);
+                  isEnumAttr(attr) && (options.length >= 10 || avgLabelLen >= 16);
 
                 const fullWidth = isBigEnum || false;
 
@@ -241,8 +244,8 @@ const TrombiFilters: React.FC<Props> = ({
                       )}
                     </Stack>
 
-                    {/* CATEGORY (exclusive) */}
-                    {isCategoryAttr(attr) &&
+                    {/* ENUM à valeur unique */}
+                    {isSingleSelectEnum(attr) &&
                       (() => {
                         const opts = enumQuery[attr.id]?.trim()
                           ? filteredOptions(attr)
@@ -287,8 +290,8 @@ const TrombiFilters: React.FC<Props> = ({
                         );
                       })()}
 
-                    {/* ENUM (multi) */}
-                    {isEnumAttr(attr) && !isCategoryAttr(attr) && (
+                    {/* ENUM à valeurs multiples */}
+                    {isMultiSelectEnum(attr) && (
                       <>
                         {getOptions(attr).length > 8 && (
                           <TextField

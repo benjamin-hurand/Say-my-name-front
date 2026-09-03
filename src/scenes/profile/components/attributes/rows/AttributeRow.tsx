@@ -210,22 +210,6 @@ const AttributeRow: React.FC<Props> = ({
     return { added, updated, deleted, changed };
   }, [workingChips]);
 
-  const createdSet = React.useMemo(() => {
-    const origIds = new Set(originalChipsRef.current.map((p) => p.id));
-    const s = new Set<number>();
-    for (const p of workingChips) if (!origIds.has(p.id)) s.add(p.id);
-    return s;
-  }, [workingChips]);
-
-  const updatedSet = React.useMemo(() => {
-    const origMap = new Map(originalChipsRef.current.map((p) => [p.id, norm(p.value)]));
-    const s = new Set<number>();
-    for (const p of workingChips) {
-      if (origMap.has(p.id) && norm(p.value) !== origMap.get(p.id)) s.add(p.id);
-    }
-    return s;
-  }, [workingChips]);
-
   const internalDirty = computeDiff().changed;
   const dirty = typeof hasUnsavedChanges === "boolean" ? hasUnsavedChanges : internalDirty;
 
@@ -266,21 +250,6 @@ const AttributeRow: React.FC<Props> = ({
     () => (changeRequests ?? []).find((cr) => (cr as any).attributeId === attrDef.id) ?? null,
     [changeRequests, attrDef.id]
   );
-
-  const crTargetsByPaId = React.useMemo(() => {
-    const map = new Map<number, string>();
-    if (!existingCrForAttr) return map;
-    for (const it of existingCrForAttr.items ?? []) {
-      if (!it.personAttribute?.id) continue;
-      if (it.action === "UPDATE") {
-        const pv = (it.proposedValue ?? "").toString();
-        map.set(it.personAttribute.id, `Demande : mettre à jour cette valeur → « ${pv} »`);
-      } else if (it.action === "DELETE") {
-        map.set(it.personAttribute.id, "Demande : supprimer cette valeur");
-      }
-    }
-    return map;
-  }, [existingCrForAttr]);
 
   const pendingBadge = existingCrForAttr?.status === "PENDING" ? 1 : 0;
 
@@ -391,22 +360,6 @@ const AttributeRow: React.FC<Props> = ({
             ((pa.value ?? "").trim().replace(/\s+/g, " ") !== origMap.get(pa.id));
 
           const changeMarker = marker ?? (isUpdated ? "update" : null);
-
-          const crTooltip = ((): string | undefined => {
-            const cr = (changeRequests ?? []).find((cr) => (cr as any).attributeId === attrDef.id);
-            if (!cr) return undefined;
-            for (const it of (cr.items ?? [])) {
-              if (!it.personAttribute?.id) continue;
-              if (it.personAttribute?.id === pa.id) {
-                if (it.action === "UPDATE") {
-                  const pv = (it.proposedValue ?? "").toString();
-                  return `Demande : mettre à jour cette valeur → « ${pv} »`;
-                }
-                if (it.action === "DELETE") return "Demande : supprimer cette valeur";
-              }
-            }
-            return undefined;
-          })();
 
           return (
             <AttributeChipValueItem

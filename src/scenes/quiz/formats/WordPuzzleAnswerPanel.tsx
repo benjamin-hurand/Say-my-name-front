@@ -1,5 +1,5 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Box, Button, Chip, Stack, TextField, Typography } from "@mui/material";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
 import {
   QuizAnswerSubmissionDto,
   buildQuizAnswerSubmission,
@@ -34,7 +34,7 @@ function padToLength(word: string, n: number): string[] {
 }
 
 export const WordPuzzleAnswerPanel = forwardRef<WordPuzzleAnswerPanelHandle, Props>(function WordPuzzleAnswerPanel(
-  { question, disabled = false, accentColor },
+  { question, disabled = false },
   ref
 ) {
   const payload = question.payload?.wordPuzzle;

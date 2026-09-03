@@ -61,13 +61,10 @@ interface TrombiTableProps {
 
 const TrombiTable: React.FC<TrombiTableProps> = ({
   items,
-  loading,
   isFollowed,
   onToggleFollow,
   hideFollowFeatures,
 
-  selectedFilters,
-  searchText,
 
   selectionEnabled = false,
   selectedIds,

@@ -28,6 +28,7 @@ import {
   DEFAULT_CUSTOM_VALUE_TYPE,
   resolveFieldSemanticContext,
 } from "./attributeForm/attributeForm.semantic";
+import { isIdentitySourceEligible } from "./attributeForm/attributeForm.identitySource";
 import {
   sanitizeConfigForValueType,
   type SanitizedAttributeConfig,
@@ -37,6 +38,7 @@ import { resolveSuggestedCasingStrategy } from "./attributeForm/attributeForm.ca
 import {
   resolveConceptAvailability,
   resolveConfiguredConceptItems,
+  isNormalAttributeConcept,
 } from "./attributeForm/attributeForm.conceptAvailability";
 import type {
   AttributeFormDrawerProps,
@@ -165,6 +167,7 @@ export default function AttributeFormDrawer({
 
   const watchedConceptId = watch("conceptId");
   const watchedType = watch("type");
+  const watchedMaxValues = watch("maxValues") ?? 1;
   const fieldContext = useMemo(
     () =>
       resolveFieldSemanticContext({
@@ -212,7 +215,19 @@ export default function AttributeFormDrawer({
   );
 
   const selectedConceptDerived = fieldContext.isDerived;
-  const selectedIdentityEligible = fieldContext.identityComponentEligible;
+  const selectedIdentitySourceEligible = isIdentitySourceEligible({
+    isCustom: fieldContext.isCustom,
+    conceptEligible: fieldContext.identityComponentEligible,
+    valueType: fieldContext.effectiveValueType,
+    maxValues: watchedMaxValues,
+    conceptCode: selectedConceptCode,
+  });
+
+  useEffect(() => {
+    if (!selectedIdentitySourceEligible && getValues("identitySource")) {
+      setValue("identitySource", false, { shouldDirty: true });
+    }
+  }, [getValues, selectedIdentitySourceEligible, setValue]);
 
   const applySanitizedConfig = useCallback(
     (patch: SanitizedAttributeConfig) => {
@@ -355,7 +370,7 @@ export default function AttributeFormDrawer({
       setValue("type", concept.valueType, { shouldDirty: true });
 
       if (!concept.identityComponentEligible) {
-        setValue("primaryField", false, { shouldDirty: true });
+        setValue("identitySource", false, { shouldDirty: true });
       }
 
       if (concept.derived && getValues("editPolicy") !== "DERIVED") {
@@ -370,7 +385,10 @@ export default function AttributeFormDrawer({
     (nextConceptId: number | null) => {
       if (
         nextConceptId != null &&
-        availabilityByConceptId.get(nextConceptId)?.available === false
+        (availabilityByConceptId.get(nextConceptId)?.available === false ||
+          !conceptOptions.some(
+            (concept) => concept.id === nextConceptId && isNormalAttributeConcept(concept),
+          ))
       ) {
         return;
       }
@@ -431,8 +449,15 @@ export default function AttributeFormDrawer({
 
   const onSubmit: SubmitHandler<AttributeCreateFormOutput> = async (data) => {
     try {
+      if (initial?.conceptCode === "IDENTITY") {
+        notifyError(t("ATTRIBUTE_FORM.IDENTITY_PROTECTED", {
+          defaultValue: "L'attribut système Identité ne peut pas être modifié ici.",
+        }));
+        return;
+      }
+
       const effectiveEditPolicy: EditPolicy = selectedConceptDerived ? "DERIVED" : data.editPolicy;
-      const effectivePrimaryField = selectedIdentityEligible ? data.primaryField : false;
+      const effectiveIdentitySource = selectedIdentitySourceEligible ? data.identitySource : false;
       const effectiveType: ValueType = fieldContext.effectiveValueType;
       const effectiveMaxValues = resolveConceptMaxValues(
         fieldContext.requiredMaxValues,
@@ -442,8 +467,7 @@ export default function AttributeFormDrawer({
       const commonPayload = {
         name: data.name,
         conceptId: data.conceptId ?? null,
-        primaryField: effectivePrimaryField,
-        category: data.category,
+        identitySource: effectiveIdentitySource,
         maxValues: effectiveMaxValues,
         filter: data.filter,
         sort: data.sort,
@@ -458,12 +482,11 @@ export default function AttributeFormDrawer({
 
       if (isEdit && initial) {
         const payload: UpdateAttributePayload = {
-          id: initial.id,
           displayOrder: initial.displayOrder ?? null,
           ...commonPayload,
         };
 
-        await updateAdminAttribute(initial.id, payload, { useIfMatch: true });
+        await updateAdminAttribute(initial.id, payload);
 
         notifySuccess(
           t("ATTRIBUTE_FORM.SUCCESS_UPDATED", {
@@ -548,10 +571,10 @@ export default function AttributeFormDrawer({
             casingApplicable={fieldContext.casingApplicable}
             recommendedCasingStrategy={fieldContext.defaultCasingStrategy}
             onCasingCustomizationChange={handleCasingCustomizationChange}
-            identityComponentEligible={fieldContext.identityComponentEligible}
+            identitySourceEligible={selectedIdentitySourceEligible}
             requiredMaxValues={fieldContext.requiredMaxValues}
             advancedSettingsInitiallyExpanded={Boolean(
-              initial && (initial.filter || initial.sort || initial.category),
+              initial && (initial.filter || initial.sort),
             )}
             isNameCustomizedRef={isNameCustomizedRef}
           />

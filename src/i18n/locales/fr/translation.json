@@ -13,14 +13,6 @@
       "LABEL": "Nom",
       "DESCRIPTION": "Nom de famille de la personne"
     },
-    "NICKNAME": {
-      "LABEL": "Surnom",
-      "DESCRIPTION": "Nom informel ou préféré"
-    },
-    "TITLE": {
-      "LABEL": "Titre",
-      "DESCRIPTION": "Titre ou civilité (Dr., Prof., etc.)"
-    },
     "GENDER": {
       "LABEL": "Genre",
       "DESCRIPTION": "Genre de la personne"
@@ -28,18 +20,6 @@
     "IDENTITY": {
       "LABEL": "Identité",
       "DESCRIPTION": "Identité dérivée combinant plusieurs composants d'identité"
-    },
-    "DEPARTMENT": {
-      "LABEL": "Département",
-      "DESCRIPTION": "Département ou unité organisationnelle"
-    },
-    "PROMOTION": {
-      "LABEL": "Promotion",
-      "DESCRIPTION": "Promotion, classe ou cohorte"
-    },
-    "ARRIVAL_DATE": {
-      "LABEL": "Date d'arrivée",
-      "DESCRIPTION": "Date à laquelle la personne a rejoint le groupe"
     }
   },
   "ATTRIBUTE_FORM": {
@@ -84,9 +64,7 @@
       "IDENTITY_LABEL": "Utiliser pour identifier une personne",
       "IDENTITY_DESC": "Cette valeur participera au nom affich\u00e9 de la personne.",
       "FILTER_LABEL": "Disponible dans les filtres",
-      "SORT_LABEL": "Disponible pour le tri",
-      "CATEGORY_LABEL": "Afficher comme cat\u00e9gorie",
-      "CATEGORY_DESC": "Pr\u00e9sente cette information comme une cat\u00e9gorie dans les profils."
+      "SORT_LABEL": "Disponible pour le tri"
     },
     "ENUM_ADD": "Ajouter",
     "ENUM_EMPTY": "Aucune option ajout\u00e9e"

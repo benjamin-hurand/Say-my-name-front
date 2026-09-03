@@ -30,6 +30,20 @@ test("filters the picker to available concepts without changing catalog order", 
   );
 });
 
+test("never exposes the system IDENTITY concept in normal creation", () => {
+  const catalog = [
+    { id: 1, code: "FIRST_NAME" },
+    { id: 2, code: "IDENTITY" },
+    { id: 3, code: "GENDER" },
+  ];
+  const availability = resolveConceptAvailability(catalog, []);
+
+  assert.deepEqual(
+    filterAvailableConcepts(catalog, availability).map(({ code }) => code),
+    ["FIRST_NAME", "GENDER"],
+  );
+});
+
 test("returns an empty system catalog when every concept is configured", () => {
   const availability = resolveConceptAvailability(
     concepts,

@@ -19,10 +19,8 @@ import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
 import MarkEmailUnreadRoundedIcon from "@mui/icons-material/MarkEmailUnreadRounded";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 
-import {
-  PersonAttributeExtraDto,
-  PersonCardDto,
-} from "../../../services/dto/person/search/PersonCardDtos";
+import { PersonCardDto } from "../../../services/dto/person/search/PersonCardDtos";
+import { getPersonDisplayName } from "../../../utils/personDisplayName";
 import useLongPress from "../hooks/useLongPress";
 
 type SelectedFilters = Record<
@@ -30,20 +28,6 @@ type SelectedFilters = Record<
   { op: "IN" | "LIKE" | "RANGE" | undefined; values: string[] }
 >;
 
-const byOrder = (
-  a?: PersonAttributeExtraDto | null,
-  b?: PersonAttributeExtraDto | null
-) =>
-  (a?.displayOrder ?? Number.MAX_SAFE_INTEGER) -
-  (b?.displayOrder ?? Number.MAX_SAFE_INTEGER);
-
-function displayName(p: PersonCardDto) {
-  const parts = (p?.primaryAttributes ?? [])
-    .filter((x) => !!x?.value)
-    .sort(byOrder)
-    .map((x) => x.value.trim());
-  return parts.join(" ").trim() || `#${p?.idPerson ?? "?"}`;
-}
 function initialsFrom(name: string) {
   const w = name.trim().split(/\s+/).slice(0, 2);
   return w.map((x) => x[0]?.toUpperCase() ?? "").join("") || "??";
@@ -75,8 +59,6 @@ const TrombiCard: React.FC<{
   followPending = false,
   onToggleFollow,
   hideFollowFeatures = false,
-  selectedFilters,
-  searchText,
   selectionEnabled = false,
   selected = false,
   onSelectToggle,
@@ -91,7 +73,7 @@ const TrombiCard: React.FC<{
       onLongPress?.();
     }, { delay: 500 });
 
-  const name = displayName(person);
+  const name = getPersonDisplayName(person);
   const initials = useMemo(() => initialsFrom(name), [name]);
   const small = person.photoSmallUrl ?? null;
 

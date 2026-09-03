@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Box, Button, Chip, Divider, Stack, TextField, Typography } from "@mui/material";
 import {
   QuizAnswerSubmissionDto,
@@ -30,7 +30,7 @@ function canonicalText(v: string): string {
 }
 
 export const HangmanAnswerPanel = forwardRef<HangmanAnswerPanelHandle, Props>(function HangmanAnswerPanel(
-  { question, disabled = false, accentColor },
+  { question, disabled = false },
   ref
 ) {
   const payload = question.payload?.hangman;

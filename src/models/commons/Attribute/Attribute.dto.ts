@@ -15,9 +15,8 @@ export interface CreateAttributePayload {
   conceptId?: number | null;
   casingStrategy?: CasingStrategy;
 
-  maxValues?: number;          // 0 = illimité
-  primaryField?: boolean;
-  category?: boolean;
+  maxValues?: number;
+  identitySource?: boolean;
   filter?: boolean;
   sort?: boolean;
   required?: boolean;
@@ -36,7 +35,4 @@ export interface CreateAttributePayload {
 /**
  * Payload de mise à jour
  */
-export interface UpdateAttributePayload extends CreateAttributePayload {
-  id: number;
-  // version?: number; // décommente si tu ajoutes l’ETag côté back
-}
+export type UpdateAttributePayload = CreateAttributePayload;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Autocomplete,
   Box,
@@ -94,8 +94,6 @@ const AdminPersonEditDialog: React.FC<Props> = ({
 
   const [draft, setDraft] = useState<Record<number, string[]>>({});
   const [errors, setErrors] = useState<Record<number, string | undefined>>({});
-  const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
-
   useEffect(() => {
     if (!open || !person) return;
     const init: Record<number, string[]> = {};

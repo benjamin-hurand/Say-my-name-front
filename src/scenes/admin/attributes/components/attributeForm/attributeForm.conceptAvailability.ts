@@ -11,6 +11,10 @@ export type ConceptAvailability = {
   usedByAttributeName?: string;
 };
 
+export function isNormalAttributeConcept(concept: Pick<Concept, "code">): boolean {
+  return concept.code !== "IDENTITY";
+}
+
 export function resolveConceptAvailability(
   concepts: readonly Pick<Concept, "id">[],
   attributes: readonly Pick<Attribute, "id" | "conceptId" | "name">[],
@@ -39,12 +43,13 @@ export function resolveConceptAvailability(
   return availabilityByConceptId;
 }
 
-export function filterAvailableConcepts<T extends Pick<Concept, "id">>(
+export function filterAvailableConcepts<T extends Pick<Concept, "id" | "code">>(
   concepts: readonly T[],
   availabilityByConceptId: ReadonlyMap<number, ConceptAvailability>,
 ): T[] {
   return concepts.filter(
     (concept) =>
+      isNormalAttributeConcept(concept) &&
       availabilityByConceptId.get(concept.id)?.available !== false,
   );
 }
@@ -60,6 +65,9 @@ export function resolveConfiguredConceptItems(
   );
 
   return concepts.flatMap((concept) => {
+    if (!isNormalAttributeConcept(concept)) {
+      return [];
+    }
     const availability = availabilityByConceptId.get(concept.id);
     if (availability?.available !== false) {
       return [];
