@@ -51,7 +51,6 @@ type DragContext = {
   dragHandleProps: DraggableProvidedDragHandleProps | null | undefined;
   style: DraggableStyle | undefined;
   isDragging: boolean;
-  isLast: boolean;
 };
 
 // @hello-pangea/dnd measures each Draggable's own margin box (via
@@ -60,6 +59,15 @@ type DragContext = {
 // `gap` — that spacing lives outside the box it measures. Using `gap` here
 // was the source of the small drag-time spacing drift: give the row itself
 // this margin instead, so the space is part of the geometry dnd measures.
+//
+// This margin is applied uniformly to every custom row, the source-order
+// last one included. dnd never reorders the DOM during a drag — it only
+// translates elements visually — so an "is this the last row" flag derived
+// from array position always describes where a row started, not wherever
+// it currently renders on screen. Zeroing the margin on that one row bound
+// its geometry to a position it could visually move away from, so it ended
+// up hugging whatever neighbor another dragged row put next to it. The
+// geometry a Draggable carries must stay invariant to its position.
 const CUSTOM_ROW_SPACING = 1.25;
 
 function getRowId(row: Attribute): number {
@@ -292,7 +300,7 @@ export default function AttributeList({
           borderRadius: 3,
           backgroundColor: alpha(theme.palette.background.paper, 0.65),
           overflow: "visible",
-          ...(drag && { mb: drag.isLast ? 0 : CUSTOM_ROW_SPACING }),
+          ...(drag && { mb: CUSTOM_ROW_SPACING }),
           ...(drag?.isDragging && {
             boxShadow: theme.shadows[6],
           }),
@@ -541,7 +549,6 @@ export default function AttributeList({
                           dragHandleProps: dragProvided.dragHandleProps,
                           style: dragProvided.draggableProps.style,
                           isDragging: dragSnapshot.isDragging,
-                          isLast: idx === customRows.length - 1,
                         });
 
                         if (dragSnapshot.isDragging) {

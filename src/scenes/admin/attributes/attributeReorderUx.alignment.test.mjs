@@ -125,6 +125,14 @@ test("custom row spacing is carried by each Draggable's own margin, not the drop
   assert.doesNotMatch(droppableContainerSx, /gap:/);
 
   assert.match(list, /const CUSTOM_ROW_SPACING = /);
-  assert.match(list, /mb: drag\.isLast \? 0 : CUSTOM_ROW_SPACING/);
-  assert.match(list, /isLast: idx === customRows\.length - 1/);
+
+  // The margin must be the exact same value on every custom row, including
+  // the source-last one: dnd never reorders the DOM during a drag (only
+  // translates elements visually), so a margin conditioned on array index
+  // ("isLast") stays pinned to the source position while the row can be
+  // dragged anywhere else on screen — it then hugs whatever new neighbor
+  // ends up next to it instead of keeping a consistent gap. The Draggable's
+  // margin box must be invariant to its position.
+  assert.match(list, /mb: CUSTOM_ROW_SPACING/);
+  assert.doesNotMatch(list, /isLast/);
 });
