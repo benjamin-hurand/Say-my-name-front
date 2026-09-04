@@ -25,6 +25,7 @@ import AttributeFormDrawer from "./components/AttributeFormDrawer";
 import AttributeList from "./components/AttributeList";
 import DisplayNameCard from "./components/DisplayNameCard";
 import { excludeSystemIdentity } from "./components/identity.utils";
+import { splitStandardAndCustomAttributes } from "./components/attributeOrdering";
 import {
   ATTRIBUTE_ISSUE_SEVERITY,
   computeAttributeIssueTags,
@@ -313,33 +314,49 @@ export default function AdminAttributesPage() {
   }, [visibleAttributes, issuesByAttributeId, viewMode]);
 
   const totalA = filteredAttributes.length;
-  const pageStart = page * pageSize;
-  const pageEnd = pageStart + pageSize;
-  const pageRows = filteredAttributes.slice(pageStart, pageEnd);
 
-  const onReorder = async (rowsOfCurrentPage: Attribute[]) => {
-    const offset = page * pageSize;
-    const items = rowsOfCurrentPage.map((r, i) => ({
+  // Standards (FIRST_NAME/LAST_NAME/GENDER) form a fixed block, always shown
+  // in full above the custom fields; only customs are paginated/reordered.
+  const { standards: standardRows, customs: customAttributesAll } = useMemo(
+    () => splitStandardAndCustomAttributes(filteredAttributes),
+    [filteredAttributes]
+  );
+
+  const totalCustom = customAttributesAll.length;
+  const customPageStart = page * pageSize;
+  const customPageEnd = customPageStart + pageSize;
+  const customRows = customAttributesAll.slice(customPageStart, customPageEnd);
+
+  // Custom-only reorder: standards are never included in `items`, so the
+  // backend never touches FIRST_NAME/LAST_NAME/GENDER's displayOrder.
+  const onReorder = async (nextCustomPageRows: Attribute[]) => {
+    const offset = customPageStart;
+    const items = nextCustomPageRows.map((r, i) => ({
       id: getAttrId(r),
       displayOrder: (offset + i + 1) * 10,
     }));
 
+    // Apply the dropped order immediately: this is the only state read by
+    // the list, so the new order is what stays on screen through the PATCH.
+    // Nothing re-renders on success; only a failed PATCH rolls this back.
+    const previousAttributes = attributes;
+
+    setAttributes((prev) => {
+      const map = new Map(prev.map((a) => [getAttrId(a), { ...a }]));
+
+      for (const it of items) {
+        const found = map.get(it.id);
+        if (found) (found as any).displayOrder = it.displayOrder;
+      }
+
+      return [...map.values()];
+    });
+
     try {
       await reorderAdminAttributes(items);
-
-      setAttributes((prev) => {
-        const map = new Map(prev.map((a) => [getAttrId(a), { ...a }]));
-
-        for (const it of items) {
-          const found = map.get(it.id);
-          if (found) (found as any).displayOrder = it.displayOrder;
-        }
-
-        return [...map.values()].sort((x, y) => getDisplayOrder(x) - getDisplayOrder(y));
-      });
-
       notifySuccess(t("ATTRIBUTE_PAGE.REORDER_SUCCESS", { defaultValue: "Ordre mis à jour" }));
     } catch (e: any) {
+      setAttributes(previousAttributes);
       notifyError(
         e?.message ||
           t("ATTRIBUTE_PAGE.REORDER_ERROR", { defaultValue: "Erreur de réordonnancement" })
@@ -747,10 +764,11 @@ export default function AdminAttributesPage() {
             </Card>
           ) : (
             <AttributeList
-              rows={pageRows}
+              standardRows={standardRows}
+              customRows={customRows}
               page={page}
               pageSize={pageSize}
-              total={totalA}
+              customTotal={totalCustom}
               onPageChange={setPage}
               onReorder={onReorder}
               onEdit={openAttributeEditor}

@@ -153,6 +153,9 @@
     "USAGE_FILTERABLE": "Filterable",
     "USAGE_SORTABLE": "Sortable",
     "USAGE_FILTERABLE_SORTABLE": "Filterable and sortable",
+    "STANDARD_FIELDS_TITLE": "Standard fields",
+    "CUSTOM_FIELDS_TITLE": "Custom fields",
+    "CUSTOM_FIELDS_EMPTY": "No custom field yet.",
     "DISPLAY_NAME": {
       "LABEL": "Displayed name",
       "BOTH_LABEL": "First name + Last name",

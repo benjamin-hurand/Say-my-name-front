@@ -149,6 +149,9 @@
     "USAGE_FILTERABLE": "Filtrable",
     "USAGE_SORTABLE": "Triable",
     "USAGE_FILTERABLE_SORTABLE": "Filtrable et triable",
+    "STANDARD_FIELDS_TITLE": "Champs standards",
+    "CUSTOM_FIELDS_TITLE": "Champs personnalisés",
+    "CUSTOM_FIELDS_EMPTY": "Aucun champ personnalisé pour le moment.",
     "DISPLAY_NAME": {
       "LABEL": "Nom affiché",
       "BOTH_LABEL": "Prénom + Nom",
