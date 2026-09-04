@@ -2,7 +2,6 @@ import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-p
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DragIndicatorRoundedIcon from "@mui/icons-material/DragIndicatorRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import {
   Box,
@@ -19,7 +18,6 @@ import { toast } from "react-toastify";
 
 import { Attribute, ValueType } from "../../../../models/commons/Attribute/Attribute";
 import { getValueTypeLabel } from "./attributeForm/attributeForm.helpers";
-import { isIdentitySourceAttribute } from "./identity.utils";
 import { deleteAdminAttribute } from "../../../../services/business/admin/admin.attributes.service";
 import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 import type { AttributeIssueInfo } from "../AdminAttributesPage";
@@ -120,18 +118,11 @@ export default function AttributeList({
   const handleDragEnd = (r: DropResult) => {
     if (!r.destination) return;
 
-    const movedRow = rows[r.source.index];
-    if (!movedRow || isIdentitySourceAttribute(movedRow)) return;
-
     const next = Array.from(rows);
     const [moved] = next.splice(r.source.index, 1);
     next.splice(r.destination.index, 0, moved);
 
-    // Identity sources keep their displayOrder here: it is only ever
-    // changed from the "Identité des membres" reorder controls.
-    const reorderable = next.filter((row) => !isIdentitySourceAttribute(row));
-
-    onReorder(reorderable);
+    onReorder(next);
   };
 
   const handleDelete = async (row: Attribute) => {
@@ -216,7 +207,6 @@ export default function AttributeList({
                 const issue = getIssueFor(row);
                 const conceptCode = getConceptCode(row);
                 const isSystemIdentity = conceptCode === "IDENTITY";
-                const isIdentitySource = isIdentitySourceAttribute(row);
                 const name =
                   getRowName(row) ||
                   t("ATTRIBUTE_UI.UNNAMED_ATTRIBUTE", { defaultValue: "Champ sans nom" });
@@ -227,7 +217,6 @@ export default function AttributeList({
                     draggableId={String(getRowId(row))}
                     index={idx}
                     key={getRowId(row)}
-                    isDragDisabled={isIdentitySource}
                   >
                     {(dragProvided) => (
                       <Box
@@ -265,47 +254,22 @@ export default function AttributeList({
                               minWidth: 0,
                             }}
                           >
-                            {isIdentitySource ? (
-                              <Tooltip
-                                title={t("ATTRIBUTE_UI.IDENTITY_ORDER_LOCKED_TOOLTIP", {
-                                  defaultValue:
-                                    "L’ordre de ce champ se règle dans « Identité des membres ».",
-                                })}
-                              >
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: { xs: "flex-start", sm: "center" },
-                                    width: { xs: "100%", sm: 28 },
-                                    minWidth: { xs: 0, sm: 28 },
-                                    height: 28,
-                                    color: "text.disabled",
-                                    cursor: "not-allowed",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <DragIndicatorRoundedIcon fontSize="small" />
-                                </Box>
-                              </Tooltip>
-                            ) : (
-                              <Box
-                                {...dragProvided.dragHandleProps}
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: { xs: "flex-start", sm: "center" },
-                                  width: { xs: "100%", sm: 28 },
-                                  minWidth: { xs: 0, sm: 28 },
-                                  height: 28,
-                                  color: "text.secondary",
-                                  cursor: "grab",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                <DragIndicatorRoundedIcon fontSize="small" />
-                              </Box>
-                            )}
+                            <Box
+                              {...dragProvided.dragHandleProps}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: { xs: "flex-start", sm: "center" },
+                                width: { xs: "100%", sm: 28 },
+                                minWidth: { xs: 0, sm: 28 },
+                                height: 28,
+                                color: "text.secondary",
+                                cursor: "grab",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <DragIndicatorRoundedIcon fontSize="small" />
+                            </Box>
 
                             <Box sx={{ minWidth: 0, width: "100%", overflow: "visible" }}>
                               <Stack spacing={0.5} sx={{ minWidth: 0, overflow: "visible" }}>
@@ -333,22 +297,6 @@ export default function AttributeList({
                                     >
                                       {name}
                                     </Typography>
-
-                                    {isIdentitySource && (
-                                      <Tooltip
-                                        title={t("ATTRIBUTE_UI.IDENTITY_ICON_TOOLTIP", {
-                                          defaultValue: "Utilisé pour identifier une personne",
-                                        })}
-                                      >
-                                        <FingerprintRoundedIcon
-                                          fontSize="small"
-                                          color="primary"
-                                          aria-label={t("ATTRIBUTE_UI.IDENTITY_ICON_TOOLTIP", {
-                                            defaultValue: "Utilisé pour identifier une personne",
-                                          })}
-                                        />
-                                      </Tooltip>
-                                    )}
                                   </Stack>
 
                                   {issue && (

@@ -73,6 +73,16 @@ function normalizeValues(next: string[], max?: number | null): string[] {
 const isMultiple = (a: Attribute) => (a.maxValues === 1 ? false : true);
 const isEnum = (a: Attribute) => Array.isArray(a.options) && a.options.length > 0;
 
+type EnumOptionEntry = { code: string; label: string };
+
+/** Fact values are the stable option code; only the label is for display. */
+function enumOptionsOf(a: Attribute): EnumOptionEntry[] {
+  return (a.options ?? []).map((o: any) => {
+    const code = o?.code ?? (o?.id != null ? String(o.id) : "");
+    return { code, label: o?.label ?? code };
+  });
+}
+
 const AdminPersonEditDialog: React.FC<Props> = ({
   open,
   person,
@@ -170,11 +180,12 @@ const AdminPersonEditDialog: React.FC<Props> = ({
               const maxInfo = multiple && max && max > 0 ? `${values.length}/${max}` : undefined;
 
               if (enumish && multiple) {
-                const options = (attr.options ?? []).map(
-                  (o: any) => o?.value ?? o?.code ?? (o?.id != null ? String(o.id) : "")
-                );
+                const options = enumOptionsOf(attr);
+                const selected = values
+                  .map((v) => options.find((o) => o.code === v))
+                  .filter((o): o is EnumOptionEntry => !!o);
                 const limitReached = !!(max && max > 0 && values.length >= max);
-                const getDisabled = (opt: string) => limitReached && !values.includes(opt);
+                const getDisabled = (opt: EnumOptionEntry) => limitReached && !values.includes(opt.code);
 
                 return (
                   <Box key={attr.id}>
@@ -190,13 +201,15 @@ const AdminPersonEditDialog: React.FC<Props> = ({
                     <Autocomplete
                       multiple
                       options={options}
+                      getOptionLabel={(o) => o.label}
+                      isOptionEqualToValue={(o, v) => o.code === v.code}
                       filterSelectedOptions
-                      value={values}
+                      value={selected}
                       getOptionDisabled={getDisabled}
-                      onChange={(_, v) => setOne(attr.id, v as string[], max, required)}
+                      onChange={(_, v) => setOne(attr.id, v.map((o) => o.code), max, required)}
                       renderTags={(tagValue, getTagProps) =>
                         tagValue.map((option, index) => (
-                          <Chip variant="outlined" label={option} {...getTagProps({ index })} key={option} />
+                          <Chip variant="outlined" label={option.label} {...getTagProps({ index })} key={option.code} />
                         ))
                       }
                       renderInput={(params) => (
@@ -208,9 +221,7 @@ const AdminPersonEditDialog: React.FC<Props> = ({
               }
 
               if (enumish && !multiple) {
-                const options = (attr.options ?? []).map(
-                  (o: any) => o?.value ?? o?.code ?? (o?.id != null ? String(o.id) : "")
-                );
+                const options = enumOptionsOf(attr);
                 return (
                   <Box key={attr.id}>
                     <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -229,8 +240,8 @@ const AdminPersonEditDialog: React.FC<Props> = ({
                         <em>(vide)</em>
                       </MenuItem>
                       {options.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
+                        <MenuItem key={opt.code} value={opt.code}>
+                          {opt.label}
                         </MenuItem>
                       ))}
                     </TextField>

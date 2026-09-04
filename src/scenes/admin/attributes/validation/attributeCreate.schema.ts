@@ -48,7 +48,6 @@ export const attributeCreateSchema = z
       .min(1, "Le nombre maximal de valeurs doit être supérieur ou égal à 1")
       .default(1),
 
-    identitySource: z.boolean().default(false),
     filter: z.boolean().default(false),
     sort: z.boolean().default(false),
     required: z.boolean().default(false),
@@ -72,14 +71,6 @@ export const attributeCreateSchema = z
         code: z.ZodIssueCode.custom,
         path: ["constraintKind"],
         message: "Cette contrainte n’est pas compatible avec le type de donnée sélectionné.",
-      });
-    }
-
-    if (data.identitySource && (data.type !== "TEXT" || data.maxValues !== 1)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["identitySource"],
-        message: "Une source d'identité doit être un texte à valeur unique.",
       });
     }
 

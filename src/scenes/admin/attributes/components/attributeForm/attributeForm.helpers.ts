@@ -40,14 +40,7 @@ export function isConceptDerived(attribute?: Attribute): boolean {
   return !!attribute?.conceptDerived;
 }
 
-export function isIdentityComponentEligible(attribute?: Attribute): boolean {
-  return !!attribute?.identityComponentEligible;
-}
-
-export function makeDefaultValues(
-  initial?: Attribute,
-  presetIdentitySource?: boolean,
-): AttributeCreateFormInput {
+export function makeDefaultValues(initial?: Attribute): AttributeCreateFormInput {
   if (initial) {
     return {
       name: initial.name ?? "",
@@ -55,7 +48,6 @@ export function makeDefaultValues(
       type: initial.type ?? "TEXT",
       casingStrategy: initial.casingStrategy ?? "NONE",
       maxValues: initial.maxValues ?? 1,
-      identitySource: !!initial.identitySource,
       filter: !!initial.filter,
       sort: !!initial.sort,
       required: !!initial.required,
@@ -77,7 +69,6 @@ export function makeDefaultValues(
     type: "TEXT",
     casingStrategy: "NONE",
     maxValues: 1,
-    identitySource: !!presetIdentitySource,
     filter: false,
     sort: false,
     required: false,

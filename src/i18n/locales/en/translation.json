@@ -77,8 +77,6 @@
     "SETTINGS": {
       "REQUIRED_LABEL": "Required value",
       "REQUIRED_DESC": "Every person will need to have a value.",
-      "IDENTITY_LABEL": "Use to identify a person",
-      "IDENTITY_DESC": "This value will be part of the person's displayed name.",
       "FILTER_LABEL": "Available in filters",
       "FILTER_DESC": "Lets you use this field to filter the directory.",
       "SORT_LABEL": "Available for sorting",
@@ -91,7 +89,6 @@
   "ATTRIBUTE_PAGE": {
     "TITLE": "Fields",
     "SUBTITLE": "Define the information used to identify and organize the group's members.",
-    "REFRESH": "Refresh",
     "REFRESH_ERROR": "Error while refreshing the fields",
     "ADD_ATTRIBUTE": "Add a field",
     "EMPTY_TITLE": "No fields to display",
@@ -115,7 +112,6 @@
     },
     "TOP_ISSUES": {
       "concept-type-mismatch": "Some fields have a type that is incompatible with their concept.",
-      "identity-source-not-eligible": "Some identity sources are not consistent with their concept.",
       "default-error": "Some fields need to be fixed to keep a consistent schema.",
       "enum-without-options": "Some lists don't have any options configured yet.",
       "default-warning": "A few improvements are recommended to finalize the configuration."
@@ -132,9 +128,7 @@
   },
 
   "ATTRIBUTE_HEALTH_MESSAGES": {
-    "useless": "The field \"{{name}}\" doesn't seem to be put to much use right now.",
     "concept-type-mismatch": "The field \"{{name}}\" has a type \"{{type}}\" that is inconsistent with the concept \"{{concept}}\" ({{conceptValueType}}).",
-    "identity-source-not-eligible": "The field \"{{name}}\" is not a single-value text field eligible as an identity source.",
     "enum-without-options": "The list field \"{{name}}\" has no active options.",
     "default": "An issue was detected on \"{{name}}\"."
   },
@@ -159,17 +153,13 @@
     "USAGE_FILTERABLE": "Filterable",
     "USAGE_SORTABLE": "Sortable",
     "USAGE_FILTERABLE_SORTABLE": "Filterable and sortable",
-    "IDENTITY_ICON_TOOLTIP": "Used to identify a person",
-    "IDENTITY_ORDER_LOCKED_TOOLTIP": "This field's order is set in “Members identity”.",
-    "IDENTITY": {
-      "TITLE": "Members identity",
-      "SUBTITLE": "These fields make up, in this order, the displayed name of every person.",
-      "EMPTY": "No identity source configured yet.",
-      "PREVIEW_LABEL": "Preview",
-      "PREVIEW_EMPTY": "—",
-      "MOVE_UP_ARIA": "Move {{name}} up",
-      "MOVE_DOWN_ARIA": "Move {{name}} down",
-      "ADD_SOURCE_CTA": "Add a field as an identity source"
+    "DISPLAY_NAME": {
+      "LABEL": "Displayed name",
+      "BOTH_LABEL": "First name + Last name",
+      "FIRST_ONLY_LABEL": "First name",
+      "LAST_ONLY_LABEL": "Last name",
+      "PREVIEW": "Preview: {{value}}",
+      "EMPTY": "Add a First name or Last name field to identify members."
     }
   }
 }

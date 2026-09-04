@@ -76,8 +76,6 @@
     "SETTINGS": {
       "REQUIRED_LABEL": "Valeur obligatoire",
       "REQUIRED_DESC": "Chaque personne devra avoir une valeur.",
-      "IDENTITY_LABEL": "Utiliser pour identifier une personne",
-      "IDENTITY_DESC": "Cette valeur participera au nom affiché de la personne.",
       "FILTER_LABEL": "Disponible dans les filtres",
       "FILTER_DESC": "Permet d'utiliser ce champ pour filtrer le trombinoscope.",
       "SORT_LABEL": "Disponible pour le tri",
@@ -89,7 +87,6 @@
   "ATTRIBUTE_PAGE": {
     "TITLE": "Champs",
     "SUBTITLE": "Définissez les informations utiles pour identifier et organiser les membres du groupe.",
-    "REFRESH": "Actualiser",
     "REFRESH_ERROR": "Erreur lors de l’actualisation des champs",
     "ADD_ATTRIBUTE": "Ajouter un champ",
     "EMPTY_TITLE": "Aucun champ à afficher",
@@ -113,7 +110,6 @@
     },
     "TOP_ISSUES": {
       "concept-type-mismatch": "Certains champs ont un type incompatible avec leur concept.",
-      "identity-source-not-eligible": "Certaines sources d’identité ne sont pas cohérentes avec leur concept.",
       "default-error": "Des champs doivent être corrigés pour garantir un schéma cohérent.",
       "enum-without-options": "Certaines listes n’ont pas encore d’options configurées.",
       "default-warning": "Quelques améliorations sont recommandées pour finaliser la configuration."
@@ -129,9 +125,7 @@
     }
   },
   "ATTRIBUTE_HEALTH_MESSAGES": {
-    "useless": "Le champ \"{{name}}\" semble peu exploité actuellement.",
     "concept-type-mismatch": "Le champ \"{{name}}\" a un type \"{{type}}\" incohérent avec le concept \"{{concept}}\" ({{conceptValueType}}).",
-    "identity-source-not-eligible": "Le champ \"{{name}}\" n’est pas un texte à valeur unique éligible comme source d’identité.",
     "enum-without-options": "Le champ liste \"{{name}}\" ne possède aucune option active.",
     "default": "Problème détecté sur \"{{name}}\"."
   },
@@ -155,17 +149,13 @@
     "USAGE_FILTERABLE": "Filtrable",
     "USAGE_SORTABLE": "Triable",
     "USAGE_FILTERABLE_SORTABLE": "Filtrable et triable",
-    "IDENTITY_ICON_TOOLTIP": "Utilisé pour identifier une personne",
-    "IDENTITY_ORDER_LOCKED_TOOLTIP": "L’ordre de ce champ se règle dans « Identité des membres ».",
-    "IDENTITY": {
-      "TITLE": "Identité des membres",
-      "SUBTITLE": "Ces champs composent, dans cet ordre, le nom affiché de chaque personne.",
-      "EMPTY": "Aucune source d’identité configurée pour le moment.",
-      "PREVIEW_LABEL": "Aperçu",
-      "PREVIEW_EMPTY": "—",
-      "MOVE_UP_ARIA": "Monter {{name}}",
-      "MOVE_DOWN_ARIA": "Descendre {{name}}",
-      "ADD_SOURCE_CTA": "Ajouter un champ comme source d’identité"
+    "DISPLAY_NAME": {
+      "LABEL": "Nom affiché",
+      "BOTH_LABEL": "Prénom + Nom",
+      "FIRST_ONLY_LABEL": "Prénom",
+      "LAST_ONLY_LABEL": "Nom",
+      "PREVIEW": "Aperçu : {{value}}",
+      "EMPTY": "Ajoutez un champ Prénom ou Nom pour identifier les membres."
     }
   }
 }

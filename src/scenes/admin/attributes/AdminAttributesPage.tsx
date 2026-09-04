@@ -2,7 +2,6 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import TipsAndUpdatesOutlinedIcon from "@mui/icons-material/TipsAndUpdatesOutlined";
 import {
   Alert,
@@ -24,30 +23,27 @@ import { useTranslation } from "react-i18next";
 
 import AttributeFormDrawer from "./components/AttributeFormDrawer";
 import AttributeList from "./components/AttributeList";
-import IdentityMembersCard from "./components/IdentityMembersCard";
+import DisplayNameCard from "./components/DisplayNameCard";
+import { excludeSystemIdentity } from "./components/identity.utils";
 import {
-  buildIdentityReorderSwap,
-  excludeSystemIdentity,
-  isIdentitySourceAttribute,
-  sortByDisplayOrder,
-} from "./components/identity.utils";
+  ATTRIBUTE_ISSUE_SEVERITY,
+  computeAttributeIssueTags,
+  getConceptCode,
+  getConceptValueType,
+  getValueType,
+  type AttributeIssueTag,
+} from "./attributeHealth";
 
 import {
   getAdminAttributes,
   reorderAdminAttributes,
 } from "../../../services/business/admin/admin.attributes.service";
 
-import { Attribute, ValueType } from "../../../models/commons/Attribute/Attribute";
+import { Attribute } from "../../../models/commons/Attribute/Attribute";
 import type { Concept } from "../../../models/commons/Concept/Concept";
 
 import { useTenantData } from "../../../contexts/TenantDataContext";
 import { notifyError, notifySuccess } from "../../../services/notification/toast.service";
-
-type AttributeIssueTag =
-  | "useless"
-  | "concept-type-mismatch"
-  | "identity-source-not-eligible"
-  | "enum-without-options";
 
 export type AttributeIssueInfo = {
   tags: AttributeIssueTag[];
@@ -82,77 +78,6 @@ function getAttrName(a: Attribute): string {
 
 function getDisplayOrder(a: Attribute): number {
   return (a as any)?.displayOrder ?? 0;
-}
-
-function getConceptCode(a: Attribute): string | null {
-  return (a as any)?.conceptCode ?? null;
-}
-
-function getConceptId(a: Attribute): number | null {
-  return (a as any)?.conceptId ?? null;
-}
-
-function isIdentityComponentEligible(a: Attribute): boolean {
-  return !!(a as any)?.identityComponentEligible;
-}
-
-function getValueType(a: Attribute): ValueType | null {
-  return ((a as any)?.type as ValueType | null) ?? null;
-}
-
-function isFilterable(a: Attribute): boolean {
-  return !!(a as any)?.filter;
-}
-
-function isSortable(a: Attribute): boolean {
-  return !!(a as any)?.sort;
-}
-
-function isIdentitySource(a: Attribute): boolean {
-  return !!(a as any)?.identitySource;
-}
-
-function isValidIdentitySourceConfiguration(a: Attribute): boolean {
-  if (getConceptCode(a) === "IDENTITY") return false;
-  const conceptAllowsIdentity = getConceptId(a) == null || isIdentityComponentEligible(a);
-  return conceptAllowsIdentity && getValueType(a) === "TEXT" && a.maxValues === 1;
-}
-
-function getOptionsCount(a: Attribute): number {
-  return Array.isArray((a as any)?.options) ? (a as any).options.length : 0;
-}
-
-function getConceptValueType(
-  attribute: Attribute,
-  conceptsById: Map<number, Concept>,
-  conceptsByCode: Map<string, Concept>,
-): ValueType | null {
-  const conceptId = getConceptId(attribute);
-  if (conceptId != null) {
-    return conceptsById.get(conceptId)?.valueType ?? null;
-  }
-
-  const conceptCode = getConceptCode(attribute);
-  if (conceptCode) {
-    return conceptsByCode.get(conceptCode)?.valueType ?? null;
-  }
-
-  return null;
-}
-
-function isValueTypeCompatibleWithConcept(
-  attribute: Attribute,
-  conceptsById: Map<number, Concept>,
-  conceptsByCode: Map<string, Concept>,
-): boolean {
-  const attributeType = getValueType(attribute);
-  const conceptValueType = getConceptValueType(attribute, conceptsById, conceptsByCode);
-
-  if (!conceptValueType || !attributeType) {
-    return true;
-  }
-
-  return attributeType === conceptValueType;
 }
 
 export default function AdminAttributesPage() {
@@ -192,12 +117,6 @@ export default function AdminAttributesPage() {
       const conceptLabel = conceptCode ? getConceptLabel(conceptCode) : "?";
 
       switch (tag) {
-        case "useless":
-          return t("ATTRIBUTE_HEALTH_MESSAGES.useless", {
-            name,
-            defaultValue: `Le champ "${name}" semble peu exploité actuellement.`,
-          });
-
         case "concept-type-mismatch":
           return t("ATTRIBUTE_HEALTH_MESSAGES.concept-type-mismatch", {
             name,
@@ -205,12 +124,6 @@ export default function AdminAttributesPage() {
             concept: conceptLabel,
             conceptValueType: conceptValueType ?? "?",
             defaultValue: `Le champ "${name}" a un type "${attributeType ?? "?"}" incohérent avec le concept "${conceptLabel}" (${conceptValueType ?? "?"}).`,
-          });
-
-        case "identity-source-not-eligible":
-          return t("ATTRIBUTE_HEALTH_MESSAGES.identity-source-not-eligible", {
-            name,
-            defaultValue: `Le champ "${name}" n’est pas un texte à valeur unique éligible comme source d’identité.`,
           });
 
         case "enum-without-options":
@@ -268,11 +181,6 @@ export default function AdminAttributesPage() {
     [attributes],
   );
 
-  const identitySources = useMemo(
-    () => sortByDisplayOrder(visibleAttributes.filter(isIdentitySourceAttribute)),
-    [visibleAttributes],
-  );
-
   const diagnostics = useMemo(() => {
     const rows = visibleAttributes;
     const items: HealthDiagnostic[] = [];
@@ -281,44 +189,13 @@ export default function AdminAttributesPage() {
       const id = getAttrId(a);
       const name = getAttrName(a);
 
-      const isUseful = isFilterable(a) || isSortable(a) || isIdentitySource(a);
-      if (!isUseful) {
+      for (const tag of computeAttributeIssueTags(a, conceptsById, conceptsByCode)) {
         items.push({
-          tag: "useless",
-          severity: "warning",
+          tag,
+          severity: ATTRIBUTE_ISSUE_SEVERITY[tag],
           attributeId: id,
           attributeName: name,
-          message: buildIssueMessage("useless", a),
-        });
-      }
-
-      if (!isValueTypeCompatibleWithConcept(a, conceptsById, conceptsByCode)) {
-        items.push({
-          tag: "concept-type-mismatch",
-          severity: "error",
-          attributeId: id,
-          attributeName: name,
-          message: buildIssueMessage("concept-type-mismatch", a),
-        });
-      }
-
-      if (isIdentitySource(a) && !isValidIdentitySourceConfiguration(a)) {
-        items.push({
-          tag: "identity-source-not-eligible",
-          severity: "error",
-          attributeId: id,
-          attributeName: name,
-          message: buildIssueMessage("identity-source-not-eligible", a),
-        });
-      }
-
-      if (getValueType(a) === "ENUM" && getOptionsCount(a) === 0) {
-        items.push({
-          tag: "enum-without-options",
-          severity: "warning",
-          attributeId: id,
-          attributeName: name,
-          message: buildIssueMessage("enum-without-options", a),
+          message: buildIssueMessage(tag, a),
         });
       }
     }
@@ -384,11 +261,6 @@ export default function AdminAttributesPage() {
       if ((health.byTagCount["concept-type-mismatch"] ?? 0) > 0) {
         return t("ATTRIBUTE_PAGE.TOP_ISSUES.concept-type-mismatch", {
           defaultValue: "Certains champs ont un type incompatible avec leur concept.",
-        });
-      }
-      if ((health.byTagCount["identity-source-not-eligible"] ?? 0) > 0) {
-        return t("ATTRIBUTE_PAGE.TOP_ISSUES.identity-source-not-eligible", {
-          defaultValue: "Certaines sources d’identité ne sont pas cohérentes avec leur concept.",
         });
       }
       return t("ATTRIBUTE_PAGE.TOP_ISSUES.default-error", {
@@ -479,7 +351,6 @@ export default function AdminAttributesPage() {
   const [drawerA, setDrawerA] = useState<{
     open: boolean;
     initial?: Attribute | null;
-    presetIdentitySource?: boolean;
   }>({
     open: false,
   });
@@ -488,8 +359,8 @@ export default function AdminAttributesPage() {
     setDrawerA({ open: true, initial: attribute });
   }, []);
 
-  const openCreateIdentitySource = useCallback(() => {
-    setDrawerA({ open: true, initial: null, presetIdentitySource: true });
+  const openCreateAttribute = useCallback(() => {
+    setDrawerA({ open: true, initial: null });
   }, []);
 
   const onCloseAttributeDrawer = async (changed?: boolean) => {
@@ -499,36 +370,6 @@ export default function AdminAttributesPage() {
       notifySuccess(t("ATTRIBUTE_PAGE.SAVED_SUCCESS", { defaultValue: "Champ enregistré" }));
     }
   };
-
-  const handleMoveIdentitySource = useCallback(
-    async (attributeId: number, direction: "up" | "down") => {
-      const index = identitySources.findIndex((a) => getAttrId(a) === attributeId);
-      const swap = buildIdentityReorderSwap(identitySources, index, direction);
-      if (!swap) return;
-
-      try {
-        await reorderAdminAttributes(swap);
-
-        setAttributes((prev) => {
-          const map = new Map(prev.map((a) => [getAttrId(a), { ...a }]));
-          for (const item of swap) {
-            const found = map.get(item.id);
-            if (found) found.displayOrder = item.displayOrder;
-          }
-          return [...map.values()];
-        });
-
-        notifySuccess(t("ATTRIBUTE_PAGE.REORDER_SUCCESS", { defaultValue: "Ordre mis à jour" }));
-      } catch (e: any) {
-        notifyError(
-          e?.message ||
-            t("ATTRIBUTE_PAGE.REORDER_ERROR", { defaultValue: "Erreur de réordonnancement" })
-        );
-        await hardRefreshAttributes();
-      }
-    },
-    [identitySources, hardRefreshAttributes, t]
-  );
 
   const essentialSetupProgress = RECOMMENDED_BOOTSTRAP_CONCEPT_CODES.map((conceptCode) => {
     const exists = visibleAttributes.some((a) => getConceptCode(a) === conceptCode);
@@ -613,15 +454,6 @@ export default function AdminAttributesPage() {
             },
           }}
         >
-          <Button
-            variant="outlined"
-            startIcon={<RefreshRoundedIcon />}
-            onClick={hardRefreshAttributes}
-            sx={{ whiteSpace: "nowrap" }}
-          >
-            {t("ATTRIBUTE_PAGE.REFRESH", { defaultValue: "Actualiser" })}
-          </Button>
-
           <Button
             variant="contained"
             startIcon={<AddRoundedIcon />}
@@ -791,12 +623,7 @@ export default function AdminAttributesPage() {
         </Alert>
       )}
 
-      <IdentityMembersCard
-        sources={identitySources}
-        onMove={handleMoveIdentitySource}
-        onEditSource={openAttributeEditor}
-        onCreateSource={openCreateIdentitySource}
-      />
+      <DisplayNameCard attributes={visibleAttributes} onAddField={openCreateAttribute} />
 
       <Card
         variant="outlined"
@@ -940,7 +767,6 @@ export default function AdminAttributesPage() {
         key={drawerA.initial?.id ?? "create"}
         open={drawerA.open}
         initial={drawerA.initial || undefined}
-        presetIdentitySource={drawerA.presetIdentitySource}
         onClose={onCloseAttributeDrawer}
         onEditAttribute={openAttributeEditor}
         conceptOptions={concepts}

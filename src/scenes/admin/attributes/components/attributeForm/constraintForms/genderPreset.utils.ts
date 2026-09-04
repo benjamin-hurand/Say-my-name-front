@@ -1,32 +1,13 @@
-export type GenderPreset = { key: string; label: string; values: string[] };
-
-export const GENDER_PRESETS: GenderPreset[] = [
-  { key: "HF", label: "Homme / Femme", values: ["Homme", "Femme"] },
-  { key: "HFA", label: "Homme / Femme / Autre", values: ["Homme", "Femme", "Autre"] },
-  { key: "MF", label: "Masculin / Féminin", values: ["Masculin", "Féminin"] },
-];
-
-export const CUSTOM_GENDER_PRESET_KEY = "CUSTOM";
-
 /**
- * The active preset is manual-mode-first: once the admin explicitly asks
- * for the custom list, it stays selected even if the current values happen
- * to match a preset exactly. Otherwise it falls back to deducing the match
- * from the current values, as before.
+ * GENDER is a backend-owned canonical enum (see core/model/people/GenderOptions
+ * on the backend): the admin can no longer pick a custom option list for it.
+ * This fixed, ordered label list is what the form displays and submits;
+ * whatever enumOptions the client sends for a GENDER-concept attribute is
+ * ignored server-side and replaced by the backend's stable MALE/FEMALE/OTHER
+ * codes anyway, so these are display labels only, not the persisted values.
  */
-export function resolveActiveGenderPresetKey(
-  values: readonly string[] | undefined,
-  manualMode: boolean,
-): string {
-  if (manualMode) return CUSTOM_GENDER_PRESET_KEY;
-
-  const current = Array.isArray(values) ? values : [];
-
-  const match = GENDER_PRESETS.find(
-    (preset) =>
-      preset.values.length === current.length &&
-      preset.values.every((value, index) => value === current[index]),
-  );
-
-  return match?.key ?? CUSTOM_GENDER_PRESET_KEY;
-}
+export const GENDER_PRESET_VALUES: readonly string[] = [
+  "Homme",
+  "Femme",
+  "Non-binaire ou autre",
+];

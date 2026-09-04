@@ -5,49 +5,10 @@ export function isSystemIdentityConcept(a: Pick<Attribute, "conceptCode">): bool
   return a.conceptCode === "IDENTITY";
 }
 
-export function isIdentitySourceAttribute(
-  a: Pick<Attribute, "identitySource" | "conceptCode">,
-): boolean {
-  return !!a.identitySource && !isSystemIdentityConcept(a);
-}
-
 export function excludeSystemIdentity<T extends Pick<Attribute, "conceptCode">>(
   rows: readonly T[],
 ): T[] {
   return rows.filter((row) => !isSystemIdentityConcept(row));
-}
-
-export function sortByDisplayOrder<T extends Pick<Attribute, "displayOrder">>(
-  rows: readonly T[],
-): T[] {
-  return [...rows].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
-}
-
-export type IdentityReorderItem = { id: number; displayOrder: number };
-
-/**
- * Swaps only the displayOrder of the two adjacent identity sources being
- * reordered. Every other Attribute (including non-identity sources sitting
- * between them) keeps its displayOrder untouched, matching how
- * PATCH /api/admin/attributes/reorder only mutates the ids it is given.
- */
-export function buildIdentityReorderSwap(
-  sortedSources: readonly Pick<Attribute, "id" | "displayOrder">[],
-  index: number,
-  direction: "up" | "down",
-): IdentityReorderItem[] | null {
-  if (index < 0 || index >= sortedSources.length) return null;
-
-  const targetIndex = direction === "up" ? index - 1 : index + 1;
-  if (targetIndex < 0 || targetIndex >= sortedSources.length) return null;
-
-  const current = sortedSources[index];
-  const target = sortedSources[targetIndex];
-
-  return [
-    { id: current.id, displayOrder: target.displayOrder ?? 0 },
-    { id: target.id, displayOrder: current.displayOrder ?? 0 },
-  ];
 }
 
 const IDENTITY_PREVIEW_BASE_BY_CONCEPT_CODE: Record<string, string> = {
@@ -59,7 +20,7 @@ const DEFAULT_IDENTITY_PREVIEW_BASE = "exemple";
 
 /**
  * Builds a deterministic, non-persisted example value for one identity
- * source, using its known semantic (FIRST_NAME/LAST_NAME) or a neutral
+ * component, using its known semantic (FIRST_NAME/LAST_NAME) or a neutral
  * fallback derived from its own label for custom fields.
  */
 export function resolveIdentityPreviewToken(
@@ -74,11 +35,48 @@ export function resolveIdentityPreviewToken(
   return applyCasingPreview(base, attribute.casingStrategy ?? "NONE");
 }
 
+/**
+ * Composes the displayed-name preview strictly as FIRST_NAME then LAST_NAME
+ * (the backend's fixed semantic order — never influenced by displayOrder).
+ */
 export function buildIdentityPreview(
-  sortedSources: readonly Pick<Attribute, "conceptCode" | "name" | "casingStrategy">[],
+  sources: readonly Pick<Attribute, "conceptCode" | "name" | "casingStrategy">[],
 ): string {
-  return sortedSources
+  return sources
     .map(resolveIdentityPreviewToken)
     .filter((token) => token.length > 0)
     .join(" ");
+}
+
+type IdentitySourceAttribute = Pick<Attribute, "conceptCode" | "name" | "casingStrategy">;
+
+export type DisplayNameSummary =
+  | { kind: "empty" }
+  | {
+      kind: "composed";
+      labelKey: "BOTH_LABEL" | "FIRST_ONLY_LABEL" | "LAST_ONLY_LABEL";
+      preview: string;
+    };
+
+/**
+ * Pure summary of what the backend will display as a person's name, given
+ * only the FIRST_NAME and LAST_NAME attributes (the only two Concepts the
+ * backend ever composes IDENTITY from for the MVP).
+ */
+export function resolveDisplayNameSummary(
+  firstName: IdentitySourceAttribute | null,
+  lastName: IdentitySourceAttribute | null,
+): DisplayNameSummary {
+  if (!firstName && !lastName) {
+    return { kind: "empty" };
+  }
+
+  const labelKey =
+    firstName && lastName ? "BOTH_LABEL" : firstName ? "FIRST_ONLY_LABEL" : "LAST_ONLY_LABEL";
+
+  return {
+    kind: "composed",
+    labelKey,
+    preview: buildIdentityPreview([firstName, lastName].filter(Boolean) as IdentitySourceAttribute[]),
+  };
 }

@@ -33,7 +33,6 @@ type Props = {
     isCustomized: boolean,
     strategy: CasingStrategy,
   ) => void;
-  identitySourceEligible: boolean;
   requiredMaxValues: number | null;
   advancedSettingsInitiallyExpanded: boolean;
   isNameCustomizedRef: MutableRefObject<boolean>;
@@ -49,7 +48,6 @@ export default function FieldConfigScreen({
   casingApplicable,
   recommendedCasingStrategy,
   onCasingCustomizationChange,
-  identitySourceEligible,
   requiredMaxValues,
   advancedSettingsInitiallyExpanded,
   isNameCustomizedRef,
@@ -137,25 +135,6 @@ export default function FieldConfigScreen({
             />
           )}
         />
-
-        {identitySourceEligible ? (
-          <Controller
-            name="identitySource"
-            control={control}
-            render={({ field }) => (
-              <SettingRow
-                label={t("ATTRIBUTE_FORM.SETTINGS.IDENTITY_LABEL", {
-                  defaultValue: "Utiliser pour identifier une personne",
-                })}
-                description={t("ATTRIBUTE_FORM.SETTINGS.IDENTITY_DESC", {
-                  defaultValue: "Cette valeur participera au nom affiché de la personne.",
-                })}
-                checked={!!field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        ) : null}
       </Stack>
 
       <AdvancedAttributeSettings

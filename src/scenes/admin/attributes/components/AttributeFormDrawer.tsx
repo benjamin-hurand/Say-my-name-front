@@ -29,7 +29,6 @@ import {
   DEFAULT_CUSTOM_VALUE_TYPE,
   resolveFieldSemanticContext,
 } from "./attributeForm/attributeForm.semantic";
-import { isIdentitySourceEligible } from "./attributeForm/attributeForm.identitySource";
 import {
   sanitizeConfigForValueType,
   type SanitizedAttributeConfig,
@@ -73,7 +72,6 @@ import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 export default function AttributeFormDrawer({
   open,
   initial,
-  presetIdentitySource,
   onClose,
   onEditAttribute,
   conceptOptions,
@@ -97,19 +95,17 @@ export default function AttributeFormDrawer({
     () => filterAvailableConcepts(conceptOptions, availabilityByConceptId),
     [availabilityByConceptId, conceptOptions],
   );
-  const skipConceptPicker =
-    !presetIdentitySource && shouldSkipConceptPicker(isEdit, availableConceptOptions);
+  const skipConceptPicker = shouldSkipConceptPicker(isEdit, availableConceptOptions);
 
-  const initialView: AttributeCreationView =
-    isEdit || presetIdentitySource
-      ? "configuration"
-      : skipConceptPicker
-        ? "custom-type-selection"
-        : "template-selection";
+  const initialView: AttributeCreationView = isEdit
+    ? "configuration"
+    : skipConceptPicker
+      ? "custom-type-selection"
+      : "template-selection";
 
   const [view, setView] = useState<AttributeCreationView>(initialView);
   const [hasConfirmedConceptChoice, setHasConfirmedConceptChoice] = useState(
-    isEdit || Boolean(presetIdentitySource) || skipConceptPicker,
+    isEdit || skipConceptPicker,
   );
 
   const isNameCustomizedRef = useRef(isEdit);
@@ -133,17 +129,15 @@ export default function AttributeFormDrawer({
     reset,
   } = useForm<AttributeCreateFormInput, unknown, AttributeCreateFormOutput>({
     resolver: zodResolver(attributeCreateSchema),
-    defaultValues: makeDefaultValues(initial, presetIdentitySource),
+    defaultValues: makeDefaultValues(initial),
   });
 
   useEffect(() => {
     if (!open) return;
 
-    reset(makeDefaultValues(initial, presetIdentitySource));
+    reset(makeDefaultValues(initial));
     setView(initialView);
-    setHasConfirmedConceptChoice(
-      Boolean(initial?.id) || Boolean(presetIdentitySource) || skipConceptPicker,
-    );
+    setHasConfirmedConceptChoice(Boolean(initial?.id) || skipConceptPicker);
     isNameCustomizedRef.current = Boolean(initial?.id);
     isCasingCustomizedRef.current = Boolean(initial?.id);
     lastTextCasingStrategyRef.current =
@@ -151,7 +145,7 @@ export default function AttributeFormDrawer({
     wasLastTextCasingCustomizedRef.current =
       Boolean(initial?.id) && initial?.type === "TEXT";
     previousEffectiveValueTypeRef.current = null;
-  }, [open, initial, reset, presetIdentitySource, initialView, skipConceptPicker]);
+  }, [open, initial, reset, initialView, skipConceptPicker]);
 
   useEffect(() => {
     if (!open) return;
@@ -164,7 +158,6 @@ export default function AttributeFormDrawer({
 
   const watchedConceptId = watch("conceptId");
   const watchedType = watch("type");
-  const watchedMaxValues = watch("maxValues") ?? 1;
   const fieldContext = useMemo(
     () =>
       resolveFieldSemanticContext({
@@ -212,19 +205,6 @@ export default function AttributeFormDrawer({
   );
 
   const selectedConceptDerived = fieldContext.isDerived;
-  const selectedIdentitySourceEligible = isIdentitySourceEligible({
-    isCustom: fieldContext.isCustom,
-    conceptEligible: fieldContext.identityComponentEligible,
-    valueType: fieldContext.effectiveValueType,
-    maxValues: watchedMaxValues,
-    conceptCode: selectedConceptCode,
-  });
-
-  useEffect(() => {
-    if (!selectedIdentitySourceEligible && getValues("identitySource")) {
-      setValue("identitySource", false, { shouldDirty: true });
-    }
-  }, [getValues, selectedIdentitySourceEligible, setValue]);
 
   const applySanitizedConfig = useCallback(
     (patch: SanitizedAttributeConfig) => {
@@ -366,10 +346,6 @@ export default function AttributeFormDrawer({
 
       setValue("type", concept.valueType, { shouldDirty: true });
 
-      if (!concept.identityComponentEligible) {
-        setValue("identitySource", false, { shouldDirty: true });
-      }
-
       if (concept.derived && getValues("editPolicy") !== "DERIVED") {
         setValue("editPolicy", "DERIVED", { shouldDirty: true });
       }
@@ -454,7 +430,6 @@ export default function AttributeFormDrawer({
       }
 
       const effectiveEditPolicy: EditPolicy = selectedConceptDerived ? "DERIVED" : data.editPolicy;
-      const effectiveIdentitySource = selectedIdentitySourceEligible ? data.identitySource : false;
       const effectiveType: ValueType = fieldContext.effectiveValueType;
       const effectiveMaxValues = resolveConceptMaxValues(
         fieldContext.requiredMaxValues,
@@ -464,7 +439,6 @@ export default function AttributeFormDrawer({
       const commonPayload = {
         name: data.name,
         conceptId: data.conceptId ?? null,
-        identitySource: effectiveIdentitySource,
         maxValues: effectiveMaxValues,
         filter: data.filter,
         sort: data.sort,
@@ -568,7 +542,6 @@ export default function AttributeFormDrawer({
             casingApplicable={fieldContext.casingApplicable}
             recommendedCasingStrategy={fieldContext.defaultCasingStrategy}
             onCasingCustomizationChange={handleCasingCustomizationChange}
-            identitySourceEligible={selectedIdentitySourceEligible}
             requiredMaxValues={fieldContext.requiredMaxValues}
             advancedSettingsInitiallyExpanded={Boolean(
               initial && (initial.filter || initial.sort),

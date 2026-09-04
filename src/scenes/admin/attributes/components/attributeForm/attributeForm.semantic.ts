@@ -4,11 +4,7 @@ import type {
   ValueType,
 } from "../../../../../models/commons/Attribute/Attribute";
 import type { Concept } from "../../../../../models/commons/Concept/Concept";
-import {
-  getConceptCode,
-  isConceptDerived,
-  isIdentityComponentEligible,
-} from "./attributeForm.helpers";
+import { getConceptCode, isConceptDerived } from "./attributeForm.helpers";
 import { isCasingApplicable } from "./attributeForm.casing";
 
 export const DEFAULT_CUSTOM_VALUE_TYPE: ValueType = "TEXT";
@@ -20,7 +16,6 @@ export type FieldSemanticContext = {
   effectiveValueType: ValueType;
   lockedValueType: ValueType | null;
   isDerived: boolean;
-  identityComponentEligible: boolean;
   defaultCasingStrategy: CasingStrategy | null;
   casingApplicable: boolean;
   requiredMaxValues: number | null;
@@ -80,9 +75,6 @@ export function resolveFieldSemanticContext({
     effectiveValueType,
     lockedValueType,
     isDerived: derived,
-    identityComponentEligible:
-      concept?.identityComponentEligible ??
-      (!custom ? isIdentityComponentEligible(initial) : false),
     defaultCasingStrategy: concept?.defaultCasingStrategy ?? null,
     casingApplicable: isCasingApplicable(effectiveValueType, derived),
     requiredMaxValues: concept?.requiredMaxValues ?? null,

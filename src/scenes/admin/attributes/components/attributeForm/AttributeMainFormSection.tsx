@@ -101,15 +101,10 @@ export default function AttributeMainFormSection({
           defaultValue: "Choix proposés",
         })}
         subtitle={t("ATTRIBUTE_FORM.CONFIG_VALUES_SUBTITLE_GENDER", {
-          defaultValue: "Choisis une liste prête à l'emploi ou personnalise les valeurs.",
+          defaultValue: "Liste fixe définie par SayMyName.",
         })}
       >
-        <GenderPresetSelector
-          control={control}
-          watch={watch}
-          setValue={setValue}
-          errorMessage={enumOptionsError}
-        />
+        <GenderPresetSelector setValue={setValue} />
       </FormSection>
     );
   };

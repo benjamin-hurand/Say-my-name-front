@@ -1,73 +1,35 @@
-import { Button, Stack } from "@mui/material";
-import { useMemo, useState } from "react";
-import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import { Chip, Stack, Typography } from "@mui/material";
+import { useEffect } from "react";
+import type { UseFormSetValue } from "react-hook-form";
 
 import type { AttributeCreateFormInput } from "../../../validation/attributeCreate.schema";
-import EnumValuesForm from "./EnumValuesForm";
-import {
-  CUSTOM_GENDER_PRESET_KEY,
-  GENDER_PRESETS,
-  resolveActiveGenderPresetKey,
-} from "./genderPreset.utils";
+import { GENDER_PRESET_VALUES } from "./genderPreset.utils";
 
 type Props = {
-  control: Control<AttributeCreateFormInput>;
-  watch: UseFormWatch<AttributeCreateFormInput>;
   setValue: UseFormSetValue<AttributeCreateFormInput>;
-  errorMessage?: string;
 };
 
-export default function GenderPresetSelector({ control, watch, setValue, errorMessage }: Props) {
-  const values = watch("enumOptions");
-  const [manualMode, setManualMode] = useState(false);
-
-  const activeKey = useMemo(
-    () => resolveActiveGenderPresetKey(values, manualMode),
-    [values, manualMode],
-  );
-
-  const applyPreset = (presetValues: string[]) => {
-    setManualMode(false);
-    setValue("enumOptions", presetValues, { shouldDirty: true });
-  };
-
-  const enableCustom = () => {
-    setManualMode(true);
-  };
+/**
+ * GENDER is a system-managed concept: there is no "Liste personnalisée"
+ * escape hatch here (unlike a custom ENUM attribute). The preset is applied
+ * unconditionally so the form always submits a non-empty enumOptions value;
+ * the backend ignores it anyway and provisions its own stable codes.
+ */
+export default function GenderPresetSelector({ setValue }: Props) {
+  useEffect(() => {
+    setValue("enumOptions", [...GENDER_PRESET_VALUES], { shouldDirty: false });
+  }, [setValue]);
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1}>
       <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap>
-        {GENDER_PRESETS.map((preset) => (
-          <Button
-            key={preset.key}
-            type="button"
-            variant={activeKey === preset.key ? "contained" : "outlined"}
-            onClick={() => applyPreset(preset.values)}
-          >
-            {preset.label}
-          </Button>
+        {GENDER_PRESET_VALUES.map((label) => (
+          <Chip key={label} label={label} />
         ))}
-
-        <Button
-          type="button"
-          variant={activeKey === CUSTOM_GENDER_PRESET_KEY ? "contained" : "outlined"}
-          onClick={enableCustom}
-        >
-          Liste personnalisée
-        </Button>
       </Stack>
-
-      {activeKey === CUSTOM_GENDER_PRESET_KEY && (
-        <EnumValuesForm
-          control={control}
-          watch={watch}
-          setValue={setValue}
-          label="Ajouter une valeur"
-          placeholder="Ex. Homme"
-          errorMessage={errorMessage}
-        />
-      )}
+      <Typography variant="caption" color="text.secondary">
+        Utilisé pour proposer des distracteurs de prénom plus pertinents.
+      </Typography>
     </Stack>
   );
 }
