@@ -7,7 +7,11 @@ import type {
 import type { ConstraintPayload } from "./constraintPayload.schema";
 
 /**
- * Payload de création (côté admin)
+ * Payload de création (côté admin).
+ *
+ * `filter`/`sort` sont volontairement absents : ces capacités sont dérivées
+ * du type par le backend (voir AttributeCapabilities), l'admin ne les
+ * choisit plus champ par champ.
  */
 export interface CreateAttributePayload {
   name: string;
@@ -17,8 +21,6 @@ export interface CreateAttributePayload {
 
   maxValues?: number;
   identitySource?: boolean;
-  filter?: boolean;
-  sort?: boolean;
   required?: boolean;
 
   editPolicy?: EditPolicy;

@@ -14,7 +14,6 @@ import type {
   ValueType,
 } from "../../../../../models/commons/Attribute/Attribute";
 import type { AttributeCreateFormInput } from "../../validation/attributeCreate.schema";
-import AdvancedAttributeSettings from "./AdvancedAttributeSettings";
 import AttributeCardinalityControl from "./AttributeCardinalityControl";
 import AttributeMainFormSection from "./AttributeMainFormSection";
 import FormSection from "./FormSection";
@@ -34,7 +33,6 @@ type Props = {
     strategy: CasingStrategy,
   ) => void;
   requiredMaxValues: number | null;
-  advancedSettingsInitiallyExpanded: boolean;
   isNameCustomizedRef: MutableRefObject<boolean>;
 };
 
@@ -49,7 +47,6 @@ export default function FieldConfigScreen({
   recommendedCasingStrategy,
   onCasingCustomizationChange,
   requiredMaxValues,
-  advancedSettingsInitiallyExpanded,
   isNameCustomizedRef,
 }: Props) {
   const { t } = useTranslation();
@@ -136,11 +133,6 @@ export default function FieldConfigScreen({
           )}
         />
       </Stack>
-
-      <AdvancedAttributeSettings
-        control={control}
-        initiallyExpanded={advancedSettingsInitiallyExpanded}
-      />
     </Stack>
   );
 }

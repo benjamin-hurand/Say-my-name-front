@@ -48,8 +48,6 @@ export const attributeCreateSchema = z
       .min(1, "Le nombre maximal de valeurs doit être supérieur ou égal à 1")
       .default(1),
 
-    filter: z.boolean().default(false),
-    sort: z.boolean().default(false),
     required: z.boolean().default(false),
 
     editPolicy: EditPolicyEnum.default("FREE"),

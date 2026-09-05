@@ -27,14 +27,7 @@ export default function AttributeCardinalityControl({ control }: Props) {
         }
 
         return (
-          <Stack
-            direction="row"
-            spacing={1}
-            useFlexGap
-            flexWrap="wrap"
-            alignItems="flex-start"
-            sx={{ maxWidth: 520 }}
-          >
+          <Stack spacing={1.5} sx={{ maxWidth: 520 }}>
             <ToggleButtonGroup
               exclusive
               size="small"
@@ -49,25 +42,26 @@ export default function AttributeCardinalityControl({ control }: Props) {
                 defaultValue: "Nombre de valeurs autorisées",
               })}
               sx={{
-                flex: "1 1 300px",
-                minWidth: 0,
+                alignSelf: "flex-start",
                 "& .MuiToggleButton-root": {
-                  flex: 1,
+                  minWidth: 112,
                   whiteSpace: "nowrap",
                 },
               }}
             >
               <ToggleButton value="single">
-                {t("ATTRIBUTE_FORM.CARDINALITY.SINGLE", { defaultValue: "Une seule valeur" })}
+                {t("ATTRIBUTE_FORM.CARDINALITY.SINGLE", { defaultValue: "Une seule" })}
               </ToggleButton>
               <ToggleButton value="multiple">
-                {t("ATTRIBUTE_FORM.CARDINALITY.MULTIPLE", { defaultValue: "Plusieurs valeurs" })}
+                {t("ATTRIBUTE_FORM.CARDINALITY.MULTIPLE", { defaultValue: "Plusieurs" })}
               </ToggleButton>
             </ToggleButtonGroup>
 
             {mode === "multiple" ? (
               <TextField
-                label={t("ATTRIBUTE_FORM.CARDINALITY.MAX_LABEL", { defaultValue: "Max." })}
+                label={t("ATTRIBUTE_FORM.CARDINALITY.MAX_LABEL", {
+                  defaultValue: "Nombre maximum",
+                })}
                 type="number"
                 size="small"
                 value={maxValues}
@@ -83,7 +77,7 @@ export default function AttributeCardinalityControl({ control }: Props) {
                 }}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
-                sx={{ flex: "0 0 112px" }}
+                sx={{ width: 140 }}
               />
             ) : null}
           </Stack>

@@ -13,7 +13,7 @@ import ChoiceCard from "./shared/ChoiceCard";
 
 type Props = {
   options: CustomTypeOption[];
-  value: ValueType;
+  value: ValueType | null;
   onChange: (type: ValueType) => void;
 };
 
@@ -54,7 +54,7 @@ export default function CustomAttributeTypePicker({ options, value, onChange }: 
       }}
     >
       {options.map((option) => {
-        const selected = option.type === value;
+        const selected = value != null && option.type === value;
         const Icon = getTypeIcon(option.type);
 
         return (

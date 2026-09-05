@@ -1,5 +1,4 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import TipsAndUpdatesOutlinedIcon from "@mui/icons-material/TipsAndUpdatesOutlined";
@@ -174,6 +173,15 @@ export default function AdminAttributesPage() {
       setLoadingA(false);
     }
   }, [t]);
+
+  // `globalAttributes` (context bootstrap) comes from the non-admin
+  // /attributes endpoint, which never carries deletionImpact — that field is
+  // admin-only. Refresh once from /admin/attributes on mount so canDelete
+  // and the impact counts are available as soon as this page renders,
+  // instead of only after the first create/update/reorder/delete.
+  useEffect(() => {
+    void hardRefreshAttributes();
+  }, [hardRefreshAttributes]);
 
   // IDENTITY is a system-managed derived field: it is never shown as a
   // normal row, in the list or in its health diagnostics.
@@ -623,20 +631,6 @@ export default function AdminAttributesPage() {
                 })}
           </AlertTitle>
           {topIssuesSummary}
-        </Alert>
-      )}
-
-      {!topIssuesSummary && isSetupComplete && (
-        <Alert severity="success" icon={<AutoAwesomeRoundedIcon />}>
-          <AlertTitle>
-            {t("ATTRIBUTE_PAGE.SUCCESS_TITLE", {
-              defaultValue: "Configuration de base prête",
-            })}
-          </AlertTitle>
-          {t("ATTRIBUTE_PAGE.SUCCESS_TEXT", {
-            defaultValue:
-              "Les champs essentiels sont en place. Tu peux maintenant affiner ou ajouter des champs métier.",
-          })}
         </Alert>
       )}
 

@@ -50,8 +50,9 @@ const isMultiSelectEnum = (a: Attribute) =>
 const isNumberAttr = (a: Attribute) =>
   getType(a) === "NUMBER" || (isRange(a.constraint) && !!a.constraint.range?.step);
 
-const isDateLikeAttr = (a: Attribute) =>
-  getType(a) === "DATE" || getType(a) === "DATETIME";
+const isDatetimeAttr = (a: Attribute) => getType(a) === "DATETIME";
+
+const isDateLikeAttr = (a: Attribute) => getType(a) === "DATE" || isDatetimeAttr(a);
 
 const isBooleanAttr = (a: Attribute) =>
   getType(a) === "BOOLEAN";
@@ -393,13 +394,13 @@ const TrombiFilters: React.FC<Props> = ({
                       </Stack>
                     )}
 
-                    {/* DATE / DATETIME */}
+                    {/* DATE / DATETIME — DATETIME keeps the time-of-day (datetime-local), it must not be truncated to a plain date. */}
                     {isDateLikeAttr(attr) && (
                       <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.25 }}>
                         <TextField
                           size="small"
                           label="Début"
-                          type="date"
+                          type={isDatetimeAttr(attr) ? "datetime-local" : "date"}
                           value={rangeDraft[attr.id]?.min ?? selectedFilters[attr.id]?.values?.[0] ?? ""}
                           onChange={(e) =>
                             setRangeDraft((s) => ({
@@ -416,7 +417,7 @@ const TrombiFilters: React.FC<Props> = ({
                         <TextField
                           size="small"
                           label="Fin"
-                          type="date"
+                          type={isDatetimeAttr(attr) ? "datetime-local" : "date"}
                           value={rangeDraft[attr.id]?.max ?? selectedFilters[attr.id]?.values?.[1] ?? ""}
                           onChange={(e) =>
                             setRangeDraft((s) => ({

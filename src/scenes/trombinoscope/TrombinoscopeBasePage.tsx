@@ -31,7 +31,7 @@ import { getPersonAttributesById } from "../../services/business/persons/person.
 import {
   bulkFollowBySearch, bulkSubscribe, bulkUnfollowBySearch, bulkUnsubscribe,
 } from "../../services/business/subscriptions/subscriptions.service";
-import ConfirmDialog from "./components/ConfirmDialog";
+import ConfirmDialog from "../../components/commons/dialogs/ConfirmDialog";
 import ErrorBanner from "./components/ErrorBanner";
 import { mapLiteToExtra } from "./components/personPeek/utils";
 import PersonPeekDialog from "./components/PersonPeekDialog";

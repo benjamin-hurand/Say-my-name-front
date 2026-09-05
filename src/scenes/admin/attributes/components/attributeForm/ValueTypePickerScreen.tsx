@@ -6,7 +6,7 @@ import FormSection from "./FormSection";
 import { CUSTOM_TYPE_OPTIONS } from "./attributeForm.constants";
 
 type Props = {
-  value: ValueType;
+  value: ValueType | null;
   onSelect: (next: ValueType) => void;
 };
 

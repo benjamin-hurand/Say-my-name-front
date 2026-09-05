@@ -73,6 +73,15 @@ export interface AttributeEnumOptionDto {
   active: boolean;
 }
 
+/** Impact de suppression d'un attribut, calculé côté backend (admin uniquement). */
+export interface AttributeDeletionImpact {
+  factCount: number;
+  personCount: number;
+  courseCount: number;
+  pendingChangeRequestCount: number;
+  canDelete: boolean;
+}
+
 /** ---- Modèle principal ---- */
 export interface Attribute {
   id: number;
@@ -110,6 +119,7 @@ export interface Attribute {
   /** Données auxiliaires */
   stats?: AttributeStatsDto | null;
   options?: AttributeEnumOptionDto[] | null;
+  deletionImpact?: AttributeDeletionImpact | null;
 }
 
 /** ---- Helpers optionnels ---- */

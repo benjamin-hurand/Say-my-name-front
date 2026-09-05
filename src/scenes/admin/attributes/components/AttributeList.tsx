@@ -21,16 +21,20 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { toast } from "react-toastify";
 
 import { Attribute, ValueType } from "../../../../models/commons/Attribute/Attribute";
 import { getValueTypeLabel } from "./attributeForm/attributeForm.helpers";
 import { deleteAdminAttribute } from "../../../../services/business/admin/admin.attributes.service";
+import { notifyError, notifySuccess } from "../../../../services/notification/toast.service";
 import { getApiErrorMessage, getApiStatus } from "../../../../utils/apiError";
 import type { AttributeIssueInfo } from "../AdminAttributesPage";
+import ConfirmDialog from "../../../../components/commons/dialogs/ConfirmDialog";
+import AttributeDeletionBlockedDialog from "./AttributeDeletionBlockedDialog";
+
+const REINFORCED_CONFIRM_CONCEPT_CODES = new Set(["FIRST_NAME", "LAST_NAME", "GENDER"]);
 
 type Props = {
   standardRows?: Attribute[];
@@ -172,6 +176,12 @@ export default function AttributeList({
   const { t } = useTranslation();
   const dragPortalNode = useDragPortalNode();
 
+  const [confirmDelete, setConfirmDelete] = useState<{
+    row: Attribute;
+    reinforced: boolean;
+  } | null>(null);
+  const [blockedDelete, setBlockedDelete] = useState<Attribute | null>(null);
+
   const getConceptLabel = (code: string | null): string => {
     if (!code) {
       return t("ATTRIBUTE_UI.CUSTOM_ATTRIBUTE", { defaultValue: "Champ personnalisé" });
@@ -225,22 +235,43 @@ export default function AttributeList({
     onReorder(next);
   };
 
-  const handleDelete = async (row: Attribute) => {
+  const handleDeleteClick = (row: Attribute) => {
     if (getConceptCode(row) === "IDENTITY") return;
-    if (
-      !confirm(
-        t("ATTRIBUTE_UI.DELETE_CONFIRM", {
-          name: getRowName(row),
-          defaultValue: `Supprimer le champ "${getRowName(row)}" ?`,
-        })
-      )
-    ) {
+
+    const impact = row.deletionImpact;
+    if (impact && !impact.canDelete) {
+      setBlockedDelete(row);
       return;
     }
 
+    const conceptCode = getConceptCode(row);
+    setConfirmDelete({
+      row,
+      reinforced: !!conceptCode && REINFORCED_CONFIRM_CONCEPT_CODES.has(conceptCode),
+    });
+  };
+
+  const getConfirmBody = (row: Attribute): string => {
+    if (getConceptCode(row) === "GENDER") {
+      return t("ATTRIBUTE_UI.DELETE_CONFIRM_GENDER_BODY", {
+        defaultValue:
+          "Supprimer Genre désactivera l'utilisation du genre pour proposer des distracteurs plus pertinents.",
+      });
+    }
+    return t("ATTRIBUTE_UI.DELETE_CONFIRM_NAME_FIELD_BODY", {
+      defaultValue:
+        "Supprimer ce champ modifiera les informations disponibles pour identifier les membres.",
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+    const row = confirmDelete.row;
+    setConfirmDelete(null);
+
     try {
       await deleteAdminAttribute(getRowId(row));
-      toast.success(t("ATTRIBUTE_UI.DELETED_SUCCESS", { defaultValue: "Champ supprimé" }));
+      notifySuccess(t("ATTRIBUTE_UI.DELETED_SUCCESS", { defaultValue: "Champ supprimé" }));
       onDeleted();
     } catch (error: unknown) {
       const status = getApiStatus(error);
@@ -255,7 +286,7 @@ export default function AttributeList({
           : t("ATTRIBUTE_UI.DELETE_ERROR", {
               defaultValue: "Suppression impossible.",
             });
-      toast.error(getApiErrorMessage(error, fallback));
+      notifyError(getApiErrorMessage(error, fallback));
     }
   };
 
@@ -282,6 +313,7 @@ export default function AttributeList({
     const issue = getIssueFor(row);
     const conceptCode = getConceptCode(row);
     const isSystemIdentity = conceptCode === "IDENTITY";
+    const isDeleteBlocked = !isSystemIdentity && row.deletionImpact?.canDelete === false;
     const name =
       getRowName(row) ||
       t("ATTRIBUTE_UI.UNNAMED_ATTRIBUTE", { defaultValue: "Champ sans nom" });
@@ -454,13 +486,19 @@ export default function AttributeList({
               </Tooltip>
 
               <Tooltip
-                title={t("ATTRIBUTE_UI.DELETE", { defaultValue: "Supprimer" })}
+                title={
+                  isDeleteBlocked
+                    ? t("ATTRIBUTE_UI.DELETE_BLOCKED_TOOLTIP", {
+                        defaultValue: "Ce champ est utilisé et ne peut pas être supprimé",
+                      })
+                    : t("ATTRIBUTE_UI.DELETE", { defaultValue: "Supprimer" })
+                }
               >
                 <span>
                 <IconButton
                   size="small"
                   disabled={isSystemIdentity}
-                  onClick={() => handleDelete(row)}
+                  onClick={() => handleDeleteClick(row)}
                   aria-label={t("ATTRIBUTE_UI.DELETE_ARIA", {
                     name,
                     defaultValue: `Supprimer le champ ${name}`,
@@ -577,6 +615,33 @@ export default function AttributeList({
           />
         </Stack>
       )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          open
+          title={t("ATTRIBUTE_UI.DELETE_CONFIRM_TITLE", {
+            name: getRowName(confirmDelete.row),
+            defaultValue: `Supprimer « ${getRowName(confirmDelete.row)} » ?`,
+          })}
+          message={
+            confirmDelete.reinforced
+              ? getConfirmBody(confirmDelete.row)
+              : t("ATTRIBUTE_UI.DELETE_CONFIRM_CUSTOM_BODY", {
+                  defaultValue: "Cette action supprimera définitivement ce champ.",
+                })
+          }
+          confirmLabel={t("ATTRIBUTE_UI.DELETE_CONFIRM_ACTION", { defaultValue: "Supprimer" })}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
+
+      <AttributeDeletionBlockedDialog
+        open={!!blockedDelete}
+        attributeName={blockedDelete ? getRowName(blockedDelete) : ""}
+        impact={blockedDelete?.deletionImpact ?? null}
+        onClose={() => setBlockedDelete(null)}
+      />
     </Box>
   );
 }

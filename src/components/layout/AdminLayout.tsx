@@ -1,6 +1,7 @@
 // src/scenes/admin/AdminLayout.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Header from "./components/header/Header";
 import { useThemeColorContext } from "../../contexts/ThemeColorContext";
 import "./admin-layout.css";
@@ -18,9 +19,12 @@ const MAX_SIDEBAR = 420;
 const DEFAULT_SIDEBAR = 260;
 
 const AdminLayout: React.FC = () => {
+  const { t } = useTranslation();
   const { color } = useThemeColorContext();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const attributesNavLabel = t("ATTRIBUTE_PAGE.TITLE", { defaultValue: "Champs" });
 
   // 👉 Routes qui doivent être en plein largeur (fluid)
   const isFluid = useMemo(() => {
@@ -66,13 +70,13 @@ const AdminLayout: React.FC = () => {
     if (location.pathname.startsWith("/admin/persons"))
       return "Admin · Persons";
     if (location.pathname.startsWith("/admin/attributes"))
-      return "Admin · Attributes";
+      return `Admin · ${attributesNavLabel}`;
     if (location.pathname.startsWith("/admin/change-requests"))
       return "Admin · Change Requests";
     if (location.pathname.startsWith("/admin/members"))
       return "Admin · Members & invitations";
     return "Admin · Dashboard";
-  }, [location.pathname]);
+  }, [location.pathname, attributesNavLabel]);
 
   return (
     <div className="admin-layout">
@@ -97,7 +101,7 @@ const AdminLayout: React.FC = () => {
                     (isActive ? " admin-nav__link--active" : "")
                   }
                 >
-                  {link.label}
+                  {link.to === "/admin/attributes" ? attributesNavLabel : link.label}
                 </NavLink>
               ))}
             </nav>

@@ -30,6 +30,11 @@ import {
   resolveFieldSemanticContext,
 } from "./attributeForm/attributeForm.semantic";
 import {
+  confirmCustomTypeSelection,
+  resetCustomTypeSelection,
+  resolvePickerValue,
+} from "./attributeForm/attributeForm.customType";
+import {
   sanitizeConfigForValueType,
   type SanitizedAttributeConfig,
 } from "./attributeForm/attributeForm.compatibility";
@@ -107,6 +112,7 @@ export default function AttributeFormDrawer({
   const [hasConfirmedConceptChoice, setHasConfirmedConceptChoice] = useState(
     isEdit || skipConceptPicker,
   );
+  const [hasConfirmedCustomType, setHasConfirmedCustomType] = useState(isEdit);
 
   const isNameCustomizedRef = useRef(isEdit);
   const isCasingCustomizedRef = useRef(isEdit);
@@ -138,6 +144,7 @@ export default function AttributeFormDrawer({
     reset(makeDefaultValues(initial));
     setView(initialView);
     setHasConfirmedConceptChoice(Boolean(initial?.id) || skipConceptPicker);
+    setHasConfirmedCustomType(Boolean(initial?.id));
     isNameCustomizedRef.current = Boolean(initial?.id);
     isCasingCustomizedRef.current = Boolean(initial?.id);
     lastTextCasingStrategyRef.current =
@@ -372,6 +379,11 @@ export default function AttributeFormDrawer({
       if (nextConceptId == null) {
         applyAutomaticName("");
         applyAutomaticCasing(null, "TEXT");
+
+        const reset = resetCustomTypeSelection();
+        setValue("type", reset.type, { shouldDirty: true });
+        setHasConfirmedCustomType(reset.confirmed);
+
         setView("custom-type-selection");
         return;
       }
@@ -395,7 +407,9 @@ export default function AttributeFormDrawer({
 
   const handleSelectValueType = useCallback(
     (nextType: ValueType) => {
-      setValue("type", nextType, { shouldDirty: true });
+      const confirmed = confirmCustomTypeSelection(nextType);
+      setValue("type", confirmed.type, { shouldDirty: true });
+      setHasConfirmedCustomType(confirmed.confirmed);
       setView("configuration");
     },
     [setValue],
@@ -440,8 +454,6 @@ export default function AttributeFormDrawer({
         name: data.name,
         conceptId: data.conceptId ?? null,
         maxValues: effectiveMaxValues,
-        filter: data.filter,
-        sort: data.sort,
         required: data.required,
         type: effectiveType,
         editPolicy: effectiveEditPolicy,
@@ -525,7 +537,10 @@ export default function AttributeFormDrawer({
       case "custom-type-selection":
         return (
           <ValueTypePickerScreen
-            value={selectedValueType}
+            value={resolvePickerValue({
+              type: selectedValueType,
+              confirmed: hasConfirmedCustomType,
+            })}
             onSelect={handleSelectValueType}
           />
         );
@@ -543,9 +558,6 @@ export default function AttributeFormDrawer({
             recommendedCasingStrategy={fieldContext.defaultCasingStrategy}
             onCasingCustomizationChange={handleCasingCustomizationChange}
             requiredMaxValues={fieldContext.requiredMaxValues}
-            advancedSettingsInitiallyExpanded={Boolean(
-              initial && (initial.filter || initial.sort),
-            )}
             isNameCustomizedRef={isNameCustomizedRef}
           />
         );

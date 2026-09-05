@@ -25,10 +25,3 @@ export async function getFilters(opts?: { stats?: boolean; options?: boolean }):
   const { data } = await API.get<Attribute[]>(`${endpoint}/filters${qs}`);
   return data ?? [];
 }
-
-/** Attributs triables (expand optionnel: stats, options) */
-export async function getSorts(opts?: { stats?: boolean; options?: boolean }): Promise<Attribute[]> {
-  const qs = buildExpandQS(opts);
-  const { data } = await API.get<Attribute[]>(`${endpoint}/sorts${qs}`);
-  return data ?? [];
-}
